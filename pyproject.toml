@@ -1,0 +1,13 @@
+[project]
+name = "quant"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "backtrader>=1.9.78.123",
+    "matplotlib>=3.10.7",
+    "numpy>=2.3.4",
+    "pandas>=2.3.3",
+    "tushare>=1.4.24",
+]
