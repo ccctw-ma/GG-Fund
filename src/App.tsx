@@ -1,12 +1,12 @@
-import { Database, Globe2, ShieldCheck, Sparkles, TrendingUp } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from './api';
+import { AnalysisPanel } from './components/AnalysisPanel';
+import { AuthPanel } from './components/AuthPanel';
 import { Header } from './components/Header';
 import { FundSearch } from './components/FundSearch';
 import { MarketOverview } from './components/MarketOverview';
 import { PortfolioPanel } from './components/PortfolioPanel';
 import { SettingsPanel } from './components/SettingsPanel';
-import { Badge } from './components/ui/badge';
 import { calculatePortfolioSummary } from './portfolio';
 import { exportLocalData, loadHoldings, loadWatchlist, parseImportedData, saveHoldings, saveWatchlist } from './storage';
 import type { FundHistoryPoint, FundQuote, Holding, IndexQuote, WatchItem } from './types';
@@ -115,29 +115,22 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#dbeafe,transparent_28rem),radial-gradient(circle_at_top_right,#dcfce7,transparent_26rem),#f8fafc] text-slate-900">
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div className="newspaper-shell text-ink">
+      <div className="newspaper-page">
         <Header />
         <main>
-          <section className="mb-6 overflow-hidden rounded-[2.5rem] border border-white/70 bg-slate-950 p-8 text-white shadow-2xl shadow-slate-900/20 lg:p-10">
-            <div className="grid gap-8 lg:grid-cols-[1.4fr_0.6fr] lg:items-end">
-              <div>
-                <div className="mb-5 flex flex-wrap gap-2">
-                  <Badge tone="blue"><Sparkles className="h-3 w-3" /> Online-like MVP</Badge>
-                  <Badge tone="green"><Globe2 className="h-3 w-3" /> 真实公开行情</Badge>
-                  <Badge tone="slate"><Database className="h-3 w-3" /> 免费 SQLite</Badge>
-                </div>
-                <h2 className="max-w-4xl text-4xl font-black tracking-tight sm:text-6xl">一站查看中国基金行情，分析自己的基金状态</h2>
-                <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">输入基金代码或名称，添加到持仓后即可看到市值、盈亏、收益率和组合占比。服务端接入公开行情接口并使用数据库缓存。</p>
-              </div>
-              <div className="rounded-3xl border border-white/10 bg-white/10 p-6 backdrop-blur">
-                <span className="flex items-center gap-2 text-sm text-slate-300"><TrendingUp className="h-4 w-4" />组合盈亏</span>
-                <strong className={summary.totalProfit >= 0 ? 'mt-3 block text-5xl font-black text-red-300' : 'mt-3 block text-5xl font-black text-emerald-300'}>{summary.totalProfit.toFixed(2)}</strong>
-                <p className="mt-3 text-sm text-slate-400">当前持仓 {summary.items.length} 只，自选 {watchlist.length} 只。</p>
-              </div>
+          <section className="market-tape mb-6 grid gap-4 px-4 py-4 md:grid-cols-[1.2fr_0.8fr]">
+            <div>
+              <div className="section-kicker">Morning / Afternoon fund intelligence</div>
+              <h2 className="font-display mt-2 max-w-4xl text-4xl font-black leading-tight sm:text-6xl">把基金行情做成一份能读的市场报纸</h2>
+            </div>
+            <div className="border-l border-ink/20 pl-4">
+              <div className="section-kicker">Portfolio P/L</div>
+              <strong className={summary.totalProfit >= 0 ? 'mt-2 block text-5xl text-[var(--bull)]' : 'mt-2 block text-5xl text-[var(--bear)]'}>{summary.totalProfit.toFixed(2)}</strong>
+              <p className="mt-2 text-sm text-ink/65">持仓 {summary.items.length} 只 · 自选 {watchlist.length} 只 · Cloudflare D1/KV 后端</p>
             </div>
           </section>
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
             <MarketOverview indices={indices} loading={marketLoading} error={marketError} />
             <FundSearch
               query={query}
@@ -153,6 +146,8 @@ export default function App() {
               onToggleWatch={toggleWatch}
               watchlist={watchlist}
             />
+            <AuthPanel />
+            <AnalysisPanel selectedFund={selectedFund} />
             <PortfolioPanel summary={summary} watchlist={watchlist} onRemoveHolding={(id) => setHoldings((current) => current.filter((holding) => holding.id !== id))} />
             <SettingsPanel exportText={exportText} importError={importError} onImport={importData} />
           </div>
