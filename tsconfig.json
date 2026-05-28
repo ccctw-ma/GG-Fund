@@ -17,5 +17,5 @@
     "jsx": "react-jsx",
     "types": ["bun", "vitest/globals"]
   },
-  "include": ["src", "server", "tests", "vite.config.ts", "playwright.config.ts"]
+  "include": ["frontend", "backend", "shared", "functions", "tests", "vite.config.ts", "playwright.config.ts"]
 }

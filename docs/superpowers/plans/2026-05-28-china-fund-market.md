@@ -16,18 +16,19 @@
 - `tsconfig.json` — shared TypeScript compiler configuration.
 - `vite.config.ts` — React dev server, API proxy, and Vitest browser-like test setup.
 - `index.html` — Vite HTML entry.
-- `src/main.tsx` — React bootstrap.
-- `src/App.tsx` — application shell and page composition.
-- `src/styles.css` — responsive Chinese dashboard styling.
-- `src/types.ts` — shared client types for holdings, quotes, indices, and history points.
-- `src/api.ts` — client API calls to Bun `/api/*` endpoints.
-- `src/storage.ts` — local holding/watchlist/import/export persistence.
-- `src/portfolio.ts` — pure portfolio math.
-- `src/components/*.tsx` — focused UI sections for header, market overview, fund search, portfolio, and settings.
-- `server/index.ts` — Bun HTTP server and route dispatch.
-- `server/marketData.ts` — public data adapter, in-memory cache, and fallback market/fund data.
-- `server/types.ts` — API DTO types.
-- `src/**/*.test.ts` and `server/**/*.test.ts` — Vitest unit/API tests.
+- `frontend/src/main.tsx` — React bootstrap.
+- `frontend/src/App.tsx` — application shell and page composition.
+- `frontend/src/styles.css` — responsive Chinese dashboard styling.
+- `frontend/src/types.ts` — shared client types for holdings, quotes, indices, and history points.
+- `frontend/src/api.ts` — client API calls to Cloudflare `/api/*` endpoints.
+- `frontend/src/storage.ts` — local holding/watchlist/import/export persistence.
+- `frontend/src/portfolio.ts` — pure portfolio math.
+- `frontend/src/components/*.tsx` — focused UI sections for header, market overview, fund search, portfolio, and settings.
+- `backend/api.ts` — single Cloudflare API implementation.
+- `backend/local.ts` — Bun local adapter that injects in-memory D1/KV bindings.
+- `shared/marketData.ts` — public data adapter, in-memory cache, and fallback market/fund data.
+- `shared/types.ts` — API DTO types.
+- `frontend/src/**/*.test.ts(x)`, `shared/**/*.test.ts`, and `backend/**/*.test.ts` — Vitest unit/API tests.
 - `tests/fund-flow.spec.ts` — Playwright E2E flow.
 - `tests/midscene-fund-flow.spec.ts` — Midscene + Playwright + Vitest flow skeleton.
 - `playwright.config.ts` — E2E server orchestration.
@@ -46,26 +47,26 @@
 
 ### Task 2: Pure domain model and tests
 
-**Files:** `src/types.ts`, `src/portfolio.ts`, `src/storage.ts`, `src/portfolio.test.ts`, `src/storage.test.ts`
+**Files:** `frontend/src/types.ts`, `frontend/src/portfolio.ts`, `frontend/src/storage.ts`, `frontend/src/portfolio.test.ts`, `frontend/src/storage.test.ts`
 
 - [ ] Write Vitest tests for portfolio summary calculations and import validation.
 - [ ] Implement shared types, portfolio calculations, and local persistence helpers.
-- [ ] Run `bun run test src/portfolio.test.ts src/storage.test.ts` and expect PASS.
+- [ ] Run `bun run test frontend/src/portfolio.test.ts frontend/src/storage.test.ts` and expect PASS.
 
-### Task 3: Bun API server
+### Task 3: Cloudflare API and shared data adapters
 
-**Files:** `server/types.ts`, `server/marketData.ts`, `server/index.ts`, `server/marketData.test.ts`, `server/index.test.ts`
+**Files:** `shared/types.ts`, `shared/marketData.ts`, `backend/api.ts`, `backend/local.ts`, `shared/marketData.test.ts`, `backend/api.test.ts`
 
 - [ ] Write tests for cache behavior, fund search/detail/history, index data, and unified error responses.
-- [ ] Implement fallback-backed market data functions and Bun route handling.
-- [ ] Run `bun run test server` and expect PASS.
+- [ ] Implement fallback-backed market data functions and Cloudflare route handling.
+- [ ] Run `bun run test` and expect PASS.
 
 ### Task 4: React application UI
 
-**Files:** `src/main.tsx`, `src/App.tsx`, `src/api.ts`, `src/styles.css`, `src/components/Header.tsx`, `src/components/MarketOverview.tsx`, `src/components/FundSearch.tsx`, `src/components/PortfolioPanel.tsx`, `src/components/SettingsPanel.tsx`
+**Files:** `frontend/src/main.tsx`, `frontend/src/App.tsx`, `frontend/src/api.ts`, `frontend/src/styles.css`, `frontend/src/components/Header.tsx`, `frontend/src/components/MarketOverview.tsx`, `frontend/src/components/FundSearch.tsx`, `frontend/src/components/PortfolioPanel.tsx`, `frontend/src/components/SettingsPanel.tsx`
 
 - [ ] Build a Chinese dashboard with market overview, fund search/detail, local holding analysis, watchlist, import/export, loading states, and disclaimer.
-- [ ] Wire client API calls through the Vite proxy to the Bun server.
+- [ ] Wire client API calls through the Vite proxy to the local Functions adapter.
 - [ ] Ensure holdings remain browser-local only.
 - [ ] Run `bun run build` and expect PASS.
 
@@ -73,7 +74,7 @@
 
 **Files:** `playwright.config.ts`, `tests/fund-flow.spec.ts`, `tests/midscene-fund-flow.spec.ts`
 
-- [ ] Add Playwright config that starts Bun API and Vite web server.
+- [ ] Add Playwright config that starts the local Functions adapter and Vite web server.
 - [ ] Add Playwright test for search → add holding → portfolio analysis → export flow.
 - [ ] Add Midscene/Vitest/Playwright test skeleton using natural-language UI assertions.
 - [ ] Run `bun run test:e2e` and expect PASS; run Midscene test when `OPENAI_API_KEY` or compatible model config exists.

@@ -5,15 +5,23 @@
   "type": "module",
   "scripts": {
     "dev:web": "vite --host 0.0.0.0",
-    "dev:api": "bun run server/index.ts",
+    "dev:api": "bun run backend/local.ts",
     "dev": "bun --bun concurrently -k \"bun run dev:api\" \"bun run dev:web\"",
-    "build": "tsc --noEmit && vite build",
-    "test": "vitest run && bun test server/*.bun.test.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "build": "bun run typecheck && vite build",
+    "test": "vitest run",
     "test:unit": "vitest run",
-    "test:bun": "bun test server/*.bun.test.ts",
+    "coverage": "vitest run --coverage",
     "test:e2e": "playwright test tests/fund-flow.spec.ts",
-    "test:midscene": "vitest run tests/midscene-fund-flow.test.ts",
-    "start": "bun run server/index.ts"
+    "test:midscene": "zsh scripts/test-midscene.sh",
+    "check": "bun run lint && bun run test && bun run coverage && bun run build && bun run test:e2e",
+    "precommit:install": "git config core.hooksPath .githooks",
+    "ci:test": "bash scripts/ci-test.sh",
+    "deploy:cloudflare": "bash scripts/deploy-cloudflare.sh",
+    "verify:cloudflare": "bash scripts/verify-cloudflare.sh",
+    "start": "bun run backend/local.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -36,13 +44,19 @@
   "devDependencies": {
     "@midscene/web": "latest",
     "@playwright/test": "latest",
+    "@eslint/js": "latest",
     "@types/bun": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@vitest/coverage-v8": "latest",
     "@vitest/browser": "latest",
     "concurrently": "latest",
+    "eslint": "latest",
+    "eslint-plugin-react-hooks": "latest",
+    "globals": "latest",
     "jsdom": "latest",
     "playwright": "latest",
+    "typescript-eslint": "latest",
     "vitest": "latest"
   }
 }

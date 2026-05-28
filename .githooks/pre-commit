@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "==> Pre-commit lint"
+bun run lint
+
+echo "==> Pre-commit unit/API tests"
+bun run test
