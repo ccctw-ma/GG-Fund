@@ -1,0 +1,241 @@
+README.md
+  956ea6fd96119853 130 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a187fa16f81a7013b72b2fb","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Single":130}]}]}
+.github/workflows/cloudflare-deploy.yml
+  956ea6fd96119853 28-34,41,44,67-73,80 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a187fa16f81a7013b72b2fb","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Range":[28,34]},{"Single":41},{"Single":44},{"Range":[67,73]},{"Single":80}]}]}
+docs/deployment.md
+  956ea6fd96119853 100-102 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a187fa16f81a7013b72b2fb","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Range":[100,102]}]}]}
+scripts/ci-install.sh
+  956ea6fd96119853 4-5,7-17,20,29,32,37 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a187fa16f81a7013b72b2fb","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Range":[4,5]},{"Range":[7,17]},{"Single":20},{"Single":29},{"Single":32},{"Single":37}]}]}
+README.en.md
+  956ea6fd96119853 117 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a187fa16f81a7013b72b2fb","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Single":117}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "6566702ca8541c14c2e428135f415a5cc616672c",
+  "prompts": {
+    "956ea6fd96119853": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a17c53198af7fff4565775e",
+        "model": "openrouter-2o__dev"
+      },
+      "human_author": "mashichen <mashichen.msc@bytedance.com>",
+      "messages": [],
+      "total_additions": 66,
+      "total_deletions": 64,
+      "accepted_lines": 9561,
+      "overriden_lines": 0
+    }
+  },
+  "attestation_metadata": {
+    ".github/workflows/cloudflare-deploy.yml": [
+      {
+        "hash": "956ea6fd96119853",
+        "line_ranges": [
+          {
+            "Range": [
+              28,
+              34
+            ]
+          },
+          {
+            "Single": 41
+          },
+          {
+            "Single": 44
+          },
+          {
+            "Range": [
+              67,
+              73
+            ]
+          },
+          {
+            "Single": 80
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a187fa16f81a7013b72b2fb",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Range": [
+                  28,
+                  34
+                ]
+              },
+              {
+                "Single": 41
+              },
+              {
+                "Single": 44
+              },
+              {
+                "Range": [
+                  67,
+                  73
+                ]
+              },
+              {
+                "Single": 80
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "README.en.md": [
+      {
+        "hash": "956ea6fd96119853",
+        "line_ranges": [
+          {
+            "Single": 117
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a187fa16f81a7013b72b2fb",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Single": 117
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "README.md": [
+      {
+        "hash": "956ea6fd96119853",
+        "line_ranges": [
+          {
+            "Single": 130
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a187fa16f81a7013b72b2fb",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Single": 130
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "docs/deployment.md": [
+      {
+        "hash": "956ea6fd96119853",
+        "line_ranges": [
+          {
+            "Range": [
+              100,
+              102
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a187fa16f81a7013b72b2fb",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Range": [
+                  100,
+                  102
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "scripts/ci-install.sh": [
+      {
+        "hash": "956ea6fd96119853",
+        "line_ranges": [
+          {
+            "Range": [
+              4,
+              5
+            ]
+          },
+          {
+            "Range": [
+              7,
+              17
+            ]
+          },
+          {
+            "Single": 20
+          },
+          {
+            "Single": 29
+          },
+          {
+            "Single": 32
+          },
+          {
+            "Single": 37
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a187fa16f81a7013b72b2fb",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Range": [
+                  4,
+                  5
+                ]
+              },
+              {
+                "Range": [
+                  7,
+                  17
+                ]
+              },
+              {
+                "Single": 20
+              },
+              {
+                "Single": 29
+              },
+              {
+                "Single": 32
+              },
+              {
+                "Single": 37
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "956ea6fd96119853": {
+      "tool": "trae",
+      "conversation_id": "6a17c53198af7fff4565775e",
+      "session_id": "6a17c53198af7fff4565775e",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
