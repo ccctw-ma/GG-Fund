@@ -98,7 +98,7 @@ curl https://gg-fund.pages.dev/api/funds/000001
 `.github/workflows/cloudflare-deploy.yml` 在 push/merge 到 `master` 后自动执行：
 
 - 使用固定 Bun `1.3.10`，避免 `latest` 版本变动影响 `bun install --frozen-lockfile`。
-- 安装 Bun 依赖。
+- 安装 Bun 依赖，遇到 npm registry 瞬时网络失败时最多退避重试 3 次。
 - 安装 Playwright Chromium。
 - 运行 `bun run ci:test`。
 - 使用 Wrangler 执行远端 D1 migrations。
