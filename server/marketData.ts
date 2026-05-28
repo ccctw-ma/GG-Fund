@@ -13,6 +13,13 @@ const EASTMONEY_SOURCE = '东方财富公开接口';
 const EASTMONEY_SEARCH_SOURCE = '东方财富搜索接口';
 const TIANTIAN_ESTIMATE_SOURCE = '天天基金实时估算';
 
+const INDEX_NAMES: Record<string, string> = {
+  '000001': '上证指数',
+  '399001': '深证成指',
+  '399006': '创业板指',
+  '000300': '沪深300',
+};
+
 const fallbackFunds: FundQuote[] = [
   { code: '000001', name: '华夏成长混合', netValue: 1.35, dailyChangePercent: 0.8, quoteDate: '2026-05-28', source: '内置示例行情' },
   { code: '110022', name: '易方达消费行业股票', netValue: 1.6, dailyChangePercent: -0.2, quoteDate: '2026-05-28', source: '内置示例行情' },
@@ -68,7 +75,7 @@ function indexFromEastmoneyPush2Item(item: unknown): IndexQuote | undefined {
   }).format(new Date(quoteTimestamp * 1000));
   return {
     code: `${rawCode}.${market}`,
-    name: String(record.f14 ?? rawCode),
+    name: INDEX_NAMES[rawCode] ?? String(record.f14 ?? rawCode),
     value,
     change,
     changePercent,
@@ -83,6 +90,42 @@ function indicesFromEastmoneyPush2(data: unknown): IndexQuote[] {
   const diff = (root.data as { diff?: unknown }).diff;
   if (!Array.isArray(diff)) return [];
   return diff.map(indexFromEastmoneyPush2Item).filter((item): item is IndexQuote => Boolean(item));
+}
+
+function indexFromTencentLine(line: string): IndexQuote | undefined {
+  const match = line.match(/^v_s_([a-z]{2})(\d{6})="([^"]+)";?$/);
+  if (!match) return undefined;
+  const [, marketPrefix, rawCode, payload] = match;
+  const parts = payload.split('~');
+  const name = parts[1];
+  const value = toNumber(parts[3]);
+  const change = toNumber(parts[4]);
+  const changePercent = toNumber(parts[5]);
+  if (!name || value === undefined || change === undefined || changePercent === undefined) return undefined;
+  return {
+    code: `${rawCode}.${marketPrefix === 'sh' ? 'SH' : 'SZ'}`,
+    name: INDEX_NAMES[rawCode] ?? name,
+    value,
+    change,
+    changePercent,
+    quoteTime: new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).format(new Date()),
+  };
+}
+
+function indicesFromTencent(text: string): IndexQuote[] {
+  return text
+    .split('\n')
+    .map((line) => indexFromTencentLine(line.trim()))
+    .filter((item): item is IndexQuote => Boolean(item));
 }
 
 function fundFromSearchRow(row: unknown): FundQuote | undefined {
@@ -188,7 +231,7 @@ async function defaultFetchJson(url: string): Promise<unknown> {
 
 export function createMarketDataService(options: MarketDataOptions = {}) {
   const now = options.now ?? (() => Date.now());
-  const fetchIndices = options.fetchIndices ?? getEastmoneyIndices;
+  const fetchIndices = options.fetchIndices ?? getLiveIndices;
   const fetchText = options.fetchText ?? defaultFetchText;
   const fetchJson = options.fetchJson ?? defaultFetchJson;
   const cache = new Map<string, CacheEntry<unknown>>();
@@ -204,6 +247,21 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
   async function getEastmoneyIndices(): Promise<IndexQuote[]> {
     const url = 'http://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids=1.000001,0.399001,0.399006,1.000300&fields=f12,f14,f2,f3,f4,f124';
     return indicesFromEastmoneyPush2(JSON.parse(await fetchText(url)));
+  }
+
+  async function getTencentIndices(): Promise<IndexQuote[]> {
+    const url = 'https://qt.gtimg.cn/q=s_sh000001,s_sz399001,s_sz399006,s_sh000300';
+    return indicesFromTencent(await fetchText(url));
+  }
+
+  async function getLiveIndices(): Promise<IndexQuote[]> {
+    try {
+      const indices = await getEastmoneyIndices();
+      if (indices.length > 0) return indices;
+    } catch {
+      // fall through to Tencent
+    }
+    return getTencentIndices();
   }
 
   async function searchEastmoneyFunds(query: string): Promise<FundQuote[]> {

@@ -22,6 +22,40 @@ describe('market data service', () => {
     ]);
   });
 
+  it('uses canonical Chinese index names when upstream names are mojibake', async () => {
+    const service = createMarketDataService({
+      fetchText: async () => JSON.stringify({
+        rc: 0,
+        data: {
+          diff: [
+            { f12: '000001', f14: '���ָ֤��', f2: 4098.64, f3: 0.12, f4: 4.91, f124: 1779954667 },
+            { f12: '000300', f14: '����300', f2: 4914.21, f3: 0.12, f4: 6.04, f124: 1779954667 },
+          ],
+        },
+      }),
+    });
+
+    await expect(service.getIndices()).resolves.toEqual([
+      expect.objectContaining({ code: '000001.SH', name: '上证指数' }),
+      expect.objectContaining({ code: '000300.SH', name: '沪深300' }),
+    ]);
+  });
+  it('falls back to Tencent index quotes when Eastmoney is unavailable', async () => {
+    const service = createMarketDataService({
+      fetchText: async (url) => {
+        if (url.includes('eastmoney')) throw new Error('edge blocked');
+        return [
+          'v_s_sh000001="1~上证指数~000001~4095.77~2.04~0.05~599310659~131419893~~683989.95~ZS~";',
+          'v_s_sz399001="51~深证成指~399001~15854.79~118.32~0.75~719719752~154893038~~496045.25~ZS~";',
+        ].join('\n');
+      },
+    });
+
+    await expect(service.getIndices()).resolves.toEqual([
+      { code: '000001.SH', name: '上证指数', value: 4095.77, change: 2.04, changePercent: 0.05, quoteTime: expect.any(String) },
+      { code: '399001.SZ', name: '深证成指', value: 15854.79, change: 118.32, changePercent: 0.75, quoteTime: expect.any(String) },
+    ]);
+  });
   it('normalizes current Eastmoney search JSON and includes latest official net value', async () => {
     const service = createMarketDataService({
       fetchText: async () => JSON.stringify({

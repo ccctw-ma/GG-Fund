@@ -13,7 +13,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    include: ['src/**/*.test.ts', 'server/**/*.test.ts', 'tests/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'server/**/*.test.ts', 'tests/**/*.test.ts', 'functions/**/*.test.ts'],
     exclude: ['server/**/*.bun.test.ts', 'node_modules/**', 'dist/**'],
   },
 });
