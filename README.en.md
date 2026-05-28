@@ -114,7 +114,7 @@ bun run verify:cloudflare
 
 `deploy:cloudflare` applies remote D1 migrations and deploys `dist/` to the Cloudflare Pages project `gg-fund`. Defaults can be overridden with `CF_PAGES_PROJECT`, `CF_PAGES_BRANCH`, `CF_D1_DATABASE`, and `CF_VERIFY_BASE_URL`.
 
-GitHub Actions deploys automatically on push/merge to `master`. CI pins Bun to `1.3.10` and retries `bun install --frozen-lockfile` 3 times with backoff to reduce npm registry transient network failures. Configure repository secrets:
+GitHub Actions deploys automatically on push/merge to `master`. CI pins Bun to `1.3.10`; `scripts/ci-bun-install.sh` restores the Bun install cache, checks npm registry connectivity, lowers network concurrency, and retries `bun install --frozen-lockfile` 5 times with backoff. Configure repository secrets:
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
