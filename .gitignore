@@ -1,4 +1,13 @@
-# Byte-compiled / optimized / DLL files
+# Node / Bun / Vite
+node_modules/
+bun.lockb
+.env.local
+.env.*.local
+.DS_Store
+.playwright/
+playwright-report/
+test-results/
+data/
 __pycache__/
 *.py[codz]
 *$py.class

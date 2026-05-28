@@ -1,0 +1,48 @@
+{
+  "name": "gg-fund",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:web": "vite --host 0.0.0.0",
+    "dev:api": "bun run server/index.ts",
+    "dev": "bun --bun concurrently -k \"bun run dev:api\" \"bun run dev:web\"",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run && bun test server/*.bun.test.ts",
+    "test:unit": "vitest run",
+    "test:bun": "bun test server/*.bun.test.ts",
+    "test:e2e": "playwright test tests/fund-flow.spec.ts",
+    "test:midscene": "vitest run tests/midscene-fund-flow.test.ts",
+    "start": "bun run server/index.ts"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-tabs": "^1.1.13",
+    "@radix-ui/react-toast": "^1.2.15",
+    "@tailwindcss/vite": "^4.3.0",
+    "@vitejs/plugin-react": "latest",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "recharts": "latest",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.0",
+    "typescript": "latest",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "@midscene/web": "latest",
+    "@playwright/test": "latest",
+    "@types/bun": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitest/browser": "latest",
+    "concurrently": "latest",
+    "jsdom": "latest",
+    "playwright": "latest",
+    "vitest": "latest"
+  }
+}
