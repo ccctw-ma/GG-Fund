@@ -127,7 +127,7 @@ bun run verify:cloudflare
 
 `deploy:cloudflare` 会先执行远端 D1 migrations，再把 `dist/` 部署到 Cloudflare Pages 项目 `gg-fund`。可用环境变量覆盖默认值：`CF_PAGES_PROJECT`、`CF_PAGES_BRANCH`、`CF_D1_DATABASE`、`CF_VERIFY_BASE_URL`。
 
-GitHub Actions 已配置为 push/merge 到 `master` 后自动运行测试、构建、D1 迁移、Pages 部署和线上健康检查。仓库 Secrets 需要配置 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`。
+GitHub Actions 已配置为 push/merge 到 `master` 后自动运行测试、构建、D1 迁移、Pages 部署和线上健康检查。CI 固定使用 Bun `1.3.10`，避免 `latest` 版本变动导致 `bun install --frozen-lockfile` 与本地 lockfile 解析不一致。仓库 Secrets 需要配置 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`。
 
 ## API
 
