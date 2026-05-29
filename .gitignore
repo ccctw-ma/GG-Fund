@@ -1,6 +1,7 @@
 # Node / Bun / Vite
 node_modules/
 bun.lockb
+package-lock.json
 .env.local
 .env.*.local
 .DS_Store

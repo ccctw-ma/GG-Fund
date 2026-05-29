@@ -113,7 +113,7 @@ bun run verify:cloudflare
 
 `deploy:cloudflare` applies remote D1 migrations and deploys `dist/` to the Cloudflare Pages project `gg-fund`. Defaults can be overridden with `CF_PAGES_PROJECT`, `CF_PAGES_BRANCH`, `CF_D1_DATABASE`, and `CF_VERIFY_BASE_URL`.
 
-GitHub Actions runs only D1 migrations, the Pages deploy and the smoke check on push/merge to `master`. Tests are not executed in CI (the local pre-commit hook already runs lint + Vitest). `scripts/ci-install.sh` executes `npm ci --ignore-scripts` and forces `NPM_CONFIG_USERCONFIG=/dev/null`, neutralising the always-auth `.npmrc` injected by `actions/setup-node` that previously caused `Exit handler never called!`. Postinstall browser/native downloads are disabled. Bun `1.3.10` is used only to run project scripts. Configure repository secrets:
+GitHub Actions only runs D1 migrations, the Pages deploy and the smoke check on push/merge to `master`. The job only runs when the repository variable `CLOUDFLARE_DEPLOY_ENABLED=true` and secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` are configured; otherwise it is skipped. CI installs dependencies with `bun install --frozen-lockfile --ignore-scripts`, skipping every postinstall (Playwright/puppeteer browser downloads, native binaries) and capping the step at 5 minutes. Lint / Vitest / E2E are not executed in CI – the pre-commit hook and `bun run check` cover them locally. Configure repository secrets:
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`

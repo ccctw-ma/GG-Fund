@@ -98,12 +98,13 @@ curl https://gg-fund.pages.dev/api/funds/000001
 `.github/workflows/cloudflare-deploy.yml` 在 push/merge 到 `master` 后自动执行：
 
 - 使用固定 Bun `1.3.10` 运行项目脚本，避免 `latest` 版本变动。
-- 使用 `actions/setup-node@v4` 缓存 npm 依赖（不再设置 `registry-url`，避免 setup-node 写入 always-auth 的 `.npmrc`）。
-- 通过 `scripts/ci-install.sh` 用 `npm ci --ignore-scripts` 安装依赖：把 `NPM_CONFIG_USERCONFIG` 强制覆盖为 `/dev/null`、关闭所有 postinstall 脚本（避免触发 npm `Exit handler never called!` 或 Playwright/puppeteer CDN 卡死），同时配置 npm fetch 重试与最大 socket 数，并对失败做最多 5 次退避重试。
-- 不再在 CI 跑测试（lint/test 由本地 pre-commit hook 兜底）。
+- 安装依赖一律用 `bun install --frozen-lockfile --ignore-scripts`：跳过所有 postinstall（Playwright/puppeteer 等浏览器或原生二进制下载），并由 `timeout-minutes: 5` 限制安装步骤总时长，避免 npm 在 GitHub runner 上偶发的 `Exit handler never called!` 把 job 拖到 10 分钟以上。
+- 不再在 CI 跑 lint/test/e2e（本地 pre-commit hook 与 `bun run check` 兜底）。
 - 使用 Wrangler 执行远端 D1 migrations。
 - 部署 `dist/` 到 Cloudflare Pages 项目 `gg-fund`。
 - 验证线上 `/api/health`、`/api/market/indices`、`/api/funds/000001`。
+
+整个 deploy job 受 `vars.CLOUDFLARE_DEPLOY_ENABLED == 'true'` 守卫，未配置 Cloudflare 凭据时不会执行。
 
 GitHub 仓库 Secrets 需要配置：
 

@@ -126,7 +126,7 @@ bun run verify:cloudflare
 
 `deploy:cloudflare` 会先执行远端 D1 migrations，再把 `dist/` 部署到 Cloudflare Pages 项目 `gg-fund`。可用环境变量覆盖默认值：`CF_PAGES_PROJECT`、`CF_PAGES_BRANCH`、`CF_D1_DATABASE`、`CF_VERIFY_BASE_URL`。
 
-GitHub Actions 在 push/merge 到 `master` 后自动执行 D1 迁移、Pages 部署和线上健康检查，不再在 CI 跑测试（本地 pre-commit 已经覆盖 lint + Vitest）。CI 通过 `scripts/ci-install.sh` 执行 `npm ci --ignore-scripts`，并主动覆盖 `NPM_CONFIG_USERCONFIG` 为 `/dev/null`，避免 `actions/setup-node` 注入 always-auth 的 `.npmrc` 触发 `Exit handler never called!`；浏览器/二进制 postinstall 全部关闭。Bun `1.3.10` 仅用于运行项目脚本。仓库 Secrets 需要配置 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`。
+GitHub Actions 在 push/merge 到 `master` 后只跑 D1 迁移、Pages 部署和线上健康检查；仅当仓库 Variable `CLOUDFLARE_DEPLOY_ENABLED=true` 且 Secrets 配置了 `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID` 时触发，否则该 job 直接 skip。CI 安装依赖统一走 `bun install --frozen-lockfile --ignore-scripts`，跳过所有 postinstall（避免 Playwright/puppeteer 拉浏览器/二进制阻塞），并配 `timeout-minutes: 5` 防卡死。lint / Vitest / E2E 由本地 pre-commit hook 与 `bun run check` 兜底，不在 CI 中运行。
 
 ## API
 
