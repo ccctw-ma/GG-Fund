@@ -49,10 +49,28 @@ class LocalD1 {
   }
 
   first<T>(sql: string, params: unknown[]): T | null {
+    if (sql.includes('from portfolios where user_id = ?')) return (this.portfolios.find((item) => item.userId === params[0]) as T) ?? null;
+    if (sql.includes('from portfolios where user_id is null')) return (this.portfolios.find((item) => !item.userId) as T) ?? null;
     if (sql.includes('from portfolios order by')) return (this.portfolios[0] as T) ?? null;
     if (sql.includes('from portfolios where id')) return (this.portfolios.find((item) => item.id === params[0]) as T) ?? null;
     if (sql.includes('from auth_users where provider')) return (this.authUsers.find((item) => item.provider === params[0] && item.identifier === params[1]) as T) ?? null;
     if (sql.includes('from auth_challenges where id')) return (this.authChallenges.find((item) => item.id === params[0]) as T) ?? null;
+    if (sql.includes('from auth_sessions s')) {
+      const session = this.authSessions.find((item) => item.token === params[0]);
+      const user = session ? this.authUsers.find((item) => item.id === session.userId) : undefined;
+      return session && user ? ({
+        token: session.token,
+        userId: session.userId,
+        sessionCreatedAt: session.createdAt,
+        sessionExpiresAt: session.expiresAt,
+        id: user.id,
+        provider: user.provider,
+        identifier: user.identifier,
+        displayName: user.displayName,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      } as T) : null;
+    }
     if (sql.includes('from auth_sessions')) return (this.authSessions.find((item) => item.token === params[0]) as T) ?? null;
     return null;
   }
@@ -64,12 +82,13 @@ class LocalD1 {
   }
 
   run(sql: string, params: unknown[]) {
-    if (sql.includes('insert into portfolios')) this.portfolios.push({ id: params[0], name: params[1], createdAt: params[2], updatedAt: params[3] });
+    if (sql.includes('insert into portfolios')) this.portfolios.push({ id: params[0], userId: params[1], name: params[2], createdAt: params[3], updatedAt: params[4] });
     if (sql.includes('insert into holdings')) this.upsertHolding(params);
     if (sql.includes('insert into watchlist')) this.upsertWatchItem(params);
     if (sql.includes('insert into auth_users')) this.authUsers.push({ id: params[0], provider: params[1], identifier: params[2], displayName: params[3], createdAt: params[4], updatedAt: params[5] });
     if (sql.includes('insert into auth_sessions')) this.authSessions.push({ token: params[0], userId: params[1], createdAt: params[2], expiresAt: params[3] });
     if (sql.includes('insert into auth_challenges')) this.authChallenges.push({ id: params[0], provider: params[1], identifier: params[2], code: params[3], createdAt: params[4], expiresAt: params[5], consumedAt: null });
+    if (sql.includes('delete from auth_sessions')) this.authSessions = this.authSessions.filter((item) => item.token !== params[0]);
     if (sql.includes('update auth_challenges set consumed_at')) {
       const challenge = this.authChallenges.find((item) => item.id === params[1]);
       if (challenge) challenge.consumedAt = params[0];

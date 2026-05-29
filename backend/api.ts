@@ -39,17 +39,39 @@ const OAUTH_PROVIDERS = ['github', 'wechat'] as const;
 type OtpProvider = (typeof OTP_PROVIDERS)[number];
 type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
 
+type AuthUser = {
+  id: string;
+  provider: string;
+  identifier: string;
+  displayName: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type AuthSession = {
+  token: string;
+  userId: string;
+  createdAt: string;
+  expiresAt: string;
+};
+
+type AuthContext = {
+  user: AuthUser;
+  session: AuthSession;
+};
+
 const isOtpProvider = (value: unknown): value is OtpProvider => typeof value === 'string' && OTP_PROVIDERS.includes(value as OtpProvider);
 const isOAuthProvider = (value: unknown): value is OAuthProvider => typeof value === 'string' && OAUTH_PROVIDERS.includes(value as OAuthProvider);
 
-const json = (body: unknown, status = 200) =>
+const json = (body: unknown, status = 200, extraHeaders: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), {
     status,
     headers: {
       'content-type': 'application/json; charset=utf-8',
       'access-control-allow-origin': '*',
       'access-control-allow-methods': 'GET, POST, OPTIONS',
-      'access-control-allow-headers': 'content-type',
+      'access-control-allow-headers': 'content-type, authorization',
+      ...extraHeaders,
     },
   });
 
@@ -63,15 +85,41 @@ async function readJson(request: Request) {
   }
 }
 
-async function ensureDefaultPortfolio(db: D1Database) {
-  const existing = await db
-    .prepare('select id, name, created_at as createdAt, updated_at as updatedAt from portfolios order by created_at limit 1')
-    .first<{ id: string; name: string; createdAt: string; updatedAt: string }>();
+function isValidIdentifier(provider: OtpProvider, identifier: string) {
+  if (provider === 'email') return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+  return /^\+?\d{8,15}$/.test(identifier);
+}
+
+function readBearerToken(request: Request) {
+  const header = request.headers.get('Authorization') ?? '';
+  if (header.startsWith('Bearer ')) return header.slice('Bearer '.length).trim();
+  const cookie = request.headers.get('Cookie') ?? '';
+  const match = cookie.match(/(?:^|;\s*)gg_fund_session=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+function sessionCookie(token: string, expiresAt: string) {
+  return `gg_fund_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Secure; Expires=${new Date(expiresAt).toUTCString()}`;
+}
+
+function clearSessionCookie() {
+  return 'gg_fund_session=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0';
+}
+
+async function ensureDefaultPortfolio(db: D1Database, userId?: string) {
+  const existing = userId
+    ? await db
+      .prepare('select id, name, created_at as createdAt, updated_at as updatedAt from portfolios where user_id = ? order by created_at limit 1')
+      .bind(userId)
+      .first<{ id: string; name: string; createdAt: string; updatedAt: string }>()
+    : await db
+      .prepare('select id, name, created_at as createdAt, updated_at as updatedAt from portfolios where user_id is null order by created_at limit 1')
+      .first<{ id: string; name: string; createdAt: string; updatedAt: string }>();
   if (existing) return existing;
 
   const id = crypto.randomUUID();
   const timestamp = nowIso();
-  await db.prepare('insert into portfolios (id, name, created_at, updated_at) values (?, ?, ?, ?)').bind(id, '默认组合', timestamp, timestamp).run();
+  await db.prepare('insert into portfolios (id, user_id, name, created_at, updated_at) values (?, ?, ?, ?, ?)').bind(id, userId ?? null, '默认组合', timestamp, timestamp).run();
   return { id, name: '默认组合', createdAt: timestamp, updatedAt: timestamp };
 }
 
@@ -166,10 +214,58 @@ async function persistSession(db: D1Database, session: { token: string; userId: 
     .run();
 }
 
+async function getAuthContext(db: D1Database, request: Request): Promise<AuthContext | undefined> {
+  const token = readBearerToken(request);
+  if (!token) return undefined;
+  const row = await db
+    .prepare(`
+      select
+        s.token as token,
+        s.user_id as userId,
+        s.created_at as sessionCreatedAt,
+        s.expires_at as sessionExpiresAt,
+        u.id as id,
+        u.provider as provider,
+        u.identifier as identifier,
+        u.display_name as displayName,
+        u.created_at as createdAt,
+        u.updated_at as updatedAt
+      from auth_sessions s
+      join auth_users u on u.id = s.user_id
+      where s.token = ?
+    `)
+    .bind(token)
+    .first<Record<string, string>>();
+  if (!row || Date.parse(row.sessionExpiresAt) <= Date.now()) return undefined;
+  return {
+    user: {
+      id: row.id,
+      provider: row.provider,
+      identifier: row.identifier,
+      displayName: row.displayName,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    },
+    session: {
+      token: row.token,
+      userId: row.userId,
+      createdAt: row.sessionCreatedAt,
+      expiresAt: row.sessionExpiresAt,
+    },
+  };
+}
+
+async function logout(db: D1Database, request: Request) {
+  const token = readBearerToken(request);
+  if (token) await db.prepare('delete from auth_sessions where token = ?').bind(token).run();
+  return json({ ok: true }, 200, { 'set-cookie': clearSessionCookie() });
+}
+
 async function createOtpChallenge(db: D1Database, body: Record<string, unknown> | undefined) {
   if (!isOtpProvider(body?.provider)) return undefined;
   const identifier = String(body?.identifier ?? '');
   if (!identifier) return undefined;
+  if (!isValidIdentifier(body.provider, identifier)) return { error: 'invalid_identifier' as const };
   const timestamp = nowIso();
   const code = String(Math.floor(100000 + Math.random() * 900000));
   const challenge = {
@@ -192,10 +288,10 @@ async function verifyOtpChallenge(db: D1Database, body: Record<string, unknown> 
   const challengeId = String(body?.challengeId ?? '');
   const code = String(body?.code ?? '');
   const challenge = await db
-    .prepare('select id, provider, identifier, code, consumed_at as consumedAt from auth_challenges where id = ?')
+    .prepare('select id, provider, identifier, code, expires_at as expiresAt, consumed_at as consumedAt from auth_challenges where id = ?')
     .bind(challengeId)
-    .first<{ id: string; provider: string; identifier: string; code: string; consumedAt?: string | null }>();
-  if (!challenge || challenge.consumedAt || challenge.code !== code) return undefined;
+    .first<{ id: string; provider: string; identifier: string; code: string; expiresAt: string; consumedAt?: string | null }>();
+  if (!challenge || challenge.consumedAt || challenge.code !== code || Date.parse(challenge.expiresAt) <= Date.now()) return undefined;
   await db.prepare('update auth_challenges set consumed_at = ? where id = ?').bind(nowIso(), challengeId).run();
   const user = await upsertUser(db, challenge.provider, challenge.identifier, challenge.identifier);
   const payload = createSessionPayload(user);
@@ -296,7 +392,9 @@ export function createCloudflareApi(options: Options = {}) {
 
       try {
         if (request.method === 'GET') {
+          const auth = await getAuthContext(env.GG_FUND_DB, request);
           if (path === '/api/health') return json({ ok: true, service: 'gg-fund-pages-api', database: 'd1', cache: 'kv', auth: [...AUTH_PROVIDERS], ai: 'deepseek-v4-flash-agent' });
+          if (path === '/api/auth/me') return auth ? json(auth) : error(401, 'AUTH_REQUIRED', '请先登录');
           if (path === '/api/auth/oauth-url') {
             const provider = url.searchParams.get('provider');
             return isOAuthProvider(provider) ? json(oauthMetadata(provider, url, env)) : error(400, 'AUTH_PROVIDER_UNSUPPORTED', '暂不支持该登录方式');
@@ -305,7 +403,7 @@ export function createCloudflareApi(options: Options = {}) {
           if (path === '/api/funds/search') return json(await marketData.searchFunds(url.searchParams.get('q') ?? ''));
           if (path === '/api/funds/trending') return json(await marketData.getTrendingFunds());
           if (path === '/api/portfolio/default') {
-            const portfolio = await ensureDefaultPortfolio(env.GG_FUND_DB);
+            const portfolio = await ensureDefaultPortfolio(env.GG_FUND_DB, auth?.user.id);
             return json(await getPortfolioSnapshot(env.GG_FUND_DB, portfolio.id));
           }
 
@@ -318,23 +416,26 @@ export function createCloudflareApi(options: Options = {}) {
         }
 
         if (request.method === 'POST') {
+          const auth = await getAuthContext(env.GG_FUND_DB, request);
           if (path === '/api/auth/challenge') {
             const result = await createOtpChallenge(env.GG_FUND_DB, (await readJson(request)) as Record<string, unknown> | undefined);
+            if (result && 'error' in result && result.error === 'invalid_identifier') return error(400, 'AUTH_IDENTIFIER_INVALID', '登录标识格式不正确');
             return result ? json(result, 201) : error(400, 'AUTH_PROVIDER_UNSUPPORTED', '暂不支持该登录方式');
           }
           if (path === '/api/auth/verify') {
             const result = await verifyOtpChallenge(env.GG_FUND_DB, (await readJson(request)) as Record<string, unknown> | undefined);
-            return result ? json(result, 201) : error(400, 'AUTH_CHALLENGE_INVALID', '验证码无效或已过期');
+            return result ? json(result, 201, { 'set-cookie': sessionCookie(result.session.token, result.session.expiresAt) }) : error(400, 'AUTH_CHALLENGE_INVALID', '验证码无效或已过期');
           }
+          if (path === '/api/auth/logout') return logout(env.GG_FUND_DB, request);
           if (path === '/api/auth/start') return error(410, 'AUTH_FLOW_REQUIRED', '请使用 OTP 验证或 OAuth 跳转登录');
           if (path === '/api/ai/analyze-fund') return analyzeFund(request, env, marketData, deepSeekFetch);
           if (path === '/api/portfolio/default/holdings') {
-            const portfolio = await ensureDefaultPortfolio(env.GG_FUND_DB);
+            const portfolio = await ensureDefaultPortfolio(env.GG_FUND_DB, auth?.user.id);
             await addHolding(env.GG_FUND_DB, portfolio.id, (await readJson(request)) as Record<string, unknown> | undefined);
             return json(await getPortfolioSnapshot(env.GG_FUND_DB, portfolio.id), 201);
           }
           if (path === '/api/portfolio/default/watchlist') {
-            const portfolio = await ensureDefaultPortfolio(env.GG_FUND_DB);
+            const portfolio = await ensureDefaultPortfolio(env.GG_FUND_DB, auth?.user.id);
             await addWatchItem(env.GG_FUND_DB, portfolio.id, (await readJson(request)) as Record<string, unknown> | undefined);
             return json(await getPortfolioSnapshot(env.GG_FUND_DB, portfolio.id), 201);
           }

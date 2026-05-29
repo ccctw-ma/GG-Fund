@@ -43,10 +43,28 @@ class FakeD1 {
   }
 
   first<T>(sql: string, params: unknown[]): T | null {
+    if (sql.includes('from portfolios where user_id = ?')) return (this.portfolios.find((item) => item.userId === params[0]) as T) ?? null;
+    if (sql.includes('from portfolios where user_id is null')) return (this.portfolios.find((item) => !item.userId) as T) ?? null;
     if (sql.includes('from portfolios order by')) return (this.portfolios[0] as T) ?? null;
     if (sql.includes('from portfolios where id')) return (this.portfolios.find((item) => item.id === params[0]) as T) ?? null;
     if (sql.includes('from auth_users where provider')) return (this.authUsers.find((item) => item.provider === params[0] && item.identifier === params[1]) as T) ?? null;
     if (sql.includes('from auth_challenges where id')) return (this.authChallenges.find((item) => item.id === params[0]) as T) ?? null;
+    if (sql.includes('from auth_sessions s')) {
+      const session = this.authSessions.find((item) => item.token === params[0]);
+      const user = session ? this.authUsers.find((item) => item.id === session.userId) : undefined;
+      return session && user ? ({
+        token: session.token,
+        userId: session.userId,
+        sessionCreatedAt: session.createdAt,
+        sessionExpiresAt: session.expiresAt,
+        id: user.id,
+        provider: user.provider,
+        identifier: user.identifier,
+        displayName: user.displayName,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      } as T) : null;
+    }
     if (sql.includes('from auth_sessions')) return (this.authSessions.find((item) => item.token === params[0]) as T) ?? null;
     return null;
   }
@@ -58,12 +76,13 @@ class FakeD1 {
   }
 
   run(sql: string, params: unknown[]) {
-    if (sql.includes('insert into portfolios')) this.portfolios.push({ id: params[0], name: params[1], createdAt: params[2], updatedAt: params[3] });
+    if (sql.includes('insert into portfolios')) this.portfolios.push({ id: params[0], userId: params[1], name: params[2], createdAt: params[3], updatedAt: params[4] });
     if (sql.includes('insert into holdings')) this.holdings.push({ id: params[0], portfolioId: params[1], fundCode: params[2], fundName: params[3], shares: params[4], costAmount: params[5], purchaseDate: params[6], note: params[7], createdAt: params[8], updatedAt: params[9] });
     if (sql.includes('insert into watchlist')) this.watchlist.push({ portfolioId: params[0], fundCode: params[1], fundName: params[2], createdAt: params[3] });
     if (sql.includes('insert into auth_users')) this.authUsers.push({ id: params[0], provider: params[1], identifier: params[2], displayName: params[3], createdAt: params[4], updatedAt: params[5] });
     if (sql.includes('insert into auth_sessions')) this.authSessions.push({ token: params[0], userId: params[1], createdAt: params[2], expiresAt: params[3] });
     if (sql.includes('insert into auth_challenges')) this.authChallenges.push({ id: params[0], provider: params[1], identifier: params[2], code: params[3], createdAt: params[4], expiresAt: params[5], consumedAt: null });
+    if (sql.includes('delete from auth_sessions')) this.authSessions = this.authSessions.filter((item) => item.token !== params[0]);
     if (sql.includes('update auth_challenges set consumed_at')) {
       const challenge = this.authChallenges.find((item) => item.id === params[1]);
       if (challenge) challenge.consumedAt = params[0];
@@ -126,6 +145,96 @@ describe('Cloudflare API', () => {
 
     expect(await github.json()).toEqual(expect.objectContaining({ provider: 'github', authUrl: expect.stringContaining('github.com/login/oauth/authorize') }));
     expect(await wechat.json()).toEqual(expect.objectContaining({ provider: 'wechat', authUrl: expect.stringContaining('open.weixin.qq.com') }));
+  });
+
+  it('rejects invalid OTP identifiers before creating a challenge', async () => {
+    const api = createCloudflareApi({ marketData });
+    const response = await api.fetch(new Request('https://example.com/api/auth/challenge', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'email', identifier: 'not-an-email' }),
+    }), env());
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: { code: 'AUTH_IDENTIFIER_INVALID', message: '登录标识格式不正确' } });
+  });
+
+  it('restores the current user with a valid session token and logs out', async () => {
+    const api = createCloudflareApi({ marketData });
+    const bindings = env();
+    const challengeResponse = await api.fetch(new Request('https://example.com/api/auth/challenge', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'email', identifier: 'persist@example.com' }),
+    }), bindings);
+    const challenge = await challengeResponse.json();
+    const verifyResponse = await api.fetch(new Request('https://example.com/api/auth/verify', {
+      method: 'POST',
+      body: JSON.stringify({ challengeId: challenge.challengeId, code: challenge.devCode }),
+    }), bindings);
+    const verified = await verifyResponse.json();
+
+    const meResponse = await api.fetch(new Request('https://example.com/api/auth/me', {
+      headers: { Authorization: `Bearer ${verified.session.token}` },
+    }), bindings);
+
+    expect(meResponse.status).toBe(200);
+    await expect(meResponse.json()).resolves.toEqual(expect.objectContaining({
+      user: expect.objectContaining({ identifier: 'persist@example.com' }),
+      session: expect.objectContaining({ token: verified.session.token }),
+    }));
+
+    const logoutResponse = await api.fetch(new Request('https://example.com/api/auth/logout', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${verified.session.token}` },
+    }), bindings);
+    expect(logoutResponse.status).toBe(200);
+    await expect(logoutResponse.json()).resolves.toEqual({ ok: true });
+
+    const afterLogout = await api.fetch(new Request('https://example.com/api/auth/me', {
+      headers: { Authorization: `Bearer ${verified.session.token}` },
+    }), bindings);
+    expect(afterLogout.status).toBe(401);
+  });
+
+  it('keeps authenticated default portfolios isolated by user', async () => {
+    const api = createCloudflareApi({ marketData });
+    const bindings = env();
+
+    async function login(identifier: string) {
+      const challengeResponse = await api.fetch(new Request('https://example.com/api/auth/challenge', {
+        method: 'POST',
+        body: JSON.stringify({ provider: 'email', identifier }),
+      }), bindings);
+      const challenge = await challengeResponse.json();
+      const verifyResponse = await api.fetch(new Request('https://example.com/api/auth/verify', {
+        method: 'POST',
+        body: JSON.stringify({ challengeId: challenge.challengeId, code: challenge.devCode }),
+      }), bindings);
+      const verified = await verifyResponse.json();
+      return verified.session.token as string;
+    }
+
+    const alphaToken = await login('alpha@example.com');
+    const betaToken = await login('beta@example.com');
+
+    await api.fetch(new Request('https://example.com/api/portfolio/default/holdings', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${alphaToken}` },
+      body: JSON.stringify({ fundCode: '000001', fundName: '华夏成长混合', shares: 100, costAmount: 120, purchaseDate: '2026-05-29' }),
+    }), bindings);
+
+    const alphaPortfolio = await api.fetch(new Request('https://example.com/api/portfolio/default', {
+      headers: { Authorization: `Bearer ${alphaToken}` },
+    }), bindings);
+    const betaPortfolio = await api.fetch(new Request('https://example.com/api/portfolio/default', {
+      headers: { Authorization: `Bearer ${betaToken}` },
+    }), bindings);
+
+    await expect(alphaPortfolio.json()).resolves.toEqual(expect.objectContaining({
+      holdings: [expect.objectContaining({ fundCode: '000001' })],
+    }));
+    await expect(betaPortfolio.json()).resolves.toEqual(expect.objectContaining({
+      holdings: [],
+    }));
   });
 
   it('rejects direct demo session creation', async () => {
