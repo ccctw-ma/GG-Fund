@@ -1,9 +1,12 @@
 create table if not exists portfolios (
   id text primary key,
+  user_id text references auth_users(id) on delete cascade,
   name text not null,
   created_at text not null,
   updated_at text not null
 );
+
+create index if not exists idx_portfolios_user_id on portfolios(user_id);
 
 create table if not exists holdings (
   id text primary key,
