@@ -310,7 +310,6 @@ function oauthMetadata(provider: OAuthProvider, requestUrl: URL, env: Cloudflare
 }
 
 async function analyzeFund(request: Request, env: CloudflareEnv, marketData: MarketDataService, deepSeekFetch: typeof fetch) {
-  if (!env.DEEPSEEK_API_KEY) return error(503, 'DEEPSEEK_KEY_MISSING', 'DeepSeek API key 未配置');
   const body = (await readJson(request)) as Record<string, unknown> | undefined;
   const code = String(body?.code ?? '');
   if (!/^\d{6}$/.test(code)) return error(400, 'FUND_CODE_INVALID', '基金代码格式不正确');
@@ -331,6 +330,19 @@ async function analyzeFund(request: Request, env: CloudflareEnv, marketData: Mar
 
   const prompt = buildResearchPrompt({ fund, history, indices, indicators });
   steps.push({ name: 'build_research_prompt', status: 'done', summary: '构建包含指标、行情和输出契约的研究提示' });
+
+  if (!env.DEEPSEEK_API_KEY) {
+    const fallbackReport = buildLocalReport(fund, indicators);
+    steps.push({ name: 'call_deepseek', status: 'done', summary: '未配置 DeepSeek key，使用本地确定性报告作为降级输出' });
+    steps.push({ name: 'normalize_report', status: 'done', summary: '基于指标生成离线趋势/风险/情景报告' });
+    return json({
+      fund,
+      agent: { model: 'local-fallback', steps, indicators },
+      report: fallbackReport,
+      chartAnnotations: [{ label: '本地降级', description: fallbackReport.summary, tone: 'neutral' as const }],
+      analysis: fallbackReport.summary,
+    });
+  }
 
   const response = await deepSeekFetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
@@ -356,6 +368,24 @@ async function analyzeFund(request: Request, env: CloudflareEnv, marketData: Mar
   steps.push({ name: 'normalize_report', status: 'done', summary: '规范化研究报告、情景和图表标注' });
 
   return json({ fund, agent: { model: 'deepseek-v4-flash', steps, indicators }, report, chartAnnotations, analysis: report.summary });
+}
+
+function buildLocalReport(fund: { name: string; code: string; netValue?: number }, indicators: ReturnType<typeof computeFundIndicators>) {
+  const trendVerb = indicators.shortMomentum >= 1 ? '近 5 期净值走强' : indicators.shortMomentum <= -1 ? '近 5 期净值走弱' : '近 5 期净值震荡';
+  const riskVerb = indicators.maxDrawdown <= -10 ? '历史最大回撤偏深，需关注下行风险' : indicators.maxDrawdown <= -5 ? '历史最大回撤中等，建议设置止损线' : '历史最大回撤可控';
+  const probability: 'low' | 'medium' | 'high' = indicators.volatility > 2 ? 'low' : indicators.volatility > 1 ? 'medium' : 'high';
+  return {
+    summary: `${fund.name}(${fund.code}) 一年区间收益 ${indicators.totalReturn.toFixed(2)}%，${trendVerb}，最大回撤 ${indicators.maxDrawdown.toFixed(2)}%。`,
+    trend: `区间收益 ${indicators.totalReturn.toFixed(2)}%、短期动量 ${indicators.shortMomentum.toFixed(2)}%、趋势斜率 ${indicators.trendSlope.toFixed(2)}，${trendVerb}。`,
+    risk: `波动率 ${indicators.volatility.toFixed(2)}，${riskVerb}。`,
+    scenarios: [
+      { name: '乐观情景', probability, description: '若净值持续突破近期高点，区间收益有望延续。' },
+      { name: '中性情景', probability: 'medium' as const, description: '若市场维持震荡，净值围绕当前水平波动。' },
+      { name: '压力情景', probability: 'low' as const, description: '若回撤再度逼近历史最大值，需关注止损。' },
+    ],
+    watchPoints: ['净值突破近期高点', '最大回撤是否扩大', '主要指数与板块的联动'],
+    disclaimer: '本分析为本地指标推算，仅供学习参考，不构成投资建议。',
+  };
 }
 
 const isUsableCachedFund = (fund: unknown): boolean =>

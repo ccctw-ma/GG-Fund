@@ -287,8 +287,8 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     return quoteFromEastmoneyDetail(await fetchJson(url), code);
   }
 
-  async function getEastmoneyHistory(code: string): Promise<FundHistoryPoint[]> {
-    const url = `https://api.fund.eastmoney.com/f10/lsjz?fundCode=${encodeURIComponent(code)}&pageIndex=1&pageSize=30`;
+  async function getEastmoneyHistory(code: string, pageSize = 30): Promise<FundHistoryPoint[]> {
+    const url = `https://api.fund.eastmoney.com/f10/lsjz?fundCode=${encodeURIComponent(code)}&pageIndex=1&pageSize=${pageSize}`;
     return historyFromEastmoneyData(await fetchJson(url));
   }
 
@@ -334,10 +334,12 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
         return fallbackFunds.find((fund) => fund.code === code);
       });
     },
-    async getFundHistory(code: string, _range = '1m'): Promise<FundHistoryPoint[]> {
-      return cached(`fund-history:${code}`, 86_400_000, async () => {
+    async getFundHistory(code: string, range = '1m'): Promise<FundHistoryPoint[]> {
+      const normalizedRange = String(range).toLowerCase();
+      const pageSize = normalizedRange === 'all' ? 720 : normalizedRange === '1y' ? 260 : normalizedRange === '6m' ? 130 : normalizedRange === '3m' ? 70 : 30;
+      return cached(`fund-history:${code}:${pageSize}`, 86_400_000, async () => {
         try {
-          const history = await getEastmoneyHistory(code);
+          const history = await getEastmoneyHistory(code, pageSize);
           if (history.length > 0) return history;
         } catch {
           // fall through to local fallback

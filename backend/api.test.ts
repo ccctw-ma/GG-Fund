@@ -325,4 +325,43 @@ describe('Cloudflare API', () => {
     expect(body.analysis).toContain('上涨原因');
     expect(JSON.stringify(body)).not.toContain('test-secret-key');
   });
+
+  it('falls back to a deterministic local report when DEEPSEEK_API_KEY is missing', async () => {
+    const bindings = env();
+    bindings.DEEPSEEK_API_KEY = '';
+    await bindings.GG_FUND_CACHE.put('fund:000001', JSON.stringify({ code: '000001', name: '华夏成长混合', netValue: 1.333, officialNetValue: 1.333, dailyChangePercent: 1.29, quoteDate: '2026-05-27', quoteType: 'official', source: '东方财富搜索接口' }));
+    const api = createCloudflareApi({
+      marketData: {
+        ...marketData,
+        getFundHistory: async () => [
+          { date: '2025-06-01', netValue: 1.0 },
+          { date: '2025-09-01', netValue: 1.05 },
+          { date: '2025-12-01', netValue: 1.1 },
+          { date: '2026-03-01', netValue: 1.2 },
+          { date: '2026-05-27', netValue: 1.333 },
+        ],
+      },
+      deepSeekFetch: (async () => {
+        throw new Error('should not call deepseek');
+      }) as unknown as typeof fetch,
+    });
+
+    const response = await api.fetch(new Request('https://example.com/api/ai/analyze-fund', { method: 'POST', body: JSON.stringify({ code: '000001' }) }), bindings);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.agent.model).toBe('local-fallback');
+    expect(body.agent.steps.map((step: { name: string }) => step.name)).toEqual([
+      'collect_fund_quote',
+      'collect_history',
+      'collect_market_context',
+      'compute_indicators',
+      'build_research_prompt',
+      'call_deepseek',
+      'normalize_report',
+    ]);
+    expect(body.report.summary).toContain('华夏成长混合');
+    expect(body.report.disclaimer).toContain('不构成投资建议');
+    expect(body.chartAnnotations[0]).toEqual(expect.objectContaining({ label: '本地降级', tone: 'neutral' }));
+  });
 });

@@ -20,6 +20,7 @@ export function AuthPanel() {
   const [session, setSession] = useState<AuthSessionResponse>();
   const [oauthUrl, setOauthUrl] = useState('');
   const [error, setError] = useState<string>();
+  const [pending, setPending] = useState<'idle' | 'sending' | 'verifying' | 'logout'>('idle');
   const active = otpProviders.find((item) => item.provider === provider) ?? otpProviders[0];
 
   useEffect(() => {
@@ -29,30 +30,55 @@ export function AuthPanel() {
       .catch(() => api.clearSessionToken());
   }, []);
 
-  async function startChallenge() {
+  function switchProvider(next: AuthProvider) {
+    if (next === provider) return;
+    setProvider(next);
+    setIdentifier(next === 'email' ? 'demo@example.com' : '');
+    setChallengeId('');
+    setCode('');
     setError(undefined);
+  }
+
+  async function startChallenge() {
+    if (!identifier.trim()) {
+      setError('请先输入登录标识');
+      return;
+    }
+    setError(undefined);
+    setPending('sending');
     try {
-      const challenge = await api.startAuthChallenge(provider, identifier);
+      const challenge = await api.startAuthChallenge(provider, identifier.trim());
       setChallengeId(challenge.challengeId);
       setCode(challenge.devCode ?? '');
     } catch (event) {
       setError(event instanceof Error ? event.message : '发送验证码失败');
+    } finally {
+      setPending('idle');
     }
   }
 
   async function verifyChallenge() {
+    if (!challengeId || code.length < 4) {
+      setError('请先获取并输入验证码');
+      return;
+    }
     setError(undefined);
+    setPending('verifying');
     try {
-      const result = await api.verifyAuthChallenge(challengeId, code);
+      const result = await api.verifyAuthChallenge(challengeId, code.trim());
       api.saveSessionToken(result.session.token);
       setSession(result);
+      setChallengeId('');
     } catch (event) {
       setError(event instanceof Error ? event.message : '验证失败');
+    } finally {
+      setPending('idle');
     }
   }
 
   async function logout() {
     setError(undefined);
+    setPending('logout');
     try {
       await api.logout();
     } catch {
@@ -62,6 +88,7 @@ export function AuthPanel() {
     setSession(undefined);
     setChallengeId('');
     setCode('');
+    setPending('idle');
   }
 
   async function loadOAuth(providerName: 'github' | 'wechat') {
@@ -84,7 +111,7 @@ export function AuthPanel() {
         {otpProviders.map((item) => {
           const Icon = item.icon;
           return (
-            <button key={item.provider} className={item.provider === provider ? 'auth-tab auth-tab-active' : 'auth-tab'} onClick={() => setProvider(item.provider)}>
+            <button key={item.provider} className={item.provider === provider ? 'auth-tab auth-tab-active' : 'auth-tab'} onClick={() => switchProvider(item.provider)}>
               <Icon className="h-4 w-4" /> {item.label}
             </button>
           );
@@ -93,8 +120,8 @@ export function AuthPanel() {
 
       <div className="mt-4 grid gap-2 md:grid-cols-[1fr_auto_auto]">
         <input className="newspaper-input" value={identifier} onChange={(event) => setIdentifier(event.target.value)} placeholder={active.placeholder} aria-label="登录标识" />
-        <button className="ink-button" onClick={startChallenge}>发送验证码</button>
-        <button className="ink-button" onClick={verifyChallenge} disabled={!challengeId}>验证登录</button>
+        <button className="ink-button" onClick={startChallenge} disabled={pending === 'sending' || !identifier.trim()}>{pending === 'sending' ? '发送中…' : '发送验证码'}</button>
+        <button className="ink-button" onClick={verifyChallenge} disabled={!challengeId || pending === 'verifying'}>{pending === 'verifying' ? '验证中…' : '验证登录'}</button>
       </div>
       {challengeId && <p className="mt-2 rounded-2xl bg-[#e5f7e9] px-3 py-2 text-xs font-bold text-[#047857]">开发环境验证码：{code}</p>}
 
@@ -112,7 +139,7 @@ export function AuthPanel() {
       {session && (
         <div className="mt-3 flex flex-col gap-2 rounded-2xl bg-[#e5f7e9] px-3 py-2 text-sm font-bold text-emerald-700 sm:flex-row sm:items-center sm:justify-between">
           <span>已登录：{session.user.identifier}</span>
-          <button className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-1 text-xs text-emerald-800" onClick={logout}><LogOut className="h-3 w-3" />退出登录</button>
+          <button className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-1 text-xs text-emerald-800" onClick={logout} disabled={pending === 'logout'}><LogOut className="h-3 w-3" />{pending === 'logout' ? '退出中…' : '退出登录'}</button>
         </div>
       )}
       {error && <p className="mt-3 text-sm font-bold text-red-700">{error}</p>}
