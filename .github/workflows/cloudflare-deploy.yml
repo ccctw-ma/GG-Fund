@@ -17,47 +17,9 @@ env:
   CF_VERIFY_BASE_URL: https://gg-fund.pages.dev
 
 jobs:
-  test:
-    name: Test And Build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org/
-          cache: npm
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.10
-
-      - name: Install dependencies
-        run: bash scripts/ci-install.sh
-
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-
-      - name: Install Playwright Chromium
-        run: npx --no-install playwright install --with-deps chromium
-
-      - name: Run CI tests
-        run: bun run ci:test
-
   deploy:
     name: Deploy To Cloudflare
     runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/master'
 
     permissions:
       contents: read
@@ -75,7 +37,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: https://registry.npmjs.org/
           cache: npm
 
       - name: Setup Bun

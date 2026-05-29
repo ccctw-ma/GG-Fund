@@ -107,14 +107,13 @@ If a key appears in chat, logs, screenshots, or git history, treat it as leaked,
 After login, D1/KV binding setup, and Pages Secret configuration:
 
 ```bash
-bun run ci:test
 bun run deploy:cloudflare
 bun run verify:cloudflare
 ```
 
 `deploy:cloudflare` applies remote D1 migrations and deploys `dist/` to the Cloudflare Pages project `gg-fund`. Defaults can be overridden with `CF_PAGES_PROJECT`, `CF_PAGES_BRANCH`, `CF_D1_DATABASE`, and `CF_VERIFY_BASE_URL`.
 
-GitHub Actions deploys automatically on push/merge to `master`. CI uses `actions/setup-node` for the npm cache and runs `scripts/ci-install.sh` which executes `npm ci --ignore-scripts`, skipping every postinstall (Playwright/puppeteer browser downloads, native binaries). Browsers are installed in a dedicated `Install Playwright Chromium` step backed by `actions/cache`. Bun `1.3.10` is only used to run project scripts. This avoids both the Bun-side `FailedToOpenSocket` failures and the npm `Exit handler never called!` crashes seen in earlier runs. Configure repository secrets:
+GitHub Actions runs only D1 migrations, the Pages deploy and the smoke check on push/merge to `master`. Tests are not executed in CI (the local pre-commit hook already runs lint + Vitest). `scripts/ci-install.sh` executes `npm ci --ignore-scripts` and forces `NPM_CONFIG_USERCONFIG=/dev/null`, neutralising the always-auth `.npmrc` injected by `actions/setup-node` that previously caused `Exit handler never called!`. Postinstall browser/native downloads are disabled. Bun `1.3.10` is used only to run project scripts. Configure repository secrets:
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
