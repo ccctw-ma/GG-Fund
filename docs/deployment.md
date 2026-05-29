@@ -6,9 +6,9 @@
 - API：Cloudflare Pages Functions，入口为 `functions/api/[[path]].ts`，业务逻辑唯一收敛在 `backend/api.ts`。
 - 本地开发：`backend/local.ts` 用 Bun 注入内存 D1/KV bindings，复用同一套 Functions API。
 - 共享层：`shared/` 保存前后端共用 DTO 和行情适配器。
-- 数据库：Cloudflare D1，binding 为 `GG_FUND_DB`，迁移目录为 `migrations/`。
+- 数据库：Cloudflare D1，binding 为 `GG_FUND_DB`，迁移目录为 `migrations/`；`0004_user_portfolios.sql` 为登录用户增加 portfolio 归属字段。
 - 缓存：Cloudflare KV，binding 为 `GG_FUND_CACHE`。
-- Secret：DeepSeek 和 OAuth 凭证通过 Cloudflare Pages Secret 注入，不进入代码和前端 bundle。
+- Secret：DeepSeek 和 OAuth 凭证通过 Cloudflare Pages Secret 注入，不进入代码和前端 bundle；OTP 登录会话保存在 D1 `auth_sessions`，前端只保存 session token。
 
 ## 本地测试
 
@@ -98,7 +98,7 @@ curl https://gg-fund.pages.dev/api/funds/000001
 `.github/workflows/cloudflare-deploy.yml` 在 push/merge 到 `master` 后自动执行：
 
 - 使用固定 Bun `1.3.10` 运行项目脚本，避免 `latest` 版本变动。
-- 安装依赖一律用 `bun install --frozen-lockfile --ignore-scripts`：跳过所有 postinstall（Playwright/puppeteer 等浏览器或原生二进制下载），并由 `timeout-minutes: 5` 限制安装步骤总时长，避免 npm 在 GitHub runner 上偶发的 `Exit handler never called!` 把 job 拖到 10 分钟以上。`bun.lock` 中的 tarball URL 必须保持为 GitHub-hosted runner 可访问的 `https://registry.npmjs.org/`，不能提交公司内网 registry URL。
+- 安装依赖一律用 `bun install --frozen-lockfile --ignore-scripts`：跳过所有 postinstall（Playwright/puppeteer 等浏览器或原生二进制下载），并由 `timeout-minutes: 5` 限制安装步骤总时长，避免 npm 在 GitHub runner 上偶发的 `Exit handler never called!` 把 job 拖到 10 分钟以上。
 - 不再在 CI 跑 lint/test/e2e（本地 pre-commit hook 与 `bun run check` 兜底）。
 - 使用 Wrangler 执行远端 D1 migrations。
 - 部署 `dist/` 到 Cloudflare Pages 项目 `gg-fund`。
@@ -122,5 +122,5 @@ GitHub 仓库 Secrets 需要配置：
 ## 注意事项
 
 - D1/KV binding 名必须与 `wrangler.toml` 和 `backend/api.ts` 保持一致。
-- 新增 migrations 后必须先在 CI 或手动部署中执行远端迁移，再验证线上接口。
+- 新增 migrations 后必须先在 CI 或手动部署中执行远端迁移，再验证线上接口；当前登录用户组合隔离依赖 `migrations/0004_user_portfolios.sql`。
 - Secret 泄露后必须立即在提供商控制台吊销并重新配置。

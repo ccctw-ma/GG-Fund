@@ -11,8 +11,8 @@ GG Fund is a production-shaped China mutual fund market and portfolio analysis a
 - Fund detail: prefers Tiantian Fund intraday estimate and keeps the latest official net value.
 - Local portfolio: calculates market value, cost, profit/loss, return rate, and position weight in the browser.
 - Watchlist: tracks followed funds without counting them as holdings.
-- Auth entry: email/phone OTP challenge + verify flow; GitHub/WeChat OAuth metadata.
-- DeepSeek analysis: collects quote, history, and index context before calling `deepseek-v4-flash`.
+- Auth entry: email/phone OTP challenge + verify flow with persistent sessions, refresh restore, logout, and D1-backed user sessions; GitHub/WeChat OAuth metadata remains available.
+- DeepSeek analysis: computes deterministic return, drawdown, momentum, volatility, and trend indicators before calling `deepseek-v4-flash`, then renders structured trend, risk, scenario, and watch-point reports.
 - Cloudflare infrastructure: D1 for portfolio/auth data, KV for quote cache, Pages Functions for API.
 - Privacy-first: secrets are injected through Cloudflare Secrets and never enter source code or the frontend bundle.
 
@@ -37,6 +37,8 @@ GG Fund is a production-shaped China mutual fund market and portfolio analysis a
 - ESLint + TypeScript checks
 - Vitest unit, component, Cloudflare API, and market adapter tests
 - Vitest coverage thresholds: statements 70%, branches 60%, functions 70%, lines 70%
+- Apache ECharts market and fund research charts with range controls, return, drawdown, zoom, and tooltip support
+
 - Playwright E2E and Midscene test skeleton
 
 ## Local Development
@@ -113,7 +115,7 @@ bun run verify:cloudflare
 
 `deploy:cloudflare` applies remote D1 migrations and deploys `dist/` to the Cloudflare Pages project `gg-fund`. Defaults can be overridden with `CF_PAGES_PROJECT`, `CF_PAGES_BRANCH`, `CF_D1_DATABASE`, and `CF_VERIFY_BASE_URL`.
 
-GitHub Actions only runs D1 migrations, the Pages deploy and the smoke check on push/merge to `master`. The job only runs when the repository variable `CLOUDFLARE_DEPLOY_ENABLED=true` and secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` are configured; otherwise it is skipped. CI installs dependencies with `bun install --frozen-lockfile --ignore-scripts`, skipping every postinstall (Playwright/puppeteer browser downloads, native binaries) and capping the step at 5 minutes. Keep `bun.lock` tarball URLs on the public `https://registry.npmjs.org/` registry so GitHub-hosted runners can fetch dependencies. Lint / Vitest / E2E are not executed in CI – the pre-commit hook and `bun run check` cover them locally. Configure repository secrets:
+GitHub Actions only runs D1 migrations, the Pages deploy and the smoke check on push/merge to `master`. The job only runs when the repository variable `CLOUDFLARE_DEPLOY_ENABLED=true` and secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` are configured; otherwise it is skipped. CI installs dependencies with `bun install --frozen-lockfile --ignore-scripts`, skipping every postinstall (Playwright/puppeteer browser downloads, native binaries) and capping the step at 5 minutes. Lint / Vitest / E2E are not executed in CI – the pre-commit hook and `bun run check` cover them locally. Configure repository secrets:
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
@@ -130,8 +132,10 @@ GitHub Actions only runs D1 migrations, the Pages deploy and the smoke check on 
 - `POST /api/portfolio/default/holdings`
 - `POST /api/portfolio/default/watchlist`
 - `GET /api/auth/oauth-url?provider=github|wechat`
+- `GET /api/auth/me`
 - `POST /api/auth/challenge`
 - `POST /api/auth/verify`
+- `POST /api/auth/logout`
 - `POST /api/ai/analyze-fund`
 
 ## Disclaimer

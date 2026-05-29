@@ -44,13 +44,22 @@ test.beforeEach(async ({ page }) => {
       contentType: 'application/json',
       body: JSON.stringify({
         fund: { code: '000001', name: '华夏成长混合', netValue: 1.35, quoteDate: '2026-05-28', source: '天天基金实时估算' },
-        agent: { model: 'deepseek-v4-flash', steps: [
-          { name: 'collect_market_context', status: 'done', summary: '读取行情' },
-          { name: 'evaluate_price_action', status: 'done', summary: '评估动量' },
-          { name: 'generate_research_prompt', status: 'done', summary: '构建提示' },
-          { name: 'call_deepseek', status: 'done', summary: '生成摘要' },
-        ] },
-        analysis: '上涨原因：估算净值走强。风险：注意波动。',
+        agent: {
+          model: 'deepseek-v4-flash',
+          indicators: { totalReturn: 3.2, maxDrawdown: -1.1, shortMomentum: 1.2, volatility: 0.5, trendSlope: 0.1, sampleSize: 8 },
+          steps: [
+            { name: 'collect_fund_quote', status: 'done', summary: '读取基金行情' },
+            { name: 'collect_history', status: 'done', summary: '读取历史净值' },
+            { name: 'collect_market_context', status: 'done', summary: '读取行情' },
+            { name: 'compute_indicators', status: 'done', summary: '计算收益和回撤' },
+            { name: 'build_research_prompt', status: 'done', summary: '构建提示' },
+            { name: 'call_deepseek', status: 'done', summary: '生成摘要' },
+            { name: 'normalize_report', status: 'done', summary: '规范化报告' },
+          ],
+        },
+        report: { summary: '上涨原因：估算净值走强。', trend: '趋势判断：震荡向上', risk: '风险提示：注意波动。', scenarios: [{ name: '中性情景', probability: 'medium', description: '维持震荡' }], watchPoints: ['最大回撤'], disclaimer: '不构成投资建议' },
+        chartAnnotations: [{ label: '动量改善', description: '短期净值走强', tone: 'positive' }],
+        analysis: '上涨原因：估算净值走强。',
       }),
     });
   });
@@ -73,18 +82,23 @@ test('searches realtime data, uses OTP auth, runs agent analysis, renders charts
   await page.getByRole('button', { name: /华夏成长混合/ }).click();
   await expect(page.getByRole('heading', { name: '华夏成长混合' })).toBeVisible();
   await expect(page.getByText('实时估算').or(page.getByText('官方净值')).first()).toBeVisible();
-  await expect(page.getByTestId('fund-chart').locator('svg')).toBeVisible();
+  await expect(page.getByTestId('fund-chart')).toBeVisible();
+  await expect(page.getByText(/区间收益/)).toBeVisible();
+  await expect(page.getByText(/最大回撤/)).toBeVisible();
 
   await page.getByLabel('登录标识').fill('demo@example.com');
   await page.getByRole('button', { name: '发送验证码' }).click();
   await expect(page.getByText(/开发环境验证码/)).toBeVisible();
   await page.getByRole('button', { name: '验证登录' }).click();
-  await expect(page.getByText(/已通过 email 登录/)).toBeVisible();
+  await expect(page.getByText(/已登录：demo@example.com/)).toBeVisible();
   await page.getByRole('button', { name: /GitHub OAuth/ }).click();
   await expect(page.getByText(/github.com\/login\/oauth\/authorize/)).toBeVisible();
 
   await page.getByRole('button', { name: /分析 华夏成长混合/ }).click();
-  await expect(page.getByTestId('agent-steps')).toContainText('collect_market_context');
+  await expect(page.getByTestId('agent-steps')).toContainText('compute_indicators');
+  await expect(page.getByRole('heading', { name: '趋势判断' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '风险提示' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '观察点' })).toBeVisible();
   await expect(page.getByText('上涨原因：估算净值走强。')).toBeVisible();
 
   await page.getByRole('button', { name: '加入持仓' }).click();
@@ -147,7 +161,7 @@ test('toggles watchlist and supports phone OTP plus WeChat OAuth metadata', asyn
   await page.getByRole('button', { name: '发送验证码' }).click();
   await expect(page.getByText(/开发环境验证码：123456/)).toBeVisible();
   await page.getByRole('button', { name: '验证登录' }).click();
-  await expect(page.getByText(/已通过 phone 登录/)).toBeVisible();
+  await expect(page.getByText(/已登录：13800000000/)).toBeVisible();
 
   await page.getByRole('button', { name: '微信扫码' }).click();
   await expect(page.getByText(/open\.weixin\.qq\.com\/connect\/qrconnect/)).toBeVisible();
