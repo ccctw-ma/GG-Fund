@@ -1,4 +1,4 @@
-import type { FundHistoryPoint, FundQuote, IndexQuote } from './types';
+import type { FundAnalysisResponse, FundHistoryPoint, FundQuote, IndexQuote } from './types';
 
 const SESSION_TOKEN_KEY = 'gg_fund_session_token';
 let memorySessionToken = '';
@@ -52,11 +52,6 @@ export type OAuthUrlResponse = {
   authUrl: string;
   configured: boolean;
   callback: string;
-};
-export type FundAnalysisResponse = {
-  fund: FundQuote;
-  agent?: { model: string; steps: Array<{ name: string; status: string; summary: string }> };
-  analysis: string;
 };
 
 export const api = {

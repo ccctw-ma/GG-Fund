@@ -301,7 +301,7 @@ describe('Cloudflare API', () => {
       marketData: { ...marketData, getFund: async () => ({ code: '000001', name: '华夏成长混合', netValue: 1.35, dailyChangePercent: 0.8, quoteDate: '2026-05-28', source: '内置示例行情' }) },
       deepSeekFetch: (async (_url, init) => {
         authHeader = init?.headers instanceof Headers ? String(init.headers.get('Authorization')) : String((init?.headers as Record<string, string> | undefined)?.Authorization ?? '');
-        return new Response(JSON.stringify({ choices: [{ message: { content: '上涨原因：估算净值走强。风险：注意波动。' } }] }), { status: 200 });
+        return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ summary: '上涨原因：估算净值走强。', trend: '趋势偏强', risk: '风险：注意波动。', scenarios: [{ name: '中性情景', probability: 'medium', description: '维持震荡上行' }], watchPoints: ['最大回撤'], chartAnnotations: [{ label: '动量改善', description: '短期净值走强', tone: 'positive' }], disclaimer: '不构成投资建议' }) } }] }), { status: 200 });
       }) as typeof fetch,
     });
 
@@ -310,7 +310,18 @@ describe('Cloudflare API', () => {
 
     expect(authHeader).toBe('Bearer test-secret-key');
     expect(body.fund.source).toBe('东方财富搜索接口');
-    expect(body.agent.steps.map((step: { name: string }) => step.name)).toEqual(['collect_market_context', 'evaluate_price_action', 'generate_research_prompt', 'call_deepseek']);
+    expect(body.agent.steps.map((step: { name: string }) => step.name)).toEqual([
+      'collect_fund_quote',
+      'collect_history',
+      'collect_market_context',
+      'compute_indicators',
+      'build_research_prompt',
+      'call_deepseek',
+      'normalize_report',
+    ]);
+    expect(body.agent.indicators).toEqual(expect.objectContaining({ totalReturn: expect.any(Number), maxDrawdown: expect.any(Number) }));
+    expect(body.report).toEqual(expect.objectContaining({ summary: expect.any(String), risk: expect.any(String), scenarios: expect.any(Array) }));
+    expect(body.chartAnnotations).toEqual(expect.any(Array));
     expect(body.analysis).toContain('上涨原因');
     expect(JSON.stringify(body)).not.toContain('test-secret-key');
   });

@@ -1,4 +1,5 @@
 import { createMarketDataService, type MarketDataService } from '../shared/marketData';
+import { buildResearchPrompt, computeFundIndicators, normalizeAnalysisReport, normalizeChartAnnotations } from './fundAnalysis';
 
 type D1Database = {
   prepare(sql: string): {
@@ -316,21 +317,20 @@ async function analyzeFund(request: Request, env: CloudflareEnv, marketData: Mar
 
   const steps: Array<{ name: string; status: 'done'; summary: string }> = [];
   const fund = await resolveFundQuote(code, env, marketData);
-  const [history, indices] = await Promise.all([
-    marketData.getFundHistory(code, '1m'),
-    marketData.getIndices(),
-  ]);
   if (!fund) return error(404, 'FUND_NOT_FOUND', '未找到该基金');
-  steps.push({ name: 'collect_market_context', status: 'done', summary: `读取 ${fund.name}、${history.length} 条净值和 ${indices.length} 个指数` });
+  steps.push({ name: 'collect_fund_quote', status: 'done', summary: `读取 ${fund.name} 当前净值 ${fund.netValue}` });
 
-  const recent = history.slice(-5);
-  const first = recent[0]?.netValue ?? fund.netValue;
-  const last = recent.at(-1)?.netValue ?? fund.netValue;
-  const momentum = first ? ((last - first) / first) * 100 : 0;
-  steps.push({ name: 'evaluate_price_action', status: 'done', summary: `近阶段净值动量 ${momentum.toFixed(2)}%` });
+  const history = await marketData.getFundHistory(code, '1y');
+  steps.push({ name: 'collect_history', status: 'done', summary: `读取 ${history.length} 条历史净值` });
 
-  const prompt = `请用中文分析基金 ${fund.name} (${fund.code})。当前估算/净值：${fund.netValue}，涨跌幅：${fund.dailyChangePercent ?? '未知'}%，估算时间：${fund.estimateTime ?? fund.quoteDate}。最近净值序列：${JSON.stringify(history.slice(-10))}。主要指数：${JSON.stringify(indices)}。近阶段净值动量：${momentum.toFixed(2)}%。请分析为什么涨跌、短期风险、后续走势情景，不要给确定性投资建议。`;
-  steps.push({ name: 'generate_research_prompt', status: 'done', summary: '构建包含行情、历史净值和指数环境的研究提示' });
+  const indices = await marketData.getIndices();
+  steps.push({ name: 'collect_market_context', status: 'done', summary: `读取 ${indices.length} 个主要指数` });
+
+  const indicators = computeFundIndicators(history);
+  steps.push({ name: 'compute_indicators', status: 'done', summary: `区间收益 ${indicators.totalReturn.toFixed(2)}%，最大回撤 ${indicators.maxDrawdown.toFixed(2)}%` });
+
+  const prompt = buildResearchPrompt({ fund, history, indices, indicators });
+  steps.push({ name: 'build_research_prompt', status: 'done', summary: '构建包含指标、行情和输出契约的研究提示' });
 
   const response = await deepSeekFetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
@@ -341,16 +341,21 @@ async function analyzeFund(request: Request, env: CloudflareEnv, marketData: Mar
     body: JSON.stringify({
       model: 'deepseek-v4-flash',
       messages: [
-        { role: 'system', content: '你是谨慎的基金研究助理。必须强调不构成投资建议。' },
+        { role: 'system', content: '你是谨慎的基金研究助理。必须输出结构化 JSON，必须强调不构成投资建议。' },
         { role: 'user', content: prompt },
       ],
-      temperature: 0.3,
+      temperature: 0.25,
     }),
   });
   if (!response.ok) return error(502, 'DEEPSEEK_UPSTREAM_ERROR', 'DeepSeek 分析服务暂不可用');
-  steps.push({ name: 'call_deepseek', status: 'done', summary: 'DeepSeek v4 Flash 返回研究摘要' });
+  steps.push({ name: 'call_deepseek', status: 'done', summary: 'DeepSeek v4 Flash 返回结构化研究内容' });
   const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
-  return json({ fund, agent: { model: 'deepseek-v4-flash', steps }, analysis: data.choices?.[0]?.message?.content ?? '暂无分析结果' });
+  const content = data.choices?.[0]?.message?.content ?? '暂无分析结果';
+  const report = normalizeAnalysisReport(content);
+  const chartAnnotations = normalizeChartAnnotations(content, report.summary);
+  steps.push({ name: 'normalize_report', status: 'done', summary: '规范化研究报告、情景和图表标注' });
+
+  return json({ fund, agent: { model: 'deepseek-v4-flash', steps, indicators }, report, chartAnnotations, analysis: report.summary });
 }
 
 const isUsableCachedFund = (fund: unknown): boolean =>

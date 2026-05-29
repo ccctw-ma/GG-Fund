@@ -42,6 +42,36 @@ export type FundHistoryPoint = {
   netValue: number;
 };
 
+export type FundAnalysisIndicators = {
+  totalReturn: number;
+  maxDrawdown: number;
+  shortMomentum: number;
+  volatility: number;
+  trendSlope: number;
+  sampleSize: number;
+};
+
+export type FundAnalysisReport = {
+  summary: string;
+  trend: string;
+  risk: string;
+  scenarios: Array<{ name: string; probability: 'low' | 'medium' | 'high'; description: string }>;
+  watchPoints: string[];
+  disclaimer: string;
+};
+
+export type FundAnalysisResponse = {
+  fund: FundQuote;
+  agent: {
+    model: string;
+    steps: Array<{ name: string; status: 'done'; summary: string }>;
+    indicators: FundAnalysisIndicators;
+  };
+  report: FundAnalysisReport;
+  chartAnnotations: Array<{ date?: string; label: string; description: string; tone: 'positive' | 'negative' | 'neutral' }>;
+  analysis: string;
+};
+
 export type PortfolioItem = Holding & {
   quote?: FundQuote;
   marketValue: number;
