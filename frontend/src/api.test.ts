@@ -1,8 +1,26 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from './api';
 
+function installLocalStorage() {
+  const store = new Map<string, string>();
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => store.set(key, value),
+      removeItem: (key: string) => store.delete(key),
+      clear: () => store.clear(),
+    },
+  });
+}
+
 describe('frontend api client', () => {
+  beforeEach(() => {
+    installLocalStorage();
+  });
+
   afterEach(() => {
+    localStorage.clear();
     vi.restoreAllMocks();
   });
 
@@ -33,7 +51,7 @@ describe('frontend api client', () => {
 
     expect(fetchMock).toHaveBeenCalledWith('/api/auth/challenge', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: expect.objectContaining({ 'content-type': 'application/json' }),
       body: JSON.stringify({ provider: 'email', identifier: 'demo@example.com' }),
     });
   });
@@ -48,6 +66,27 @@ describe('frontend api client', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/auth/oauth-url?provider=github&redirect=/');
   });
 
+  it('attaches the saved bearer token to authenticated requests', async () => {
+    localStorage.setItem('gg_fund_session_token', 'session_test');
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ user: { id: 'u1' }, session: { token: 'session_test' } }), { status: 200, headers: { 'content-type': 'application/json' } }),
+    );
+
+    await api.getCurrentUser();
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/auth/me', expect.objectContaining({
+      headers: expect.objectContaining({ Authorization: 'Bearer session_test' }),
+    }));
+  });
+
+  it('saves and clears session tokens', () => {
+    api.saveSessionToken('session_abc');
+    expect(localStorage.getItem('gg_fund_session_token')).toBe('session_abc');
+
+    api.clearSessionToken();
+    expect(localStorage.getItem('gg_fund_session_token')).toBeNull();
+  });
+
   it('posts selected fund code for AI analysis', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ fund: { code: '000001', name: '华夏成长混合', netValue: 1.35, quoteDate: '2026-05-29', source: 'test' }, analysis: '风险：注意波动。' }), { status: 200, headers: { 'content-type': 'application/json' } }),
@@ -57,7 +96,7 @@ describe('frontend api client', () => {
 
     expect(fetchMock).toHaveBeenCalledWith('/api/ai/analyze-fund', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: expect.objectContaining({ 'content-type': 'application/json' }),
       body: JSON.stringify({ code: '000001' }),
     });
   });

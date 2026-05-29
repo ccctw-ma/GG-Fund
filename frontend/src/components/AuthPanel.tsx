@@ -1,5 +1,5 @@
-import { Code2, Mail, MessageCircle, Phone } from 'lucide-react';
-import { useState } from 'react';
+import { Code2, LogOut, Mail, MessageCircle, Phone } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { api, type AuthProvider, type AuthSessionResponse } from '../api';
 
 const otpProviders = [
@@ -22,6 +22,13 @@ export function AuthPanel() {
   const [error, setError] = useState<string>();
   const active = otpProviders.find((item) => item.provider === provider) ?? otpProviders[0];
 
+  useEffect(() => {
+    if (!api.hasSessionToken()) return;
+    api.getCurrentUser()
+      .then(setSession)
+      .catch(() => api.clearSessionToken());
+  }, []);
+
   async function startChallenge() {
     setError(undefined);
     try {
@@ -36,10 +43,25 @@ export function AuthPanel() {
   async function verifyChallenge() {
     setError(undefined);
     try {
-      setSession(await api.verifyAuthChallenge(challengeId, code));
+      const result = await api.verifyAuthChallenge(challengeId, code);
+      api.saveSessionToken(result.session.token);
+      setSession(result);
     } catch (event) {
       setError(event instanceof Error ? event.message : '验证失败');
     }
+  }
+
+  async function logout() {
+    setError(undefined);
+    try {
+      await api.logout();
+    } catch {
+      // Local token still needs to be cleared when the remote session already expired.
+    }
+    api.clearSessionToken();
+    setSession(undefined);
+    setChallengeId('');
+    setCode('');
   }
 
   async function loadOAuth(providerName: 'github' | 'wechat') {
@@ -87,7 +109,12 @@ export function AuthPanel() {
         })}
       </div>
       {oauthUrl && <p className="mt-2 break-all rounded-2xl bg-white/60 px-3 py-2 text-xs text-ink/60">OAuth 跳转：{oauthUrl}</p>}
-      {session && <p className="mt-3 rounded-2xl bg-[#e5f7e9] px-3 py-2 text-sm font-bold text-emerald-700">已通过 {session.user.provider} 登录：{session.user.identifier}</p>}
+      {session && (
+        <div className="mt-3 flex flex-col gap-2 rounded-2xl bg-[#e5f7e9] px-3 py-2 text-sm font-bold text-emerald-700 sm:flex-row sm:items-center sm:justify-between">
+          <span>已登录：{session.user.identifier}</span>
+          <button className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-1 text-xs text-emerald-800" onClick={logout}><LogOut className="h-3 w-3" />退出登录</button>
+        </div>
+      )}
       {error && <p className="mt-3 text-sm font-bold text-red-700">{error}</p>}
     </section>
   );
