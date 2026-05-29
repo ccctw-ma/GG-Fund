@@ -1,6 +1,6 @@
 import { Search, Star, WalletCards } from 'lucide-react';
-import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts';
 import type { FundHistoryPoint, FundQuote, WatchItem } from '../types';
+import { FundTrendChart } from './FundTrendChart';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -60,15 +60,7 @@ export function FundSearch({ query, setQuery, results, selectedFund, history, lo
               <Button variant="secondary" onClick={() => onToggleWatch(selectedFund)}><Star className="h-4 w-4" />{watchlist.some((item) => item.fundCode === selectedFund.code) ? '移出自选' : '加入自选'}</Button>
             </div>
           </div>
-          <div className="mt-5 h-48 min-h-48 min-w-0 overflow-x-auto rounded-[1.4rem] bg-[#fffaf0]/70 p-2" data-testid="fund-chart" aria-label="历史净值走势">
-            <LineChart width={640} height={190} data={history} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(16,37,31,.12)" />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#68746b' }} minTickGap={18} />
-              <YAxis domain={['dataMin', 'dataMax']} tick={{ fontSize: 11, fill: '#68746b' }} />
-              <Tooltip />
-              <Line type="monotone" dataKey="netValue" name="单位净值" stroke="#047857" strokeWidth={3} dot={false} />
-            </LineChart>
-          </div>
+          <FundTrendChart history={history} />
         </article>
       )}
     </Card>

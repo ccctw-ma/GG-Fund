@@ -5,7 +5,7 @@ let memorySessionToken = '';
 
 const browserStorage = () => (typeof globalThis.localStorage === 'undefined' ? undefined : globalThis.localStorage);
 const getSessionToken = () => browserStorage()?.getItem(SESSION_TOKEN_KEY) ?? memorySessionToken;
-const authHeaders = () => {
+const authHeaders = (): Record<string, string> => {
   const token = getSessionToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
