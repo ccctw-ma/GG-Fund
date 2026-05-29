@@ -114,7 +114,7 @@ bun run verify:cloudflare
 
 `deploy:cloudflare` applies remote D1 migrations and deploys `dist/` to the Cloudflare Pages project `gg-fund`. Defaults can be overridden with `CF_PAGES_PROJECT`, `CF_PAGES_BRANCH`, `CF_D1_DATABASE`, and `CF_VERIFY_BASE_URL`.
 
-GitHub Actions deploys automatically on push/merge to `master`. CI uses `actions/setup-node` for npm cache plus `scripts/ci-install.sh` to run `npm ci` with fetch retries and bounded concurrency, while Bun `1.3.10` only runs the project scripts. This avoids the unstable Bun-side npm registry socket failures. Configure repository secrets:
+GitHub Actions deploys automatically on push/merge to `master`. CI uses `actions/setup-node` for the npm cache and runs `scripts/ci-install.sh` which executes `npm ci --ignore-scripts`, skipping every postinstall (Playwright/puppeteer browser downloads, native binaries). Browsers are installed in a dedicated `Install Playwright Chromium` step backed by `actions/cache`. Bun `1.3.10` is only used to run project scripts. This avoids both the Bun-side `FailedToOpenSocket` failures and the npm `Exit handler never called!` crashes seen in earlier runs. Configure repository secrets:
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`

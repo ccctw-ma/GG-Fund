@@ -99,7 +99,8 @@ curl https://gg-fund.pages.dev/api/funds/000001
 
 - 使用固定 Bun `1.3.10` 运行项目脚本，避免 `latest` 版本变动。
 - 使用 `actions/setup-node@v4` 缓存 npm 依赖，减少重复下载 npm tarball。
-- 通过 `scripts/ci-install.sh` 用 `npm ci` 安装依赖，预检 npm registry、配置 npm fetch 重试和最大 socket 数，遇到瞬时网络失败时最多退避重试 5 次。
+- 通过 `scripts/ci-install.sh` 用 `npm ci --ignore-scripts` 安装依赖：预检 npm registry、配置 npm fetch 重试和最大 socket 数、关闭所有 postinstall 脚本（避免 Playwright/puppeteer 在安装阶段访问外部 CDN 卡死或触发 npm `Exit handler never called!`），并对失败做最多 5 次退避重试。
+- 通过 `actions/cache@v4` 缓存 `~/.cache/ms-playwright`，再用独立步骤运行 `npx --no-install playwright install --with-deps chromium` 单独装浏览器。
 - 安装 Playwright Chromium。
 - 运行 `bun run ci:test`。
 - 使用 Wrangler 执行远端 D1 migrations。

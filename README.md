@@ -127,7 +127,7 @@ bun run verify:cloudflare
 
 `deploy:cloudflare` 会先执行远端 D1 migrations，再把 `dist/` 部署到 Cloudflare Pages 项目 `gg-fund`。可用环境变量覆盖默认值：`CF_PAGES_PROJECT`、`CF_PAGES_BRANCH`、`CF_D1_DATABASE`、`CF_VERIFY_BASE_URL`。
 
-GitHub Actions 已配置为 push/merge 到 `master` 后自动运行测试、构建、D1 迁移、Pages 部署和线上健康检查。CI 用 `actions/setup-node` 启用 npm 缓存并通过 `scripts/ci-install.sh` 执行 `npm ci`（带 fetch 重试与并发限制），Bun `1.3.10` 仅用于运行后续脚本，绕开 Bun 安装阶段连接 npm registry 不稳定的问题。仓库 Secrets 需要配置 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`。
+GitHub Actions 已配置为 push/merge 到 `master` 后自动运行测试、构建、D1 迁移、Pages 部署和线上健康检查。CI 用 `actions/setup-node` 启用 npm 缓存并通过 `scripts/ci-install.sh` 执行 `npm ci --ignore-scripts`，跳过所有 postinstall（Playwright/puppeteer 等浏览器/二进制下载），由独立的 `Install Playwright Chromium` 步骤配合 `actions/cache` 处理浏览器；Bun `1.3.10` 仅用于运行后续脚本。这样彻底规避 Bun 安装阶段 `FailedToOpenSocket` 与 npm 安装阶段 `Exit handler never called!` 两类失败。仓库 Secrets 需要配置 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`。
 
 ## API
 

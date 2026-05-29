@@ -4,17 +4,31 @@ set -euo pipefail
 REGISTRY="${NPM_INSTALL_REGISTRY:-https://registry.npmjs.org/}"
 ATTEMPTS="${NPM_INSTALL_ATTEMPTS:-5}"
 
-# 让 npm 自身在每个 tarball 下载上做指数退避重试，
-# 而不是只依赖外层循环。
+# CI 安装阶段不允许跑任何 postinstall（Playwright/puppeteer/native binary 下载
+# CDN 是过去这条流水线最不稳定的环节）。浏览器装在独立步骤里，
+# 由 Playwright 自己处理重试。
+export PUPPETEER_SKIP_DOWNLOAD=1
+export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=1
+export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+export PLAYWRIGHT_SKIP_BROWSER_GC=1
+export ADBLOCK=1
+export DISABLE_OPENCOLLECTIVE=1
+export OPEN_SOURCE_CONTRIBUTOR=true
+export CI=1
+
+# 让 npm 自身在每个 tarball 下载上做指数退避重试。
 export npm_config_registry="${REGISTRY}"
 export npm_config_fetch_retries="${npm_config_fetch_retries:-5}"
 export npm_config_fetch_retry_factor="${npm_config_fetch_retry_factor:-2}"
 export npm_config_fetch_retry_mintimeout="${npm_config_fetch_retry_mintimeout:-10000}"
 export npm_config_fetch_retry_maxtimeout="${npm_config_fetch_retry_maxtimeout:-120000}"
-export npm_config_fetch_timeout="${npm_config_fetch_timeout:-300000}"
+export npm_config_fetch_timeout="${npm_config_fetch_timeout:-600000}"
 export npm_config_maxsockets="${npm_config_maxsockets:-8}"
 export npm_config_audit="${npm_config_audit:-false}"
 export npm_config_fund="${npm_config_fund:-false}"
+export npm_config_progress="${npm_config_progress:-false}"
+export npm_config_loglevel="${npm_config_loglevel:-error}"
+export npm_config_ignore_scripts="${npm_config_ignore_scripts:-true}"
 
 for attempt in $(seq 1 "${ATTEMPTS}"); do
   echo "npm ci attempt ${attempt}/${ATTEMPTS}"
@@ -29,7 +43,9 @@ for attempt in $(seq 1 "${ATTEMPTS}"); do
       "${REGISTRY%/}/-/ping" >/dev/null || true
   fi
 
-  if npm ci --no-audit --no-fund --prefer-offline; then
+  # --ignore-scripts 关掉所有 postinstall，避免安装阶段下载 CDN 二进制；
+  # --no-audit / --no-fund 减少安装尾端阻塞；--prefer-offline 优先用 npm cache。
+  if npm ci --no-audit --no-fund --prefer-offline --ignore-scripts; then
     exit 0
   fi
 
