@@ -126,7 +126,7 @@ bun run verify:cloudflare
 
 `deploy:cloudflare` 会先执行远端 D1 migrations，再把 `dist/` 部署到 Cloudflare Pages 项目 `gg-fund`。可用环境变量覆盖默认值：`CF_PAGES_PROJECT`、`CF_PAGES_BRANCH`、`CF_D1_DATABASE`、`CF_VERIFY_BASE_URL`。
 
-GitHub Actions 在 push/merge 到 `master` 后只跑 D1 迁移、Pages 部署和线上健康检查；仅当仓库 Variable `CLOUDFLARE_DEPLOY_ENABLED=true` 且 Secrets 配置了 `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID` 时触发，否则该 job 直接 skip。CI 安装依赖统一走 `bun install --frozen-lockfile --ignore-scripts`，跳过所有 postinstall（避免 Playwright/puppeteer 拉浏览器/二进制阻塞），并配 `timeout-minutes: 5` 防卡死。lint / Vitest / E2E 由本地 pre-commit hook 与 `bun run check` 兜底，不在 CI 中运行。
+GitHub Actions 在 push/merge 到 `master` 后只跑 D1 迁移、Pages 部署和线上健康检查；仅当仓库 Variable `CLOUDFLARE_DEPLOY_ENABLED=true` 且 Secrets 配置了 `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID` 时触发，否则该 job 直接 skip。CI 安装依赖统一走 `bun install --frozen-lockfile --ignore-scripts`，跳过所有 postinstall（避免 Playwright/puppeteer 拉浏览器/二进制阻塞），并配 `timeout-minutes: 5` 防卡死。`bun.lock` 内的 tarball URL 必须保持为 GitHub-hosted runner 可访问的公开 `https://registry.npmjs.org/`，不要提交公司内网 registry URL。lint / Vitest / E2E 由本地 pre-commit hook 与 `bun run check` 兜底，不在 CI 中运行。
 
 ## API
 

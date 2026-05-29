@@ -113,7 +113,7 @@ bun run verify:cloudflare
 
 `deploy:cloudflare` applies remote D1 migrations and deploys `dist/` to the Cloudflare Pages project `gg-fund`. Defaults can be overridden with `CF_PAGES_PROJECT`, `CF_PAGES_BRANCH`, `CF_D1_DATABASE`, and `CF_VERIFY_BASE_URL`.
 
-GitHub Actions only runs D1 migrations, the Pages deploy and the smoke check on push/merge to `master`. The job only runs when the repository variable `CLOUDFLARE_DEPLOY_ENABLED=true` and secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` are configured; otherwise it is skipped. CI installs dependencies with `bun install --frozen-lockfile --ignore-scripts`, skipping every postinstall (Playwright/puppeteer browser downloads, native binaries) and capping the step at 5 minutes. Lint / Vitest / E2E are not executed in CI – the pre-commit hook and `bun run check` cover them locally. Configure repository secrets:
+GitHub Actions only runs D1 migrations, the Pages deploy and the smoke check on push/merge to `master`. The job only runs when the repository variable `CLOUDFLARE_DEPLOY_ENABLED=true` and secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` are configured; otherwise it is skipped. CI installs dependencies with `bun install --frozen-lockfile --ignore-scripts`, skipping every postinstall (Playwright/puppeteer browser downloads, native binaries) and capping the step at 5 minutes. Keep `bun.lock` tarball URLs on the public `https://registry.npmjs.org/` registry so GitHub-hosted runners can fetch dependencies. Lint / Vitest / E2E are not executed in CI – the pre-commit hook and `bun run check` cover them locally. Configure repository secrets:
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`

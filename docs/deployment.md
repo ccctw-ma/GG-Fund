@@ -98,7 +98,7 @@ curl https://gg-fund.pages.dev/api/funds/000001
 `.github/workflows/cloudflare-deploy.yml` 在 push/merge 到 `master` 后自动执行：
 
 - 使用固定 Bun `1.3.10` 运行项目脚本，避免 `latest` 版本变动。
-- 安装依赖一律用 `bun install --frozen-lockfile --ignore-scripts`：跳过所有 postinstall（Playwright/puppeteer 等浏览器或原生二进制下载），并由 `timeout-minutes: 5` 限制安装步骤总时长，避免 npm 在 GitHub runner 上偶发的 `Exit handler never called!` 把 job 拖到 10 分钟以上。
+- 安装依赖一律用 `bun install --frozen-lockfile --ignore-scripts`：跳过所有 postinstall（Playwright/puppeteer 等浏览器或原生二进制下载），并由 `timeout-minutes: 5` 限制安装步骤总时长，避免 npm 在 GitHub runner 上偶发的 `Exit handler never called!` 把 job 拖到 10 分钟以上。`bun.lock` 中的 tarball URL 必须保持为 GitHub-hosted runner 可访问的 `https://registry.npmjs.org/`，不能提交公司内网 registry URL。
 - 不再在 CI 跑 lint/test/e2e（本地 pre-commit hook 与 `bun run check` 兜底）。
 - 使用 Wrangler 执行远端 D1 migrations。
 - 部署 `dist/` 到 Cloudflare Pages 项目 `gg-fund`。
