@@ -111,7 +111,7 @@ GitHub Actions deployments must provide these public build-time values as reposi
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-CI dependency installation runs `npm ci --include=optional --ignore-scripts` through `scripts/ci-install.sh`, with the Linux `workerd`, Lightning CSS, and Tailwind Oxide packages pinned in root-level `optionalDependencies` so the runner installs binaries required by OpenNext / Wrangler / CSS builds.
+CI dependency installation runs `npm ci --include=optional --ignore-scripts` through `scripts/ci-install.sh`, with the Linux `workerd`, Lightning CSS, Tailwind Oxide, and ast-grep packages pinned in root-level `optionalDependencies` so the runner installs binaries required by OpenNext / Wrangler / CSS builds.
 
 Default smoke endpoints:
 
