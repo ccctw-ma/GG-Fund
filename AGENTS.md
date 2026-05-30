@@ -41,12 +41,31 @@ bun run precommit:install
 
 The hook runs `bun run lint` and `bun run test`.
 
-For Cloudflare changes, also verify deployed endpoints after deployment:
+After pushing to `master`, always observe the GitHub Actions deployment before reporting the work as complete:
 
 ```bash
-curl https://gg-fund.workers.dev/api/health
-curl https://gg-fund.workers.dev/api/market/indices
-curl https://gg-fund.workers.dev/api/funds/000001
+gh run list --repo ccctw-ma/GG-Fund --workflow cloudflare-deploy.yml --branch master --limit 5
+gh run watch <run-id> --repo ccctw-ma/GG-Fund --exit-status
+```
+
+If the deployment fails, fetch the failed job logs, fix code or configuration when possible, then commit, push, and repeat the observation loop until the deployment succeeds:
+
+```bash
+gh run view <run-id> --repo ccctw-ma/GG-Fund --log-failed
+```
+
+If the failure requires account-level or secret-level configuration, stop and ask the user for the missing configuration instead of guessing. Current production verification base URL:
+
+```bash
+https://gg-fund.1934202608.workers.dev
+```
+
+After a successful Cloudflare deployment, verify the deployed endpoints:
+
+```bash
+curl https://gg-fund.1934202608.workers.dev/api/health
+curl https://gg-fund.1934202608.workers.dev/api/market/indices
+curl https://gg-fund.1934202608.workers.dev/api/funds/000001
 ```
 
 ## Secrets
