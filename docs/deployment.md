@@ -7,7 +7,7 @@
 - API：优先使用 `app/api/*` Route Handlers；现有 `functions/api/[[path]].ts` + `backend/api.ts` 仍保留用于兼容和参考。
 - 共享层：`shared/` 保存前后端共用 DTO 和行情适配器。
 - Cloudflare 数据库：现有 D1 binding 为 `GG_FUND_DB`，迁移目录为 `migrations/`。
-- Supabase 数据库：新增 `supabase/migrations/202605300001_core_schema.sql` 作为 Auth/Profile/Portfolio/Holdings/Watchlist/Billing Customers 的 Postgres 基础 schema。
+- Supabase 数据库：使用 `supabase/migrations/202605300001_core_schema.sql` 作为 Auth/Profile/Portfolio/Holdings/Watchlist 的基础 schema，并通过 `supabase/migrations/202605300002_billing_customers.sql` 追加 Billing Customers 表与策略，兼容已执行过首个迁移的环境。
 - 缓存：Cloudflare KV，binding 为 `GG_FUND_CACHE`。
 - Secret：DeepSeek 与 Supabase service role key 等服务端凭证必须通过部署环境注入，不进入代码和前端 bundle。
 

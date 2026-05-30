@@ -40,20 +40,10 @@ create table if not exists public.watchlist (
   primary key (portfolio_id, fund_code)
 );
 
-create table if not exists public.billing_customers (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  stripe_customer_id text not null unique,
-  status text not null,
-  price_id text,
-  created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now())
-);
-
 alter table public.profiles enable row level security;
 alter table public.portfolios enable row level security;
 alter table public.holdings enable row level security;
 alter table public.watchlist enable row level security;
-alter table public.billing_customers enable row level security;
 
 create policy "profiles are readable by owner"
   on public.profiles for select
@@ -139,6 +129,3 @@ create policy "watchlist is writable by owner"
     )
   );
 
-create policy "billing customers are readable by owner"
-  on public.billing_customers for select
-  using (auth.uid() = user_id);
