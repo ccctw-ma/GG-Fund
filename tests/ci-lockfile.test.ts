@@ -49,17 +49,20 @@ describe('Playwright Next.js smoke config', () => {
 });
 
 describe('Cloudflare deploy verification config', () => {
-  it('deploys and verifies the OpenNext worker surface by default', () => {
+  it('builds, migrates, deploys, and verifies the OpenNext worker with configurable env wiring', () => {
     const deployScript = readFileSync(join(process.cwd(), 'scripts/deploy-cloudflare.sh'), 'utf8');
     const verifyScript = readFileSync(join(process.cwd(), 'scripts/verify-cloudflare.sh'), 'utf8');
     const ciScript = readFileSync(join(process.cwd(), 'scripts/ci-test.sh'), 'utf8');
     const workflow = readFileSync(join(process.cwd(), '.github/workflows/cloudflare-deploy.yml'), 'utf8');
 
+    expect(deployScript).toContain('CF_WORKER_NAME="${CF_WORKER_NAME:-gg-fund}"');
+    expect(deployScript).toContain('CF_D1_DATABASE="${CF_D1_DATABASE:-gg-fund-db}"');
+    expect(deployScript).toContain('CF_D1_MIGRATIONS_DIR="${CF_D1_MIGRATIONS_DIR:-migrations}"');
     expect(deployScript).toContain('bun run build');
     expect(deployScript).toContain('bunx --package @opennextjs/cloudflare opennextjs-cloudflare build');
-    expect(deployScript).toContain('bunx --package @opennextjs/cloudflare opennextjs-cloudflare deploy');
-    expect(deployScript).not.toContain('wrangler d1 migrations apply');
-    expect(deployScript).not.toContain('wrangler deploy');
+    expect(deployScript).toContain('bunx wrangler d1 migrations apply "${CF_D1_DATABASE}" --remote --config wrangler.jsonc --migrations-dir "${CF_D1_MIGRATIONS_DIR}"');
+    expect(deployScript).toContain('bunx wrangler deploy --config wrangler.jsonc --name "${CF_WORKER_NAME}"');
+    expect(deployScript).not.toContain('opennextjs-cloudflare deploy');
 
     expect(verifyScript).toContain('CF_WORKER_NAME="${CF_WORKER_NAME:-gg-fund}"');
     expect(verifyScript).toContain('CF_VERIFY_BASE_URL="${CF_VERIFY_BASE_URL:-https://${CF_WORKER_NAME}.workers.dev}"');
@@ -72,13 +75,22 @@ describe('Cloudflare deploy verification config', () => {
     expect(ciScript).toContain('bun run test:e2e');
     expect(ciScript).not.toContain('Pages Functions bundle');
 
+    expect(workflow).toContain("CF_WORKER_NAME: ${{ vars.CF_WORKER_NAME || 'gg-fund' }}");
+    expect(workflow).toContain("CF_D1_DATABASE: ${{ vars.CF_D1_DATABASE || 'gg-fund-db' }}");
+    expect(workflow).toContain('CF_D1_MIGRATIONS_DIR: migrations');
+    expect(workflow).toContain('NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}');
+    expect(workflow).toContain('NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}');
+    expect(workflow).toContain('NEXT_PUBLIC_POSTHOG_KEY: ${{ vars.NEXT_PUBLIC_POSTHOG_KEY }}');
+    expect(workflow).toContain('NEXT_PUBLIC_POSTHOG_HOST: ${{ vars.NEXT_PUBLIC_POSTHOG_HOST }}');
     expect(workflow).toContain('Build OpenNext worker');
+    expect(workflow).toContain('bun run build');
     expect(workflow).toContain('bunx --package @opennextjs/cloudflare opennextjs-cloudflare build');
+    expect(workflow).toContain('Apply remote D1 migrations');
+    expect(workflow).toContain('bunx wrangler d1 migrations apply "${CF_D1_DATABASE}" --remote --config wrangler.jsonc --migrations-dir "${CF_D1_MIGRATIONS_DIR}"');
     expect(workflow).toContain('Deploy Cloudflare worker');
-    expect(workflow).toContain('bunx --package @opennextjs/cloudflare opennextjs-cloudflare deploy');
+    expect(workflow).toContain('bunx wrangler deploy --config wrangler.jsonc --name "${CF_WORKER_NAME}"');
     expect(workflow).toContain('Verify deployment');
-    expect(workflow).toContain('CF_WORKER_NAME: gg-fund');
-    expect(workflow).toContain('CF_VERIFY_BASE_URL: https://gg-fund.workers.dev');
+    expect(workflow).toContain("CF_VERIFY_BASE_URL: ${{ vars.CF_VERIFY_BASE_URL || format('https://{0}.workers.dev', vars.CF_WORKER_NAME || 'gg-fund') }}");
     expect(workflow).not.toContain('pages.dev');
     expect(workflow).not.toContain('Deploy Cloudflare Pages');
   });

@@ -111,6 +111,20 @@ bun run deploy:cloudflare
 bun run verify:cloudflare
 ```
 
+`bun run deploy:cloudflare` now runs `bun run build`, builds the OpenNext worker, applies remote D1 migrations, and publishes the Worker through `bunx wrangler deploy --config wrangler.jsonc --name "$CF_WORKER_NAME"`. The defaults are:
+
+- `CF_WORKER_NAME=gg-fund`
+- `CF_D1_DATABASE=gg-fund-db`
+- `CF_D1_MIGRATIONS_DIR=migrations`
+- `CF_VERIFY_BASE_URL` falls back to `https://$CF_WORKER_NAME.workers.dev` when unset
+
+GitHub Actions deployments must provide these public build-time values as repository Variables so OpenNext can inject browser config during the build:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_POSTHOG_KEY`
+- `NEXT_PUBLIC_POSTHOG_HOST`
+
 Default smoke endpoints:
 
 - `GET /api/health`

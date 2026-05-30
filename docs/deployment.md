@@ -74,6 +74,20 @@ bun run deploy:cloudflare
 bun run verify:cloudflare
 ```
 
+`scripts/deploy-cloudflare.sh` 现在按以下顺序执行：
+
+1. `bun run build`
+2. `bunx --package @opennextjs/cloudflare opennextjs-cloudflare build`
+3. `bunx wrangler d1 migrations apply "$CF_D1_DATABASE" --remote --config wrangler.jsonc --migrations-dir "$CF_D1_MIGRATIONS_DIR"`
+4. `bunx wrangler deploy --config wrangler.jsonc --name "$CF_WORKER_NAME"`
+
+默认值：
+
+- `CF_WORKER_NAME=gg-fund`
+- `CF_D1_DATABASE=gg-fund-db`
+- `CF_D1_MIGRATIONS_DIR=migrations`
+- `CF_VERIFY_BASE_URL` 未设置时使用 `https://$CF_WORKER_NAME.workers.dev`
+
 默认验证目标：
 
 ```bash
@@ -84,11 +98,13 @@ curl https://gg-fund.workers.dev/api/funds/000001
 
 ## GitHub CI/CD
 
-`.github/workflows/cloudflare-deploy.yml` 使用 Bun 安装依赖，并直接执行 OpenNext Cloudflare Worker 构建、部署与验证：
+`.github/workflows/cloudflare-deploy.yml` 使用 Bun 安装依赖，并通过仓库 Variables 注入 `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY`、`NEXT_PUBLIC_POSTHOG_KEY`、`NEXT_PUBLIC_POSTHOG_HOST` 供 OpenNext 构建使用，然后执行 Worker 构建、远程 D1 迁移、部署与验证：
 
 - `bun install --frozen-lockfile --ignore-scripts`
-- `bunx @opennextjs/cloudflare build`
-- `bunx @opennextjs/cloudflare deploy`
+- `bun run build`
+- `bunx --package @opennextjs/cloudflare opennextjs-cloudflare build`
+- `bunx wrangler d1 migrations apply "$CF_D1_DATABASE" --remote --config wrangler.jsonc --migrations-dir "$CF_D1_MIGRATIONS_DIR"`
+- `bunx wrangler deploy --config wrangler.jsonc --name "$CF_WORKER_NAME"`
 - `bun run verify:cloudflare`
 
 ## 可配置环境变量
@@ -108,6 +124,8 @@ curl https://gg-fund.workers.dev/api/funds/000001
 - `DEEPSEEK_API_KEY`
 - `POSTHOG_API_KEY`
 - `CF_WORKER_NAME`
+- `CF_D1_DATABASE`
+- `CF_D1_MIGRATIONS_DIR`
 - `CF_VERIFY_BASE_URL`
 
 ## 注意事项

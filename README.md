@@ -111,6 +111,20 @@ bun run deploy:cloudflare
 bun run verify:cloudflare
 ```
 
+`bun run deploy:cloudflare` 会先执行 `bun run build`、OpenNext Worker 构建、远程 D1 迁移应用，然后通过 `bunx wrangler deploy --config wrangler.jsonc --name "$CF_WORKER_NAME"` 发布 Worker。默认值如下：
+
+- `CF_WORKER_NAME=gg-fund`
+- `CF_D1_DATABASE=gg-fund-db`
+- `CF_D1_MIGRATIONS_DIR=migrations`
+- `CF_VERIFY_BASE_URL` 未设置时回退为 `https://$CF_WORKER_NAME.workers.dev`
+
+GitHub Actions 部署需要在仓库 Variables 中提供以下公开构建变量，确保 OpenNext 构建期注入浏览器端配置：
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_POSTHOG_KEY`
+- `NEXT_PUBLIC_POSTHOG_HOST`
+
 默认验证接口：
 
 - `GET /api/health`
