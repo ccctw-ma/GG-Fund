@@ -62,6 +62,8 @@
     "wrangler": "^4.95.0"
   },
   "optionalDependencies": {
-    "@cloudflare/workerd-linux-64": "1.20260526.1"
+    "@cloudflare/workerd-linux-64": "1.20260526.1",
+    "@tailwindcss/oxide-linux-x64-gnu": "4.3.0",
+    "lightningcss-linux-x64-gnu": "1.32.0"
   }
 }
