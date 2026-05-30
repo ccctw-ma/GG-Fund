@@ -57,8 +57,11 @@
     "jsdom": "latest",
     "playwright": "latest",
     "typescript-eslint": "latest",
+    "vite": "latest",
     "vitest": "latest",
-    "wrangler": "^4.95.0",
-    "vite": "latest"
+    "wrangler": "^4.95.0"
+  },
+  "optionalDependencies": {
+    "@cloudflare/workerd-linux-64": "1.20260526.1"
   }
 }

@@ -111,7 +111,7 @@ GitHub Actions 部署需要在仓库 Variables 中提供以下公开构建变量
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-CI 依赖安装通过 `scripts/ci-install.sh` 执行 `npm ci --include=optional --ignore-scripts`，确保 Linux runner 安装 OpenNext / Wrangler 所需的 `workerd` 平台二进制包。
+CI 依赖安装通过 `scripts/ci-install.sh` 执行 `npm ci --include=optional --ignore-scripts`，并在根级 `optionalDependencies` 锁定 Linux `workerd` 平台包，确保 Linux runner 安装 OpenNext / Wrangler 所需的二进制文件。
 
 默认验证接口：
 

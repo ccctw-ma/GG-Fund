@@ -111,7 +111,7 @@ GitHub Actions deployments must provide these public build-time values as reposi
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-CI dependency installation runs `npm ci --include=optional --ignore-scripts` through `scripts/ci-install.sh` so the Linux runner installs the `workerd` platform binary required by OpenNext / Wrangler.
+CI dependency installation runs `npm ci --include=optional --ignore-scripts` through `scripts/ci-install.sh`, with the Linux `workerd` package pinned in root-level `optionalDependencies` so the runner installs the binary required by OpenNext / Wrangler.
 
 Default smoke endpoints:
 
