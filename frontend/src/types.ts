@@ -55,6 +55,16 @@ export type FundAnalysisReport = {
   summary: string;
   trend: string;
   risk: string;
+  beginnerGuide: {
+    riskLevel: 'R1' | 'R2' | 'R3' | 'R4' | 'R5';
+    riskExplanation: string;
+    netValueExplanation: string;
+    trendExplanation: string;
+    suggestedAction: '继续持有' | '观察等待' | '分批加仓' | '分批减仓' | '避免追涨';
+    actionPath: string[];
+    suitableFor: string[];
+    avoid: string[];
+  };
   scenarios: Array<{ name: string; probability: 'low' | 'medium' | 'high'; description: string }>;
   watchPoints: string[];
   disclaimer: string;

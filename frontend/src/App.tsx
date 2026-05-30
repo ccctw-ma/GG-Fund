@@ -18,6 +18,7 @@ import { api } from './api';
 import { getInitialAuthSession, onAuthSessionChange, signOutSupabase, type UiAuthSession } from './supabaseAuth';
 import { AnalysisPanel } from './components/AnalysisPanel';
 import { AuthPanel } from './components/AuthPanel';
+import { BeginnerGuide } from './components/BeginnerGuide';
 import { Header } from './components/Header';
 import { FundSearch } from './components/FundSearch';
 import { MarketOverview } from './components/MarketOverview';
@@ -295,6 +296,7 @@ export default function App() {
                 onToggleWatch={toggleWatch}
                 watchlist={watchlist}
               />
+              <BeginnerGuide selectedFund={selectedFund} leadingIndex={leadingIndex} summary={summary} />
               <AuthPanel session={session} onSessionChange={handleAuthChange} />
               <AnalysisPanel selectedFund={selectedFund} />
               <PortfolioPanel summary={summary} watchlist={watchlist} onRemoveHolding={(id) => setHoldings((current) => current.filter((holding) => holding.id !== id))} />

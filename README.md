@@ -10,10 +10,11 @@ GG Fund 现已以 Cloudflare-first 的 Next.js App Router 架构为主：`app/` 
 - 大盘概览：通过东方财富 push2 / 腾讯行情备用源读取上证指数、深证成指、创业板指、沪深 300。
 - 真实基金搜索：按代码或名称查询公开基金数据，接口失败时自动回退内置示例行情。
 - 基金详情：优先展示天天基金盘中估算净值、估算涨跌和估算时间，同时保留上一交易日官方净值。
+- 基金小白决策地图：把基金类型、净值理解、大盘温度、持仓状态和分批行动路径放在同一视图，帮助普通投资者避免只看单日涨跌。
 - 本地持仓：添加基金后计算市值、成本、盈亏、收益率和组合占比。
 - 自选基金：关注基金但不计入持仓。
 - Supabase 基础：浏览器端/服务端 helper、请求会话归一化、Next middleware，以及 `supabase/migrations/202605300001_core_schema.sql` 基础 schema 迁移；`/api/portfolio/default` 会优先读取登录用户组合。
-- DeepSeek 分析：服务端先计算确定性指标，再调用 `deepseek-v4-flash`；当 `DEEPSEEK_API_KEY` 缺失时自动回退为本地确定性报告。
+- DeepSeek 分析：服务端先计算收益、回撤、动量和波动等确定性指标，再调用 `deepseek-v4-flash` 输出小白解释、风险等级、继续持有/观察/分批加减仓路径；当 `DEEPSEEK_API_KEY` 缺失时自动回退为本地确定性报告。
 - Cloudflare Worker 部署：Next Route Handlers 由 OpenNext 输出到 Worker 默认运行时，`wrangler.jsonc` 提供 `GG_FUND_DB`、`GG_FUND_CACHE` 等 binding。
 
 ## 项目结构

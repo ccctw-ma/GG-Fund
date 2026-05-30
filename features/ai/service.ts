@@ -1,4 +1,4 @@
-import { buildResearchPrompt, computeFundIndicators, normalizeAnalysisReport, normalizeChartAnnotations } from '../../backend/fundAnalysis';
+import { buildBeginnerGuide, buildResearchPrompt, computeFundIndicators, normalizeAnalysisReport, normalizeChartAnnotations } from '../../backend/fundAnalysis';
 import { HttpError } from '../../lib/http';
 import type { FundHistoryPoint, FundQuote, IndexQuote } from '../../shared/types';
 import type { MarketService } from '../market/service';
@@ -33,7 +33,7 @@ export function normalizeAnalyzeFundRequest(body: unknown): AnalyzeFundRequest {
   return { code };
 }
 
-function buildLocalReport(fund: { name: string; code: string }, indicators: ReturnType<typeof computeFundIndicators>) {
+function buildLocalReport(fund: Pick<FundQuote, 'name' | 'code' | 'netValue' | 'officialNetValue' | 'quoteType'>, indicators: ReturnType<typeof computeFundIndicators>) {
   const trendVerb = indicators.shortMomentum >= 1 ? '近 5 期净值走强' : indicators.shortMomentum <= -1 ? '近 5 期净值走弱' : '近 5 期净值震荡';
   const riskVerb = indicators.maxDrawdown <= -10 ? '历史最大回撤偏深，需关注下行风险' : indicators.maxDrawdown <= -5 ? '历史最大回撤中等，建议设置止损线' : '历史最大回撤可控';
   const probability: 'low' | 'medium' | 'high' = indicators.volatility > 2 ? 'low' : indicators.volatility > 1 ? 'medium' : 'high';
@@ -41,6 +41,7 @@ function buildLocalReport(fund: { name: string; code: string }, indicators: Retu
     summary: `${fund.name}(${fund.code}) 一年区间收益 ${indicators.totalReturn.toFixed(2)}%，${trendVerb}，最大回撤 ${indicators.maxDrawdown.toFixed(2)}%。`,
     trend: `区间收益 ${indicators.totalReturn.toFixed(2)}%、短期动量 ${indicators.shortMomentum.toFixed(2)}%、趋势斜率 ${indicators.trendSlope.toFixed(2)}，${trendVerb}。`,
     risk: `波动率 ${indicators.volatility.toFixed(2)}，${riskVerb}。`,
+    beginnerGuide: buildBeginnerGuide(fund, indicators),
     scenarios: [
       { name: '乐观情景', probability, description: '若净值持续突破近期高点，区间收益有望延续。' },
       { name: '中性情景', probability: 'medium' as const, description: '若市场维持震荡，净值围绕当前水平波动。' },

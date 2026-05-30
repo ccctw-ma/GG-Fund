@@ -2,6 +2,7 @@ import { act } from 'react';
 import type { ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
+import { BeginnerGuide } from './BeginnerGuide';
 import { FundSearch } from './FundSearch';
 import { MarketOverview } from './MarketOverview';
 import { PortfolioPanel } from './PortfolioPanel';
@@ -108,5 +109,20 @@ describe('dashboard components', () => {
     expect(market.container.textContent).toContain('行情暂不可用');
     expect(portfolio.container.textContent).toContain('净值未知');
     expect(portfolio.container.textContent).toContain('易方达消费行业股票');
+  });
+
+  it('renders beginner decision guidance for selected funds', () => {
+    const guide = render(
+      <BeginnerGuide
+        selectedFund={fund}
+        leadingIndex={{ code: '000001.SH', name: '上证指数', value: 4098.64, change: -12, changePercent: -0.29, quoteTime: '2026-05-29 15:00:00' }}
+        summary={{ totalCost: 1000, totalMarketValue: 1080, totalProfit: 80, totalReturnRate: 8, items: [] }}
+      />,
+    );
+    roots.push(guide.root);
+
+    expect(guide.container.textContent).toContain('基金小白决策地图');
+    expect(guide.container.textContent).toContain('华夏成长混合');
+    expect(guide.container.textContent).toContain('确认资金期限');
   });
 });

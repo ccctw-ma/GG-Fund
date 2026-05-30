@@ -38,6 +38,8 @@ describe('ai service', () => {
 
     expect(response.agent.model).toBe('local-fallback');
     expect(response.report.summary).toContain('华夏成长混合');
+    expect(response.report.beginnerGuide.netValueExplanation).toContain('华夏成长混合');
+    expect(response.report.beginnerGuide.actionPath.length).toBeGreaterThan(1);
     expect(response.chartAnnotations).toEqual([
       expect.objectContaining({ label: '本地降级' }),
     ]);
@@ -54,6 +56,16 @@ describe('ai service', () => {
                   summary: '上涨原因：估值与动量共振。',
                   trend: '趋势偏强',
                   risk: '注意波动回撤',
+                  beginnerGuide: {
+                    riskLevel: 'R4',
+                    riskExplanation: '回撤可承受但需要控制仓位',
+                    netValueExplanation: '净值要结合成本看',
+                    trendExplanation: '趋势偏强但不要追涨',
+                    suggestedAction: '继续持有',
+                    actionPath: ['继续观察', '分批执行'],
+                    suitableFor: ['三年以上闲钱'],
+                    avoid: ['追涨杀跌'],
+                  },
                   scenarios: [{ name: '中性情景', probability: 'medium', description: '延续震荡上行' }],
                   watchPoints: ['最大回撤'],
                   chartAnnotations: [{ label: '动量改善', description: '短期净值走强', tone: 'positive' }],
@@ -73,6 +85,7 @@ describe('ai service', () => {
 
     expect(response.agent.model).toBe('deepseek-v4-flash');
     expect(response.analysis).toContain('上涨原因');
+    expect(response.report.beginnerGuide.suggestedAction).toBe('继续持有');
     expect(response.chartAnnotations).toEqual([
       expect.objectContaining({ label: '动量改善', tone: 'positive' }),
     ]);

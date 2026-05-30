@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildResearchPrompt, computeFundIndicators, normalizeAnalysisReport } from './fundAnalysis';
+import { buildBeginnerGuide, buildResearchPrompt, computeFundIndicators, normalizeAnalysisReport } from './fundAnalysis';
 
 const history = [
   { date: '2026-01-01', netValue: 1.0 },
@@ -30,14 +30,27 @@ describe('fund analysis agent helpers', () => {
 
     expect(prompt).toContain('华夏成长混合');
     expect(prompt).toContain('maxDrawdown');
+    expect(prompt).toContain('beginnerGuide');
     expect(prompt).toContain('scenarios');
     expect(prompt).toContain('不构成投资建议');
+  });
+
+  it('builds beginner-friendly action guidance from indicators', () => {
+    const guide = buildBeginnerGuide(
+      { code: '000001', name: '华夏成长混合', netValue: 1.2, officialNetValue: 1.18, quoteType: 'estimate' },
+      computeFundIndicators(history),
+    );
+
+    expect(guide.riskLevel).toMatch(/^R[1-5]$/);
+    expect(guide.netValueExplanation).toContain('净值');
+    expect(guide.actionPath.length).toBeGreaterThan(1);
   });
 
   it('normalizes imperfect upstream text into report sections', () => {
     const report = normalizeAnalysisReport('趋势偏强，但需要注意回撤。');
 
     expect(report.summary).toContain('趋势偏强');
+    expect(report.beginnerGuide.suggestedAction).toBe('观察等待');
     expect(report.scenarios.length).toBeGreaterThan(0);
     expect(report.disclaimer).toContain('不构成投资建议');
   });

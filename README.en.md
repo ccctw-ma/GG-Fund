@@ -10,10 +10,11 @@ GG Fund now uses a Cloudflare-first Next.js App Router architecture as its main 
 - Market overview via Eastmoney push2 with Tencent fallback for major China indices.
 - Real fund search by code or name, with built-in fallback samples when upstreams fail.
 - Fund detail that prefers Tiantian Fund intraday estimate data while keeping the latest official net value.
+- Beginner decision map that explains fund net value, market temperature, portfolio state, and staged action paths in one view so retail investors avoid reacting only to one-day moves.
 - Local portfolio calculations for market value, cost basis, profit/loss, return rate, and allocation weight.
 - Watchlist management without counting items as holdings.
 - Supabase foundation with browser/server helpers, normalized request session handling, Next middleware, and `supabase/migrations/202605300001_core_schema.sql`.
-- DeepSeek analysis that computes deterministic indicators before calling `deepseek-v4-flash`, with an automatic local fallback when `DEEPSEEK_API_KEY` is missing.
+- DeepSeek analysis that computes return, drawdown, momentum, and volatility indicators before calling `deepseek-v4-flash`, then returns beginner explanations, risk level, and staged hold/watch/add/reduce action paths with a local deterministic fallback when `DEEPSEEK_API_KEY` is missing.
 - Cloudflare Worker deployment with Route Handlers emitted by OpenNext to the Worker default runtime, plus bindings such as `GG_FUND_DB` and `GG_FUND_CACHE` configured via `wrangler.jsonc`.
 
 ## Project Structure

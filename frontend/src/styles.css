@@ -254,6 +254,32 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .disclaimer-card svg { color: var(--gold); flex: none; margin-top: 2px; }
 .disclaimer-card p { margin: 0; }
 
+.beginner-guide {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(244, 183, 64, .22);
+  border-radius: 34px;
+  background:
+    radial-gradient(circle at 8% 16%, rgba(244, 183, 64, .18), transparent 20rem),
+    radial-gradient(circle at 82% 0%, rgba(125, 226, 184, .12), transparent 18rem),
+    rgba(255, 255, 255, .07);
+  padding: clamp(22px, 3vw, 34px);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .2);
+  backdrop-filter: blur(18px);
+}
+.beginner-guide-copy { max-width: 820px; }
+.beginner-guide-copy h2 { margin: 10px 0 0; color: var(--text-strong); font-size: clamp(1.8rem, 3.2vw, 3.4rem); line-height: 1; letter-spacing: -.055em; }
+.beginner-guide-copy p { margin: 12px 0 0; color: var(--text-main); font-weight: 750; line-height: 1.75; }
+.beginner-guide-grid { margin-top: 22px; display: grid; gap: 12px; }
+@media (min-width: 860px) { .beginner-guide-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.beginner-guide-card { border: 1px solid rgba(255,255,255,.13); border-radius: 24px; background: rgba(4,17,31,.34); padding: 18px; }
+.beginner-guide-card span { display: grid; height: 38px; width: 38px; place-items: center; border-radius: 14px; background: rgba(244,183,64,.15); color: var(--gold-soft); }
+.beginner-guide-card h3 { margin: 14px 0 8px; color: var(--text-strong); font-size: 1rem; font-weight: 950; }
+.beginner-guide-card p { margin: 0; color: var(--text-muted); font-size: .9rem; font-weight: 700; line-height: 1.72; }
+.decision-ladder { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--text-main); font-size: .88rem; font-weight: 900; }
+.decision-ladder strong { color: var(--gold-soft); }
+.decision-ladder span { border: 1px solid rgba(255,255,255,.13); border-radius: 999px; background: rgba(255,255,255,.08); padding: 8px 11px; }
+
 @media (max-width: 1079px) {
   .banking-header { position: relative; top: 0; }
   .bank-nav { display: flex; flex-wrap: wrap; justify-content: flex-start; }

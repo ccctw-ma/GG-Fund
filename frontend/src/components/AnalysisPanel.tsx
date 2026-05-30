@@ -42,6 +42,31 @@ export function AnalysisPanel({ selectedFund }: { selectedFund?: FundQuote }) {
       )}
       {result?.report && (
         <div className="mt-4 grid gap-3">
+          <article className="rounded-3xl border border-[var(--gold)]/25 bg-[var(--gold)]/12 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-[var(--gold-soft)]">小白结论：{result.report.beginnerGuide.suggestedAction}</h3>
+                <p className="mt-2 text-sm leading-7 text-paper/80">{result.report.beginnerGuide.trendExplanation}</p>
+              </div>
+              <span className="rounded-full bg-paper/15 px-3 py-1 text-sm font-black text-[var(--gold-soft)]">{result.report.beginnerGuide.riskLevel}</span>
+            </div>
+          </article>
+          <div className="grid gap-3 md:grid-cols-2">
+            <article className="rounded-3xl border border-paper/15 bg-paper/10 p-4">
+              <h3 className="font-bold text-mint">净值怎么理解</h3>
+              <p className="mt-2 text-sm leading-7 text-paper/80">{result.report.beginnerGuide.netValueExplanation}</p>
+            </article>
+            <article className="rounded-3xl border border-paper/15 bg-paper/10 p-4">
+              <h3 className="font-bold text-red-100">风险等级怎么理解</h3>
+              <p className="mt-2 text-sm leading-7 text-paper/80">{result.report.beginnerGuide.riskExplanation}</p>
+            </article>
+          </div>
+          <article className="rounded-3xl border border-paper/15 bg-paper/10 p-4">
+            <h3 className="font-bold text-mint">最优选择路径</h3>
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-paper/80">
+              {result.report.beginnerGuide.actionPath.map((step) => <li key={step}>{step}</li>)}
+            </ol>
+          </article>
           <article className="rounded-3xl border border-paper/15 bg-paper/10 p-4">
             <h3 className="font-bold text-mint">研究摘要</h3>
             <p className="mt-2 text-sm leading-7 text-paper/85">{result.report.summary}</p>
@@ -62,6 +87,20 @@ export function AnalysisPanel({ selectedFund }: { selectedFund?: FundQuote }) {
               {result.report.watchPoints.map((point) => <li key={point}>{point}</li>)}
             </ul>
           </article>
+          <div className="grid gap-3 md:grid-cols-2">
+            <article className="rounded-3xl border border-paper/15 bg-paper/10 p-4">
+              <h3 className="font-bold text-mint">适合谁</h3>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-paper/80">
+                {result.report.beginnerGuide.suitableFor.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            </article>
+            <article className="rounded-3xl border border-paper/15 bg-paper/10 p-4">
+              <h3 className="font-bold text-red-100">避免什么</h3>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-paper/80">
+                {result.report.beginnerGuide.avoid.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            </article>
+          </div>
           <p className="text-xs leading-6 text-paper/55">{result.report.disclaimer}</p>
         </div>
       )}
