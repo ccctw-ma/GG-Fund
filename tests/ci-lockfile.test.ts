@@ -77,10 +77,10 @@ describe('Cloudflare deploy verification config', () => {
 
     expect(deployScript).toContain('CF_WORKER_NAME="${CF_WORKER_NAME:-gg-fund}"');
     expect(deployScript).toContain('CF_D1_DATABASE="${CF_D1_DATABASE:-gg-fund-db}"');
-    expect(deployScript).toContain('CF_D1_MIGRATIONS_DIR="${CF_D1_MIGRATIONS_DIR:-migrations}"');
     expect(deployScript).toContain('bun run build');
     expect(deployScript).toContain('bunx --package @opennextjs/cloudflare opennextjs-cloudflare build');
-    expect(deployScript).toContain('bunx wrangler d1 migrations apply "${CF_D1_DATABASE}" --remote --config wrangler.jsonc --migrations-dir "${CF_D1_MIGRATIONS_DIR}"');
+    expect(deployScript).toContain('bunx wrangler d1 migrations apply "${CF_D1_DATABASE}" --remote --config wrangler.jsonc');
+    expect(deployScript).not.toContain('--migrations-dir');
     expect(deployScript).toContain('bunx wrangler deploy --config wrangler.jsonc --name "${CF_WORKER_NAME}"');
     expect(deployScript).not.toContain('opennextjs-cloudflare deploy');
 
@@ -99,7 +99,7 @@ describe('Cloudflare deploy verification config', () => {
 
     expect(workflow).toContain("CF_WORKER_NAME: ${{ vars.CF_WORKER_NAME || 'gg-fund' }}");
     expect(workflow).toContain("CF_D1_DATABASE: ${{ vars.CF_D1_DATABASE || 'gg-fund-db' }}");
-    expect(workflow).toContain('CF_D1_MIGRATIONS_DIR: migrations');
+    expect(workflow).not.toContain('CF_D1_MIGRATIONS_DIR');
     expect(workflow).toContain('actions/setup-node@v4');
     expect(workflow).toContain('node-version: 22');
     expect(workflow).toContain('cache: npm');
@@ -114,7 +114,8 @@ describe('Cloudflare deploy verification config', () => {
     expect(workflow).toContain('bun run build');
     expect(workflow).toContain('bunx --package @opennextjs/cloudflare opennextjs-cloudflare build');
     expect(workflow).toContain('Apply remote D1 migrations');
-    expect(workflow).toContain('bunx wrangler d1 migrations apply "${CF_D1_DATABASE}" --remote --config wrangler.jsonc --migrations-dir "${CF_D1_MIGRATIONS_DIR}"');
+    expect(workflow).toContain('bunx wrangler d1 migrations apply "${CF_D1_DATABASE}" --remote --config wrangler.jsonc');
+    expect(workflow).not.toContain('--migrations-dir');
     expect(workflow).toContain('Deploy Cloudflare worker');
     expect(workflow).toContain('bunx wrangler deploy --config wrangler.jsonc --name "${CF_WORKER_NAME}"');
     expect(workflow).toContain('Verify deployment');

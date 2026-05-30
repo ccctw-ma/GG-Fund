@@ -103,7 +103,6 @@ bun run verify:cloudflare
 
 - `CF_WORKER_NAME=gg-fund`
 - `CF_D1_DATABASE=gg-fund-db`
-- `CF_D1_MIGRATIONS_DIR=migrations`
 - `CF_VERIFY_BASE_URL` 未设置时回退为 `https://$CF_WORKER_NAME.workers.dev`
 
 GitHub Actions 部署需要在仓库 Variables 中提供以下公开构建变量，确保 OpenNext 构建期注入浏览器端配置：

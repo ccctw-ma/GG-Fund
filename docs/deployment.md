@@ -68,14 +68,13 @@ bun run verify:cloudflare
 
 1. `bun run build`
 2. `bunx --package @opennextjs/cloudflare opennextjs-cloudflare build`
-3. `bunx wrangler d1 migrations apply "$CF_D1_DATABASE" --remote --config wrangler.jsonc --migrations-dir "$CF_D1_MIGRATIONS_DIR"`
+3. `bunx wrangler d1 migrations apply "$CF_D1_DATABASE" --remote --config wrangler.jsonc`
 4. `bunx wrangler deploy --config wrangler.jsonc --name "$CF_WORKER_NAME"`
 
 默认值：
 
 - `CF_WORKER_NAME=gg-fund`
 - `CF_D1_DATABASE=gg-fund-db`
-- `CF_D1_MIGRATIONS_DIR=migrations`
 - `CF_VERIFY_BASE_URL` 未设置时使用 `https://$CF_WORKER_NAME.workers.dev`
 
 默认验证目标：
@@ -93,7 +92,7 @@ curl https://gg-fund.workers.dev/api/funds/000001
 - `bash scripts/ci-install.sh`
 - `bun run build`
 - `bunx --package @opennextjs/cloudflare opennextjs-cloudflare build`
-- `bunx wrangler d1 migrations apply "$CF_D1_DATABASE" --remote --config wrangler.jsonc --migrations-dir "$CF_D1_MIGRATIONS_DIR"`
+- `bunx wrangler d1 migrations apply "$CF_D1_DATABASE" --remote --config wrangler.jsonc`
 - `bunx wrangler deploy --config wrangler.jsonc --name "$CF_WORKER_NAME"`
 - `bun run verify:cloudflare`
 
@@ -107,7 +106,6 @@ curl https://gg-fund.workers.dev/api/funds/000001
 - `DEEPSEEK_API_KEY`
 - `CF_WORKER_NAME`
 - `CF_D1_DATABASE`
-- `CF_D1_MIGRATIONS_DIR`
 - `CF_VERIFY_BASE_URL`
 
 ## 注意事项

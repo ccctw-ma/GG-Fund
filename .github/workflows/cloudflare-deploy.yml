@@ -13,7 +13,6 @@ concurrency:
 env:
   CF_WORKER_NAME: ${{ vars.CF_WORKER_NAME || 'gg-fund' }}
   CF_D1_DATABASE: ${{ vars.CF_D1_DATABASE || 'gg-fund-db' }}
-  CF_D1_MIGRATIONS_DIR: migrations
   CF_VERIFY_BASE_URL: ${{ vars.CF_VERIFY_BASE_URL || format('https://{0}.workers.dev', vars.CF_WORKER_NAME || 'gg-fund') }}
   NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
   NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -61,7 +60,7 @@ jobs:
           bunx --package @opennextjs/cloudflare opennextjs-cloudflare build
 
       - name: Apply remote D1 migrations
-        run: bunx wrangler d1 migrations apply "${CF_D1_DATABASE}" --remote --config wrangler.jsonc --migrations-dir "${CF_D1_MIGRATIONS_DIR}"
+        run: bunx wrangler d1 migrations apply "${CF_D1_DATABASE}" --remote --config wrangler.jsonc
 
       - name: Deploy Cloudflare worker
         run: bunx wrangler deploy --config wrangler.jsonc --name "${CF_WORKER_NAME}"

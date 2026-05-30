@@ -103,7 +103,6 @@ bun run verify:cloudflare
 
 - `CF_WORKER_NAME=gg-fund`
 - `CF_D1_DATABASE=gg-fund-db`
-- `CF_D1_MIGRATIONS_DIR=migrations`
 - `CF_VERIFY_BASE_URL` falls back to `https://$CF_WORKER_NAME.workers.dev` when unset
 
 GitHub Actions deployments must provide these public build-time values as repository Variables so OpenNext can inject browser config during the build:
