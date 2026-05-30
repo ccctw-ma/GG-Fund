@@ -13,8 +13,9 @@ concurrency:
 env:
   CF_PAGES_PROJECT: gg-fund
   CF_PAGES_BRANCH: master
+  CF_WORKER_NAME: gg-fund
   CF_D1_DATABASE: gg-fund-db
-  CF_VERIFY_BASE_URL: https://gg-fund.pages.dev
+  CF_VERIFY_BASE_URL: https://gg-fund.workers.dev
 
 jobs:
   deploy:

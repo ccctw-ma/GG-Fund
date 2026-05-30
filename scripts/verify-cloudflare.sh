@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CF_VERIFY_BASE_URL="${CF_VERIFY_BASE_URL:-https://gg-fund.pages.dev}"
+CF_WORKER_NAME="${CF_WORKER_NAME:-gg-fund}"
+CF_VERIFY_BASE_URL="${CF_VERIFY_BASE_URL:-https://${CF_WORKER_NAME}.workers.dev}"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "${TMP_DIR}"' EXIT
 

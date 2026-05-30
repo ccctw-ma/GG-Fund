@@ -18,3 +18,18 @@ describe('CI tracked source files', () => {
     expect(trackedFiles.trim()).toBe('frontend/src/lib/utils.ts');
   });
 });
+
+
+describe('Cloudflare deploy verification config', () => {
+  it('verifies the deployed Worker surface by default', () => {
+    const verifyScript = readFileSync(join(process.cwd(), 'scripts/verify-cloudflare.sh'), 'utf8');
+    const workflow = readFileSync(join(process.cwd(), '.github/workflows/cloudflare-deploy.yml'), 'utf8');
+
+    expect(verifyScript).toContain('CF_WORKER_NAME="${CF_WORKER_NAME:-gg-fund}"');
+    expect(verifyScript).toContain('CF_VERIFY_BASE_URL="${CF_VERIFY_BASE_URL:-https://${CF_WORKER_NAME}.workers.dev}"');
+    expect(verifyScript).not.toContain('pages.dev');
+    expect(workflow).toContain('CF_WORKER_NAME: gg-fund');
+    expect(workflow).toContain('CF_VERIFY_BASE_URL: https://gg-fund.workers.dev');
+    expect(workflow).not.toContain('pages.dev');
+  });
+});
