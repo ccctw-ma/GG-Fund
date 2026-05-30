@@ -2,64 +2,85 @@
 
 Chinese version: [README.md](./README.md)
 
-GG Fund is a production-shaped China mutual fund market and portfolio analysis app. The repository is intentionally split by responsibility: `frontend/` contains the React + Vite web app, `backend/` contains the single business API implementation, root-level `functions/` only keeps the Cloudflare Pages Functions routing shim, and `shared/` contains DTOs plus market data adapters reused by both sides.
+GG Fund now uses a Cloudflare-first Next.js App Router architecture as its main application surface. `app/` contains pages and Route Handlers, `components/workspace/FundWorkspace.tsx` mounts the reusable workspace entry, OpenNext builds the Cloudflare Worker output, and focused server responsibilities live in `features/*` and `lib/*`.
 
 ## Features
 
-- Market overview: reads major China indices through Eastmoney push2 with Tencent quote fallback.
-- Real fund search: searches public fund data by code or name, with built-in fallback samples.
-- Fund detail: prefers Tiantian Fund intraday estimate and keeps the latest official net value.
-- Local portfolio: calculates market value, cost, profit/loss, return rate, and position weight in the browser.
-- Watchlist: tracks followed funds without counting them as holdings.
-- Auth entry: email OTP challenge + verify flow; when `RESEND_API_KEY` and `AUTH_EMAIL_FROM` are configured, the API sends OTP messages through Resend, otherwise local/test responses expose a development code. Sessions persist across refresh, support logout, and are backed by D1 user sessions; empty-identifier guard, OTP entry, and inline loading states are validated; GitHub/WeChat OAuth metadata remains available.
-- DeepSeek analysis: computes deterministic return, drawdown, momentum, volatility, and trend indicators before calling `deepseek-v4-flash`, then renders structured trend, risk, scenario, and watch-point reports. When `DEEPSEEK_API_KEY` is missing the API automatically returns a deterministic local report (`agent.model: "local-fallback"`) with the same shape, so the UI stays fully usable offline.
-- Cloudflare infrastructure: D1 for portfolio/auth data, KV for quote cache, Pages Functions for API.
-- Privacy-first: secrets are injected through Cloudflare Secrets and never enter source code or the frontend bundle.
+- Next.js App Router pages for the public landing page, `/app` workspace, fund detail route, portfolio page, pricing page, and settings page.
+- Market overview via Eastmoney push2 with Tencent fallback for major China indices.
+- Real fund search by code or name, with built-in fallback samples when upstreams fail.
+- Fund detail that prefers Tiantian Fund intraday estimate data while keeping the latest official net value.
+- Local portfolio calculations for market value, cost basis, profit/loss, return rate, and allocation weight.
+- Watchlist management without counting items as holdings.
+- Supabase foundation with browser/server helpers, normalized request session handling, Next middleware, and the paired `supabase/migrations/202605300001_core_schema.sql` plus `supabase/migrations/202605300002_billing_customers.sql` migrations.
+- Stripe billing with Checkout Session and Subscription metadata tied to `supabaseUserId`, plus server-side price allowlisting.
+- DeepSeek analysis that computes deterministic indicators before calling `deepseek-v4-flash`, with an automatic local fallback when `DEEPSEEK_API_KEY` is missing.
+- Cloudflare Worker deployment with edge-compatible Route Handlers, OpenNext output, and bindings such as `GG_FUND_DB` and `GG_FUND_CACHE` configured via `wrangler.jsonc`.
+- Privacy-first handling for Supabase service role keys, Stripe secrets, Resend keys, PostHog private keys, and DeepSeek credentials.
 
 ## Project Structure
 
-- `frontend/src/`: React pages, components, local portfolio logic, and frontend API client.
-- `backend/api.ts`: the single business API implementation reused by local dev and Cloudflare.
-- `backend/local.ts`: Bun local adapter that injects in-memory D1/KV bindings.
-- `functions/api/[[path]].ts`: Cloudflare Pages Functions entry shim that delegates to `backend/api.ts`.
-- `shared/`: shared types, market data adapters, and tests.
+- `app/`: Next.js App Router pages and `app/api/*` Route Handlers.
+- `components/workspace/FundWorkspace.tsx`: Next workspace entry.
+- `features/market`, `features/portfolio`, `features/auth`, `features/ai`, `features/billing`, `features/email`, `features/analytics`: service modules.
+- `lib/`: environment, HTTP, and Supabase runtime helpers.
+- `frontend/src/`: React components, styles, and browser-side logic still reused by Next; no longer a standalone Vite app entry.
+- `shared/`: shared DTOs, market adapters, and tests.
 - `migrations/`: Cloudflare D1 migrations.
-- `scripts/`: CI test, Cloudflare deploy, and production verification scripts.
+- `supabase/migrations/`: Supabase Postgres schema migrations.
+- `scripts/`: CI, deployment, and verification scripts.
 
 ## Tech Stack
 
-- React + Vite + TypeScript
-- Tailwind CSS v4 + Radix UI style components
-- Cloudflare Pages Functions + D1 + KV
-- Bun local Functions adapter
-- Eastmoney / Tencent / Tiantian Fund public data sources
+- Next.js App Router + TypeScript
+- Tailwind CSS v4 + Radix UI + shadcn/ui-style components
+- Supabase Auth + Supabase Postgres + RLS
+- Stripe Checkout/Webhook subscription foundation
+- Resend transactional email
+- PostHog product analytics
+- OpenNext Cloudflare Workers deployment
+- Eastmoney / Tencent / Tiantian Fund public APIs + fallback sample market data
 - DeepSeek v4 Flash server-side analysis
-- ESLint + TypeScript checks
-- Vitest unit, component, Cloudflare API, and market adapter tests
-- Vitest coverage thresholds: statements 70%, branches 60%, functions 70%, lines 70%
-- Apache ECharts market and fund research charts with range controls, return, drawdown, zoom, and tooltip support
-
-- Playwright E2E and Midscene test skeleton
+- ESLint + strict TypeScript checks
+- Vitest + Playwright E2E
 
 ## Local Development
 
 ```bash
 bun install
-bun run dev:api
-bun run dev:web
-```
-
-Open `http://127.0.0.1:5173`.
-
-You can also start both processes together:
-
-```bash
+cp .env.example .env.local
 bun run dev
 ```
 
-The local API uses the same `backend/api.ts` implementation as production. `backend/local.ts` provides in-memory D1/KV bindings for local development and E2E tests.
+Open `http://127.0.0.1:3000`.
 
-## Quality Gates
+## Environment Variables
+
+Public browser-safe values:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+NEXT_PUBLIC_POSTHOG_KEY=phc_your_project_key
+NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+```
+
+Server values:
+
+```bash
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+STRIPE_SECRET_KEY=your-stripe-secret-key
+STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
+STRIPE_PRICE_ID=price_monthly_default
+STRIPE_PRICE_PRO_MONTHLY=price_monthly_default
+STRIPE_ALLOWED_PRICE_IDS=price_monthly_default,price_annual_optional
+RESEND_API_KEY=re_your_key
+AUTH_EMAIL_FROM="GG Fund <login@example.com>"
+DEEPSEEK_API_KEY=your-deepseek-api-key
+POSTHOG_API_KEY=phx_your_private_key
+```
+
+## Testing
 
 ```bash
 bun run lint
@@ -69,58 +90,48 @@ bun run build
 bun run test:e2e
 ```
 
-Install the repository Git hook:
+For Midscene:
 
 ```bash
-bun run precommit:install
+bun run test:midscene
 ```
 
-The pre-commit hook runs:
+For CI-parity locally:
 
 ```bash
-bun run lint
-bun run test
+bun run ci:test
 ```
-
-Run the complete local gate, including coverage:
-
-```bash
-bun run check
-```
-
-`bun run test:midscene` reads Midscene model settings from local `~/.zshrc`, starts the local API/Web servers, and verifies the Midscene + Playwright integration. To force a real `aiAct` model action, run:
-
-```bash
-MIDSCENE_RUN_AI=1 bun run test:midscene
-```
-
-## Cloudflare Secrets
-
-Never commit API keys, OAuth secrets, or provider credentials. Configure secrets in Cloudflare Pages:
-
-```bash
-bunx wrangler@3 pages secret put DEEPSEEK_API_KEY --project-name gg-fund
-```
-
-If a key appears in chat, logs, screenshots, or git history, treat it as leaked, revoke it, and rotate it before production use.
 
 ## Cloudflare Deployment
 
-After login, D1/KV binding setup, and Pages Secret configuration:
+After configuring Cloudflare login, bindings, and secrets:
 
 ```bash
 bun run deploy:cloudflare
 bun run verify:cloudflare
 ```
 
-`deploy:cloudflare` applies remote D1 migrations and deploys `dist/` to the Cloudflare Pages project `gg-fund`. Defaults can be overridden with `CF_PAGES_PROJECT`, `CF_PAGES_BRANCH`, `CF_D1_DATABASE`, and `CF_VERIFY_BASE_URL`.
+`bun run deploy:cloudflare` now runs `bun run build`, builds the OpenNext worker, applies remote D1 migrations, and publishes the Worker through `bunx wrangler deploy --config wrangler.jsonc --name "$CF_WORKER_NAME"`. The defaults are:
 
-GitHub Actions only runs D1 migrations, the Pages deploy and the smoke check on push/merge to `master`. The job only runs when the repository variable `CLOUDFLARE_DEPLOY_ENABLED=true` and secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` are configured; otherwise it is skipped. CI installs dependencies with `bun install --frozen-lockfile --ignore-scripts`, skipping every postinstall (Playwright/puppeteer browser downloads, native binaries) and capping the step at 5 minutes. Lint / Vitest / E2E are not executed in CI – the pre-commit hook and `bun run check` cover them locally. Configure repository secrets:
+- `CF_WORKER_NAME=gg-fund`
+- `CF_D1_DATABASE=gg-fund-db`
+- `CF_D1_MIGRATIONS_DIR=migrations`
+- `CF_VERIFY_BASE_URL` falls back to `https://$CF_WORKER_NAME.workers.dev` when unset
 
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
+GitHub Actions deployments must provide these public build-time values as repository Variables so OpenNext can inject browser config during the build:
 
-## API
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_POSTHOG_KEY`
+- `NEXT_PUBLIC_POSTHOG_HOST`
+
+Default smoke endpoints:
+
+- `GET /api/health`
+- `GET /api/market/indices`
+- `GET /api/funds/000001`
+
+## Next API
 
 - `GET /api/health`
 - `GET /api/market/indices`
@@ -129,14 +140,9 @@ GitHub Actions only runs D1 migrations, the Pages deploy and the smoke check on 
 - `GET /api/funds/:code/history?range=1m|3m|6m|1y|all`
 - `GET /api/funds/trending`
 - `GET /api/portfolio/default`
-- `POST /api/portfolio/default/holdings`
-- `POST /api/portfolio/default/watchlist`
-- `GET /api/auth/oauth-url?provider=github|wechat`
-- `GET /api/auth/me`
-- `POST /api/auth/challenge`
-- `POST /api/auth/verify`
-- `POST /api/auth/logout`
 - `POST /api/ai/analyze-fund`
+- `POST /api/billing/checkout`
+- `POST /api/billing/webhook`
 
 ## Disclaimer
 

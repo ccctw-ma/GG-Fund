@@ -1,3 +1,5 @@
+'use client';
+
 import { Search, Star, WalletCards } from 'lucide-react';
 import type { FundHistoryPoint, FundQuote, WatchItem } from '../types';
 import { FundTrendChart } from './FundTrendChart';

@@ -2,8 +2,14 @@
 node_modules/
 bun.lockb
 package-lock.json
+.next
+.open-next
+.vercel
+.env
 .env.local
+.env*.local
 .env.*.local
+cloudflare-env.d.ts
 .DS_Store
 .playwright/
 playwright-report/
@@ -26,6 +32,8 @@ downloads/
 eggs/
 .eggs/
 lib/
+!lib/
+!lib/**
 !frontend/src/lib/
 !frontend/src/lib/**
 lib64/

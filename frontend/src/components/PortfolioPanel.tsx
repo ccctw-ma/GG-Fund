@@ -1,3 +1,5 @@
+'use client';
+
 import { PieChart, Trash2, WalletCards } from 'lucide-react';
 import type { PortfolioSummary, WatchItem } from '../types';
 import { Badge } from './ui/badge';

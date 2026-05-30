@@ -10,10 +10,10 @@ bun run test
 echo "==> Run coverage"
 bun run coverage
 
-echo "==> Build frontend and Pages Functions bundle"
+echo "==> Build Next.js app"
 bun run build
 
-echo "==> Run E2E tests"
+echo "==> Run Next.js E2E smoke tests"
 bun run test:e2e
 
 echo "==> CI test pipeline completed"

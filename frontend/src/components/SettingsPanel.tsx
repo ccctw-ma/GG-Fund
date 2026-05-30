@@ -1,3 +1,5 @@
+'use client';
+
 import { FileJson, ServerCog, UploadCloud } from 'lucide-react';
 import { useRef } from 'react';
 import { Badge } from './ui/badge';

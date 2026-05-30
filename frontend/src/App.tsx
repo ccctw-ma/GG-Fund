@@ -1,3 +1,5 @@
+'use client';
+
 import {
   ArrowUpRight,
   BadgeCheck,
@@ -82,11 +84,9 @@ export default function App() {
       .catch((error: Error) => setMarketError(error.message))
       .finally(() => setMarketLoading(false));
     api.getTrendingFunds().then(setResults).catch(() => undefined);
-    if (api.hasSessionToken()) {
-      api.getCurrentUser()
-        .then(setSession)
-        .catch(() => api.clearSessionToken());
-    }
+    getInitialAuthSession().then(setSession).catch(() => setSession(undefined));
+    const unsubscribe = onAuthSessionChange(setSession);
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
@@ -169,20 +169,18 @@ export default function App() {
     setWatchlist(result.data.watchlist);
   }
 
-  function handleAuthChange(nextSession?: AuthSessionResponse) {
+  function handleAuthChange(nextSession?: UiAuthSession) {
     setSession(nextSession);
   }
 
   async function logout() {
     setAuthPending('logout');
     try {
-      await api.logout();
-    } catch {
-      // Local token still needs to be cleared when the remote session already expired.
+      await signOutSupabase();
+    } finally {
+      setSession(undefined);
+      setAuthPending('idle');
     }
-    api.clearSessionToken();
-    setSession(undefined);
-    setAuthPending('idle');
   }
 
   return (

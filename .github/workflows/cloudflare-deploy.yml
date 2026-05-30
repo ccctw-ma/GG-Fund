@@ -11,10 +11,14 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CF_PAGES_PROJECT: gg-fund
-  CF_PAGES_BRANCH: master
-  CF_D1_DATABASE: gg-fund-db
-  CF_VERIFY_BASE_URL: https://gg-fund.pages.dev
+  CF_WORKER_NAME: ${{ vars.CF_WORKER_NAME || 'gg-fund' }}
+  CF_D1_DATABASE: ${{ vars.CF_D1_DATABASE || 'gg-fund-db' }}
+  CF_D1_MIGRATIONS_DIR: migrations
+  CF_VERIFY_BASE_URL: ${{ vars.CF_VERIFY_BASE_URL || format('https://{0}.workers.dev', vars.CF_WORKER_NAME || 'gg-fund') }}
+  NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+  NEXT_PUBLIC_POSTHOG_KEY: ${{ vars.NEXT_PUBLIC_POSTHOG_KEY }}
+  NEXT_PUBLIC_POSTHOG_HOST: ${{ vars.NEXT_PUBLIC_POSTHOG_HOST }}
 
 jobs:
   deploy:
@@ -47,8 +51,16 @@ jobs:
         timeout-minutes: 5
         run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Deploy Cloudflare Pages
-        run: bun run deploy:cloudflare
+      - name: Build OpenNext worker
+        run: |
+          bun run build
+          bunx --package @opennextjs/cloudflare opennextjs-cloudflare build
 
-      - name: Verify production endpoints
+      - name: Apply remote D1 migrations
+        run: bunx wrangler d1 migrations apply "${CF_D1_DATABASE}" --remote --config wrangler.jsonc --migrations-dir "${CF_D1_MIGRATIONS_DIR}"
+
+      - name: Deploy Cloudflare worker
+        run: bunx wrangler deploy --config wrangler.jsonc --name "${CF_WORKER_NAME}"
+
+      - name: Verify deployment
         run: bun run verify:cloudflare

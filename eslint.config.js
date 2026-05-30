@@ -5,14 +5,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: [
-      'dist/**',
-      'node_modules/**',
-      'coverage/**',
-      'playwright-report/**',
-      'test-results/**',
-      'midscene_run/**',
-    ],
+    ignores: ['dist', 'coverage', 'node_modules', '.next', '.open-next', '.claude', '.wrangler', 'cloudflare-env.d.ts', 'playwright-report', 'test-results', 'midscene_run', 'tsconfig.tsbuildinfo'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

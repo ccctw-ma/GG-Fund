@@ -1,8 +1,8 @@
 import { BarChart3, LineChart, LogOut, ShieldCheck, Smartphone, Sparkles, UserRound, WalletCards } from 'lucide-react';
-import type { AuthSessionResponse } from '../api';
+import type { UiAuthSession } from '../supabaseAuth';
 
 type HeaderProps = {
-  session?: AuthSessionResponse;
+  session?: UiAuthSession;
   onLogout: () => void;
   logoutPending?: boolean;
 };

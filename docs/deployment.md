@@ -2,77 +2,70 @@
 
 ## 架构
 
-- 前端：Vite 构建后的静态文件，部署目录为 `dist/`。
-- API：Cloudflare Pages Functions，入口为 `functions/api/[[path]].ts`，业务逻辑唯一收敛在 `backend/api.ts`。
-- 本地开发：`backend/local.ts` 用 Bun 注入内存 D1/KV bindings，复用同一套 Functions API。
-- 共享层：`shared/` 保存前后端共用 DTO 和行情适配器。
-- 数据库：Cloudflare D1，binding 为 `GG_FUND_DB`，迁移目录为 `migrations/`；`0004_user_portfolios.sql` 为登录用户增加 portfolio 归属字段。
-- 缓存：Cloudflare KV，binding 为 `GG_FUND_CACHE`。
-- Secret：DeepSeek 和 OAuth 凭证通过 Cloudflare Pages Secret 注入，不进入代码和前端 bundle；OTP 登录会话保存在 D1 `auth_sessions`，前端只保存 session token。
+- Web/App/API：Next.js App Router，通过 OpenNext 输出 Cloudflare Worker。
+- API：`app/api/**/route.ts`，业务逻辑收敛到 `features/*`。
+- 数据库/Auth：Supabase Auth + Supabase Postgres + RLS。
+- 运行时存储：Cloudflare D1 仍通过 `GG_FUND_DB` 为组合默认快照等 Worker 侧能力提供绑定支持。
+- 缓存：Cloudflare KV 可作为行情短缓存，访问封装在 market service 中。
+- 支付：Stripe Checkout 与 webhook。
+- 邮件：Resend 产品邮件。
+- 分析：PostHog。
+- Secret：所有服务端 key 通过 Cloudflare Secret 或本地 `.env.local` 注入，不进入前端 bundle。
 
 ## 本地测试
 
-执行与 CI 一致的测试流水线：
+执行与 CI 尽量一致的测试流水线：
 
 ```bash
-bun run ci:test
-```
-
-该脚本依次执行：
-
-```bash
+bun run lint
 bun run test
+bun run coverage
 bun run build
 bun run test:e2e
 ```
 
-`ci:test` 会运行 lint、单元/API 测试、coverage、构建和 E2E。本地 E2E 通过 `backend/local.ts` 运行 Cloudflare API 适配器。
-
-覆盖率检查：
-
-```bash
-bun run coverage
-```
-
-当前全局阈值：statements 70%、branches 60%、functions 70%、lines 70%。
-
-Midscene 检查：
+如需验证 Midscene：
 
 ```bash
 bun run test:midscene
 ```
-
-该脚本会读取本机 `~/.zshrc` 中的 Midscene 模型变量并自动启动本地 API/Web 服务。默认验证 Midscene + Playwright 集成；如需强制执行真实模型 `aiAct`，使用 `MIDSCENE_RUN_AI=1 bun run test:midscene`。
 
 ## 首次配置
 
 登录 Cloudflare：
 
 ```bash
-bunx wrangler@3 login
+bunx wrangler login
 ```
 
-如果需要从零创建资源：
+配置本地 `.env.local`：
 
 ```bash
-bunx wrangler@3 d1 create gg-fund-db
-bunx wrangler@3 kv namespace create GG_FUND_CACHE
-bunx wrangler@3 kv namespace create GG_FUND_CACHE --preview
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+NEXT_PUBLIC_POSTHOG_KEY=phc_your_project_key
+NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+STRIPE_SECRET_KEY=your-stripe-secret-key
+STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
+STRIPE_PRICE_ID=price_monthly_default
+STRIPE_PRICE_PRO_MONTHLY=price_monthly_default
+STRIPE_ALLOWED_PRICE_IDS=price_monthly_default,price_annual_optional
+RESEND_API_KEY=re_your_key
+AUTH_EMAIL_FROM="GG Fund <login@example.com>"
+DEEPSEEK_API_KEY=your-deepseek-api-key
+POSTHOG_API_KEY=phx_your_private_key
 ```
 
-将生成的 D1/KV id 写入 `wrangler.toml`。
-
-配置 Pages Secret：
+如需继续使用现有 Cloudflare D1/KV 资源：
 
 ```bash
-bunx wrangler@3 pages secret put DEEPSEEK_API_KEY --project-name gg-fund
-bunx wrangler@3 pages secret put GITHUB_CLIENT_ID --project-name gg-fund
-bunx wrangler@3 pages secret put WECHAT_CLIENT_ID --project-name gg-fund
-bunx wrangler@3 pages secret put RESEND_API_KEY --project-name gg-fund
-bunx wrangler@3 pages secret put AUTH_EMAIL_FROM --project-name gg-fund
+bunx wrangler d1 create gg-fund-db
+bunx wrangler kv namespace create GG_FUND_CACHE
+bunx wrangler kv namespace create GG_FUND_CACHE --preview
 ```
 
-`RESEND_API_KEY` 与 `AUTH_EMAIL_FROM` 用于邮箱 OTP 登录。未配置时 `/api/auth/challenge` 仍会创建 challenge，但只在本地/测试响应中返回 `devCode`，便于开发验收；生产环境建议配置后再开放邮箱登录。
+将生成的 D1/KV id 同步写入 `wrangler.jsonc`。
 
 ## 手动部署
 
@@ -81,52 +74,62 @@ bun run deploy:cloudflare
 bun run verify:cloudflare
 ```
 
-`deploy:cloudflare` 会执行：
+`scripts/deploy-cloudflare.sh` 现在按以下顺序执行：
+
+1. `bun run build`
+2. `bunx --package @opennextjs/cloudflare opennextjs-cloudflare build`
+3. `bunx wrangler d1 migrations apply "$CF_D1_DATABASE" --remote --config wrangler.jsonc --migrations-dir "$CF_D1_MIGRATIONS_DIR"`
+4. `bunx wrangler deploy --config wrangler.jsonc --name "$CF_WORKER_NAME"`
+
+默认值：
+
+- `CF_WORKER_NAME=gg-fund`
+- `CF_D1_DATABASE=gg-fund-db`
+- `CF_D1_MIGRATIONS_DIR=migrations`
+- `CF_VERIFY_BASE_URL` 未设置时使用 `https://$CF_WORKER_NAME.workers.dev`
+
+默认验证目标：
 
 ```bash
-bun run build
-bunx wrangler@3 d1 migrations apply gg-fund-db --remote
-bunx wrangler@3 pages deploy dist --project-name gg-fund --branch master
-```
-
-`verify:cloudflare` 默认检查：
-
-```bash
-curl https://gg-fund.pages.dev/api/health
-curl https://gg-fund.pages.dev/api/market/indices
-curl https://gg-fund.pages.dev/api/funds/000001
+curl https://gg-fund.workers.dev/api/health
+curl https://gg-fund.workers.dev/api/market/indices
+curl https://gg-fund.workers.dev/api/funds/000001
 ```
 
 ## GitHub CI/CD
 
-`.github/workflows/cloudflare-deploy.yml` 在 push/merge 到 `master` 后自动执行：
+`.github/workflows/cloudflare-deploy.yml` 使用 Bun 安装依赖，并通过仓库 Variables 注入 `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY`、`NEXT_PUBLIC_POSTHOG_KEY`、`NEXT_PUBLIC_POSTHOG_HOST` 供 OpenNext 构建使用，然后执行 Worker 构建、远程 D1 迁移、部署与验证：
 
-- 使用固定 Bun `1.3.10` 运行项目脚本，避免 `latest` 版本变动。
-- 安装依赖一律用 `bun install --frozen-lockfile --ignore-scripts`：跳过所有 postinstall（Playwright/puppeteer 等浏览器或原生二进制下载），并由 `timeout-minutes: 5` 限制安装步骤总时长，避免 npm 在 GitHub runner 上偶发的 `Exit handler never called!` 把 job 拖到 10 分钟以上。
-- 不再在 CI 跑 lint/test/e2e（本地 pre-commit hook 与 `bun run check` 兜底）。
-- 使用 Wrangler 执行远端 D1 migrations。
-- 部署 `dist/` 到 Cloudflare Pages 项目 `gg-fund`。
-- 验证线上 `/api/health`、`/api/market/indices`、`/api/funds/000001`。
-
-整个 deploy job 受 `vars.CLOUDFLARE_DEPLOY_ENABLED == 'true'` 守卫，未配置 Cloudflare 凭据时不会执行。
-
-GitHub 仓库 Secrets 需要配置：
-
-- `CLOUDFLARE_API_TOKEN`：需要 D1 编辑、Pages 部署、KV/Pages 读取相关权限。
-- `CLOUDFLARE_ACCOUNT_ID`：Cloudflare 账户 ID。
+- `bun install --frozen-lockfile --ignore-scripts`
+- `bun run build`
+- `bunx --package @opennextjs/cloudflare opennextjs-cloudflare build`
+- `bunx wrangler d1 migrations apply "$CF_D1_DATABASE" --remote --config wrangler.jsonc --migrations-dir "$CF_D1_MIGRATIONS_DIR"`
+- `bunx wrangler deploy --config wrangler.jsonc --name "$CF_WORKER_NAME"`
+- `bun run verify:cloudflare`
 
 ## 可配置环境变量
 
-- `CF_PAGES_PROJECT`：Pages 项目名，默认 `gg-fund`。
-- `CF_PAGES_BRANCH`：部署分支名，默认 `master`。
-- `CF_D1_DATABASE`：D1 数据库名，默认 `gg-fund-db`。
-- `CF_VERIFY_BASE_URL`：线上验证地址，默认 `https://gg-fund.pages.dev`。
-- `E2E_API_PORT`：E2E 本地 API 端口，默认 `48787`，避免和默认开发端口 `8787` 冲突。
-- `RESEND_API_KEY`：Resend 邮件 API key，用于服务端发送邮箱登录验证码。
-- `AUTH_EMAIL_FROM`：邮箱验证码发件人，例如 `GG Fund <login@example.com>`。
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_POSTHOG_KEY`
+- `NEXT_PUBLIC_POSTHOG_HOST`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PRICE_ID`
+- `STRIPE_PRICE_PRO_MONTHLY`
+- `STRIPE_ALLOWED_PRICE_IDS`
+- `RESEND_API_KEY`
+- `AUTH_EMAIL_FROM`
+- `DEEPSEEK_API_KEY`
+- `POSTHOG_API_KEY`
+- `CF_WORKER_NAME`
+- `CF_D1_DATABASE`
+- `CF_D1_MIGRATIONS_DIR`
+- `CF_VERIFY_BASE_URL`
 
 ## 注意事项
 
-- D1/KV binding 名必须与 `wrangler.toml` 和 `backend/api.ts` 保持一致。
-- 新增 migrations 后必须先在 CI 或手动部署中执行远端迁移，再验证线上接口；当前登录用户组合隔离依赖 `migrations/0004_user_portfolios.sql`。
+- `app/api/portfolio/default/route.ts` 会优先读取 OpenNext Cloudflare runtime context 中的 `GG_FUND_DB`，并保留对 dev/test 全局 binding 的兼容；部署前需确保 `wrangler.jsonc` 与实际 Worker binding 保持一致。
+- Supabase RLS/表结构迁移需要先在 Supabase 侧执行；持仓和自选策略现在会同时校验 `user_id` 与所属 `portfolio` 的 `user_id`。
 - Secret 泄露后必须立即在提供商控制台吊销并重新配置。
