@@ -26,17 +26,11 @@ describe('Midscene fund dashboard flow', () => {
 
   beforeAll(async () => {
     browser = await chromium.launch();
-    page = await browser.newPage({ baseURL: 'http://localhost:5173' });
+    page = await browser.newPage({ baseURL: 'http://127.0.0.1:3000' });
     agent = new PlaywrightAgent(page, {
       aiActionContext: 'You are a Web UI testing expert who understands Chinese fintech dashboards.',
     });
 
-    await page.route('**/api/auth/challenge', async (route) => {
-      await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ challengeId: 'challenge_midscene', provider: 'email', identifier: 'demo@example.com', delivery: 'email', devCode: '123456', expiresAt: '2026-05-29T12:00:00.000Z' }) });
-    });
-    await page.route('**/api/auth/verify', async (route) => {
-      await route.fulfill({ contentType: 'application/json', status: 201, body: JSON.stringify({ user: { id: 'user_midscene', provider: 'email', identifier: 'demo@example.com', displayName: 'demo@example.com' }, session: { token: 'session_midscene', expiresAt: '2026-06-29T12:00:00.000Z' } }) });
-    });
     await page.route('**/api/ai/analyze-fund', async (route) => {
       await route.fulfill({
         contentType: 'application/json',
@@ -62,13 +56,13 @@ describe('Midscene fund dashboard flow', () => {
   it.skipIf(!hasLocalServer)('opens the local app with Playwright while Midscene agent is initialized', async () => {
     await page.goto('/');
 
-    await expect(page.locator('body').textContent()).resolves.toContain('数字私人银行驾驶舱');
+    await expect(page.locator('body').textContent()).resolves.toContain('GG Fund 中国基金行情');
     expect(agent).toBeInstanceOf(PlaywrightAgent);
   });
 
   it.skipIf(!shouldRunAiAction)('uses natural language to verify the live fund dashboard shell', async () => {
     await page.goto('/');
 
-    await agent.aiAct('verify the page shows the Chinese GG Fund dashboard, including the digital private banking hero, fund search, login, AI analysis, and portfolio sections');
+    await agent.aiAct('verify the page shows the Chinese GG Fund landing page and workspace entry, including the main heading, workspace link, pricing link, and access to the fund workspace');
   }, 180_000);
 });

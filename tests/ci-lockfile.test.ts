@@ -19,7 +19,6 @@ describe('CI tracked source files', () => {
   });
 });
 
-
 describe('Wrangler OpenNext config', () => {
   it('declares the GG_FUND_DB D1 binding for the Next worker', () => {
     const wranglerJsonc = readFileSync(join(process.cwd(), 'wrangler.jsonc'), 'utf8');
@@ -32,16 +31,57 @@ describe('Wrangler OpenNext config', () => {
   });
 });
 
+describe('Playwright Next.js smoke config', () => {
+  it('runs the Next-only core smoke spec through the Next dev server', () => {
+    const packageJson = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as {
+      scripts?: Record<string, string>;
+    };
+    const playwrightConfig = readFileSync(join(process.cwd(), 'playwright.config.ts'), 'utf8');
+
+    expect(packageJson.scripts?.['test:e2e']).toBe('playwright test tests/e2e/next-core.spec.ts');
+    expect(playwrightConfig).toContain("baseURL: 'http://127.0.0.1:3000'");
+    expect(playwrightConfig).toContain("command: 'bun run dev'");
+    expect(playwrightConfig).toContain("url: 'http://127.0.0.1:3000'");
+    expect(playwrightConfig).not.toContain('dev:web');
+    expect(playwrightConfig).not.toContain('dev:api');
+    expect(playwrightConfig).not.toContain('localhost:5173');
+  });
+});
+
 describe('Cloudflare deploy verification config', () => {
-  it('verifies the deployed Worker surface by default', () => {
+  it('deploys and verifies the OpenNext worker surface by default', () => {
+    const deployScript = readFileSync(join(process.cwd(), 'scripts/deploy-cloudflare.sh'), 'utf8');
     const verifyScript = readFileSync(join(process.cwd(), 'scripts/verify-cloudflare.sh'), 'utf8');
+    const ciScript = readFileSync(join(process.cwd(), 'scripts/ci-test.sh'), 'utf8');
     const workflow = readFileSync(join(process.cwd(), '.github/workflows/cloudflare-deploy.yml'), 'utf8');
+
+    expect(deployScript).toContain('bun run build');
+    expect(deployScript).toContain('bunx --package @opennextjs/cloudflare opennextjs-cloudflare build');
+    expect(deployScript).toContain('bunx --package @opennextjs/cloudflare opennextjs-cloudflare deploy');
+    expect(deployScript).not.toContain('wrangler d1 migrations apply');
+    expect(deployScript).not.toContain('wrangler deploy');
 
     expect(verifyScript).toContain('CF_WORKER_NAME="${CF_WORKER_NAME:-gg-fund}"');
     expect(verifyScript).toContain('CF_VERIFY_BASE_URL="${CF_VERIFY_BASE_URL:-https://${CF_WORKER_NAME}.workers.dev}"');
     expect(verifyScript).not.toContain('pages.dev');
+
+    expect(ciScript).toContain('bun run lint');
+    expect(ciScript).toContain('bun run test');
+    expect(ciScript).toContain('bun run coverage');
+    expect(ciScript).toContain('bun run build');
+    expect(ciScript).toContain('bun run test:e2e');
+    expect(ciScript).not.toContain('Pages Functions bundle');
+
+    expect(workflow).toContain('Build OpenNext worker');
+    expect(workflow).toContain('bunx --package @opennextjs/cloudflare opennextjs-cloudflare build');
+    expect(workflow).toContain('Deploy Cloudflare worker');
+    expect(workflow).toContain('bunx --package @opennextjs/cloudflare opennextjs-cloudflare deploy');
+    expect(workflow).toContain('Verify deployment');
     expect(workflow).toContain('CF_WORKER_NAME: gg-fund');
     expect(workflow).toContain('CF_VERIFY_BASE_URL: https://gg-fund.workers.dev');
     expect(workflow).not.toContain('pages.dev');
+    expect(workflow).not.toContain('Deploy Cloudflare Pages');
   });
 });
+
+

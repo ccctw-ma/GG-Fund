@@ -8,8 +8,6 @@ set -a
 source "$HOME/.zshrc" >/dev/null 2>&1 || true
 set +a
 
-export E2E_API_PORT="${E2E_API_PORT:-48787}"
-export API_PORT="$E2E_API_PORT"
 export MIDSCENE_LOCAL_SERVER=1
 
 if [[ -z "${MIDSCENE_MODEL_NAME:-}" || -z "${MIDSCENE_MODEL_API_KEY:-}" ]]; then
@@ -20,26 +18,21 @@ if [[ -z "${MIDSCENE_MODEL_NAME:-}" || -z "${MIDSCENE_MODEL_API_KEY:-}" ]]; then
 fi
 
 cleanup() {
-  [[ -n "${API_PID:-}" ]] && kill "$API_PID" >/dev/null 2>&1 || true
   [[ -n "${WEB_PID:-}" ]] && kill "$WEB_PID" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
-PORT="$E2E_API_PORT" bun run dev:api >/tmp/gg-fund-midscene-api.log 2>&1 &
-API_PID=$!
-
-bun run dev:web >/tmp/gg-fund-midscene-web.log 2>&1 &
+bun run dev >/tmp/gg-fund-midscene-web.log 2>&1 &
 WEB_PID=$!
 
-for _ in {1..80}; do
-  if curl -fsS "http://localhost:${E2E_API_PORT}/api/health" >/dev/null 2>&1 && curl -fsS "http://localhost:5173" >/dev/null 2>&1; then
+for _ in {1..120}; do
+  if curl -fsS "http://127.0.0.1:3000/api/health" >/dev/null 2>&1 && curl -fsS "http://127.0.0.1:3000" >/dev/null 2>&1; then
     bunx vitest run tests/midscene-fund-flow.test.ts
     exit 0
   fi
-  sleep 0.25
+  sleep 0.5
 done
 
-echo "Timed out waiting for Midscene local servers." >&2
-tail -n 20 /tmp/gg-fund-midscene-api.log >&2 || true
+echo "Timed out waiting for the Next.js local server." >&2
 tail -n 20 /tmp/gg-fund-midscene-web.log >&2 || true
 exit 1

@@ -2,14 +2,15 @@
 
 ## 架构
 
-- 应用壳层：Next.js App Router，页面位于 `app/`，通过 OpenNext Cloudflare 进行 Cloudflare 兼容构建。
-- 工作区 UI：`components/workspace/FundWorkspace.tsx` 复用现有 `frontend/src/App.tsx`，作为迁移期的主工作台。
-- API：优先使用 `app/api/*` Route Handlers；现有 `functions/api/[[path]].ts` + `backend/api.ts` 仍保留用于兼容和参考。
-- 共享层：`shared/` 保存前后端共用 DTO 和行情适配器。
-- Cloudflare 数据库：现有 D1 binding 为 `GG_FUND_DB`，迁移目录为 `migrations/`。
-- Supabase 数据库：使用 `supabase/migrations/202605300001_core_schema.sql` 作为 Auth/Profile/Portfolio/Holdings/Watchlist 的基础 schema，并通过 `supabase/migrations/202605300002_billing_customers.sql` 追加 Billing Customers 表与策略，兼容已执行过首个迁移的环境。
-- 缓存：Cloudflare KV，binding 为 `GG_FUND_CACHE`。
-- Secret：DeepSeek 与 Supabase service role key 等服务端凭证必须通过部署环境注入，不进入代码和前端 bundle。
+- Web/App/API：Next.js App Router，通过 OpenNext 输出 Cloudflare Worker。
+- API：`app/api/**/route.ts`，业务逻辑收敛到 `features/*`。
+- 数据库/Auth：Supabase Auth + Supabase Postgres + RLS。
+- 运行时存储：Cloudflare D1 仍通过 `GG_FUND_DB` 为组合默认快照等 Worker 侧能力提供绑定支持。
+- 缓存：Cloudflare KV 可作为行情短缓存，访问封装在 market service 中。
+- 支付：Stripe Checkout 与 webhook。
+- 邮件：Resend 产品邮件。
+- 分析：PostHog。
+- Secret：所有服务端 key 通过 Cloudflare Secret 或本地 `.env.local` 注入，不进入前端 bundle。
 
 ## 本地测试
 
@@ -23,89 +24,91 @@ bun run build
 bun run test:e2e
 ```
 
-当前新增 focused tests 已覆盖：
+如需验证 Midscene：
 
-- `lib/env.ts`
-- `lib/http.ts`
-- `lib/supabase/browser.ts`
-- `lib/supabase/server.ts`
-- `features/auth/session.ts`
-- `features/market/service.ts`
-- `features/portfolio/repository.ts`
-- `features/portfolio/localStorage.ts`
-- `features/ai/service.ts`
+```bash
+bun run test:midscene
+```
 
 ## 首次配置
 
 登录 Cloudflare：
 
 ```bash
-bunx wrangler@3 login
+bunx wrangler login
 ```
 
-配置 Next / Supabase 相关环境变量：
+配置本地 `.env.local`：
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+NEXT_PUBLIC_POSTHOG_KEY=phc_your_project_key
+NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-DEEPSEEK_API_KEY=your-deepseek-api-key
 STRIPE_SECRET_KEY=your-stripe-secret-key
 STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
 STRIPE_PRICE_ID=price_monthly_default
+STRIPE_PRICE_PRO_MONTHLY=price_monthly_default
 STRIPE_ALLOWED_PRICE_IDS=price_monthly_default,price_annual_optional
+RESEND_API_KEY=re_your_key
+AUTH_EMAIL_FROM="GG Fund <login@example.com>"
+DEEPSEEK_API_KEY=your-deepseek-api-key
+POSTHOG_API_KEY=phx_your_private_key
 ```
 
 如需继续使用现有 Cloudflare D1/KV 资源：
 
 ```bash
-bunx wrangler@3 d1 create gg-fund-db
-bunx wrangler@3 kv namespace create GG_FUND_CACHE
-bunx wrangler@3 kv namespace create GG_FUND_CACHE --preview
+bunx wrangler d1 create gg-fund-db
+bunx wrangler kv namespace create GG_FUND_CACHE
+bunx wrangler kv namespace create GG_FUND_CACHE --preview
 ```
 
-将生成的 D1/KV id 同步写入 `wrangler.toml`、`wrangler.jsonc` 或对应的 OpenNext Cloudflare 配置。
+将生成的 D1/KV id 同步写入 `wrangler.jsonc`。
 
 ## 手动部署
 
 ```bash
-bun run build
 bun run deploy:cloudflare
 bun run verify:cloudflare
 ```
 
-在新的 Next 架构下，重点验证：
+默认验证目标：
 
 ```bash
-curl https://gg-fund.pages.dev/api/health
-curl https://gg-fund.pages.dev/api/market/indices
-curl https://gg-fund.pages.dev/api/funds/000001
+curl https://gg-fund.workers.dev/api/health
+curl https://gg-fund.workers.dev/api/market/indices
+curl https://gg-fund.workers.dev/api/funds/000001
 ```
 
 ## GitHub CI/CD
 
-`.github/workflows/cloudflare-deploy.yml` 仍以 Cloudflare 为默认部署目标。随着 Vite → Next/OpenNext 迁移推进，需要确保：
+`.github/workflows/cloudflare-deploy.yml` 使用 Bun 安装依赖，并直接执行 OpenNext Cloudflare Worker 构建、部署与验证：
 
-- 安装依赖使用 `bun install --frozen-lockfile --ignore-scripts`。
-- 构建步骤从 `vite build` 逐步切换到 `next build` / OpenNext Cloudflare build。
-- 线上验证继续覆盖 `/api/health`、`/api/market/indices`、`/api/funds/000001`。
+- `bun install --frozen-lockfile --ignore-scripts`
+- `bunx @opennextjs/cloudflare build`
+- `bunx @opennextjs/cloudflare deploy`
+- `bun run verify:cloudflare`
 
 ## 可配置环境变量
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_POSTHOG_KEY`
+- `NEXT_PUBLIC_POSTHOG_HOST`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `DEEPSEEK_API_KEY`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_PRICE_ID`
 - `STRIPE_PRICE_PRO_MONTHLY`
 - `STRIPE_ALLOWED_PRICE_IDS`
-- `CF_PAGES_PROJECT`
-- `CF_PAGES_BRANCH`
-- `CF_D1_DATABASE`
+- `RESEND_API_KEY`
+- `AUTH_EMAIL_FROM`
+- `DEEPSEEK_API_KEY`
+- `POSTHOG_API_KEY`
+- `CF_WORKER_NAME`
 - `CF_VERIFY_BASE_URL`
-- `E2E_API_PORT`
 
 ## 注意事项
 

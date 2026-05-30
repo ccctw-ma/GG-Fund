@@ -14,7 +14,7 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
-    "moduleResolution": "Bundler",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
@@ -39,23 +39,13 @@
   },
   "include": [
     "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
     ".next/types/**/*.ts",
-    "app",
-    "components",
-    "features",
-    "lib",
-    "middleware.ts",
-    "supabase",
-    "frontend",
-    "backend",
-    "shared",
-    "functions",
-    "tests",
-    "vite.config.ts",
-    "playwright.config.ts",
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    ".open-next"
   ]
 }
