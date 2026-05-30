@@ -69,9 +69,8 @@ test('searches realtime data, uses OTP auth, runs agent analysis, renders charts
   await page.goto('/');
 
   await expect(page.getByRole('heading', { name: '中国基金行情' })).toBeVisible();
-  await expect(page.getByText('数字私人银行驾驶舱')).toBeVisible();
+  await expect(page.getByText('智能基金账户，把持仓、交易与投研装进一张安全玻璃卡。')).toBeVisible();
   await expect(page.getByTestId('banking-hero-card')).toBeVisible();
-  await expect(page.getByTestId('trust-rail')).toContainText('D1/KV');
   await expect(page.getByRole('heading', { name: '今日大盘' })).toBeVisible();
   await expect(page.locator('#markets')).toContainText('上证指数');
   await expect(page.getByTestId('market-chart').locator('svg')).toBeVisible();
@@ -86,7 +85,7 @@ test('searches realtime data, uses OTP auth, runs agent analysis, renders charts
   await expect(page.getByText(/区间收益/)).toBeVisible();
   await expect(page.getByText(/最大回撤/)).toBeVisible();
 
-  await page.getByLabel('登录标识').fill('demo@example.com');
+  await page.getByLabel('邮箱地址').fill('demo@example.com');
   await page.getByRole('button', { name: '发送验证码' }).click();
   await expect(page.getByText(/开发环境验证码/)).toBeVisible();
   await page.getByRole('button', { name: '验证登录' }).click();
@@ -144,7 +143,7 @@ test('shows import and fund search errors without breaking the dashboard', async
   await expect(page.getByRole('heading', { name: '今日大盘' })).toBeVisible();
 });
 
-test('toggles watchlist and supports phone OTP plus WeChat OAuth metadata', async ({ page }) => {
+test('toggles watchlist and supports email OTP plus WeChat OAuth metadata', async ({ page }) => {
   await page.goto('/');
 
   await page.getByLabel('基金代码或名称').fill('000001');
@@ -156,12 +155,11 @@ test('toggles watchlist and supports phone OTP plus WeChat OAuth metadata', asyn
   await page.getByRole('button', { name: '移出自选' }).click();
   await expect(page.locator('#portfolio').getByText('华夏成长混合 000001')).toHaveCount(0);
 
-  await page.getByRole('button', { name: '短信验证码' }).click();
-  await page.getByLabel('登录标识').fill('13800000000');
+  await page.getByLabel('邮箱地址').fill('demo@example.com');
   await page.getByRole('button', { name: '发送验证码' }).click();
   await expect(page.getByText(/开发环境验证码：123456/)).toBeVisible();
   await page.getByRole('button', { name: '验证登录' }).click();
-  await expect(page.getByText(/已登录：13800000000/)).toBeVisible();
+  await expect(page.getByText(/已登录：demo@example\.com/)).toBeVisible();
 
   await page.getByRole('button', { name: '微信扫码' }).click();
   await expect(page.getByText(/open\.weixin\.qq\.com\/connect\/qrconnect/)).toBeVisible();

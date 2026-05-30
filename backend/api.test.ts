@@ -96,6 +96,8 @@ const env = () => ({
   DEEPSEEK_API_KEY: 'test-secret-key',
   GITHUB_CLIENT_ID: 'github-client-id',
   WECHAT_CLIENT_ID: 'wechat-client-id',
+  RESEND_API_KEY: '',
+  AUTH_EMAIL_FROM: '',
 });
 
 const marketData = {
@@ -111,7 +113,56 @@ describe('Cloudflare API', () => {
     const api = createCloudflareApi({ marketData });
     const response = await api.fetch(new Request('https://example.com/api/health'), env());
 
-    await expect(response.json()).resolves.toEqual({ ok: true, service: 'gg-fund-pages-api', database: 'd1', cache: 'kv', auth: ['email-otp', 'phone-otp', 'github-oauth', 'wechat-oauth'], ai: 'deepseek-v4-flash-agent' });
+    await expect(response.json()).resolves.toEqual({ ok: true, service: 'gg-fund-pages-api', database: 'd1', cache: 'kv', auth: ['email-otp', 'github-oauth', 'wechat-oauth'], ai: 'deepseek-v4-flash-agent' });
+  });
+
+  it('sends an email OTP when mail delivery is configured', async () => {
+    const sentMessages: Array<{ url: string; init?: RequestInit }> = [];
+    const api = createCloudflareApi({
+      marketData,
+      emailFetch: (async (url, init) => {
+        sentMessages.push({ url: String(url), init });
+        return new Response(JSON.stringify({ id: 'email_1' }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }) as typeof fetch,
+    });
+    const bindings = env();
+    bindings.RESEND_API_KEY = 'resend-test-key';
+    bindings.AUTH_EMAIL_FROM = 'GG Fund <login@example.com>';
+
+    const response = await api.fetch(new Request('https://example.com/api/auth/challenge', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'email', identifier: 'demo@example.com' }),
+    }), bindings);
+    const challenge = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(challenge.devCode).toBeUndefined();
+    expect(sentMessages).toHaveLength(1);
+    expect(sentMessages[0].url).toBe('https://api.resend.com/emails');
+    expect(sentMessages[0].init?.headers).toEqual(expect.objectContaining({ Authorization: 'Bearer resend-test-key' }));
+    expect(JSON.parse(String(sentMessages[0].init?.body))).toEqual(expect.objectContaining({
+      from: 'GG Fund <login@example.com>',
+      to: ['demo@example.com'],
+      subject: 'GG Fund 登录验证码',
+    }));
+    expect(String(sentMessages[0].init?.body)).toContain(String(bindings.GG_FUND_DB.authChallenges[0].code));
+  });
+
+  it('returns dev code only when email delivery is not configured', async () => {
+    const api = createCloudflareApi({
+      marketData,
+      emailFetch: (async () => {
+        throw new Error('should not send email without configuration');
+      }) as unknown as typeof fetch,
+    });
+    const response = await api.fetch(new Request('https://example.com/api/auth/challenge', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'email', identifier: 'demo@example.com' }),
+    }), env());
+    const challenge = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(challenge.devCode).toMatch(/^\d{6}$/);
   });
 
   it('starts OTP challenge for email and verifies code before creating a session', async () => {
@@ -138,6 +189,27 @@ describe('Cloudflare API', () => {
     expect(verified.session.token).toMatch(/^session_/);
   });
 
+  it('rejects expired OTP challenges before creating a session', async () => {
+    const api = createCloudflareApi({ marketData });
+    const bindings = env();
+    const challengeResponse = await api.fetch(new Request('https://example.com/api/auth/challenge', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'email', identifier: 'expired@example.com' }),
+    }), bindings);
+    const challenge = await challengeResponse.json();
+    const storedChallenge = bindings.GG_FUND_DB.authChallenges.find((item) => item.id === challenge.challengeId);
+    if (storedChallenge) storedChallenge.expiresAt = '2000-01-01T00:00:00.000Z';
+
+    const verifyResponse = await api.fetch(new Request('https://example.com/api/auth/verify', {
+      method: 'POST',
+      body: JSON.stringify({ challengeId: challenge.challengeId, code: challenge.devCode }),
+    }), bindings);
+
+    expect(verifyResponse.status).toBe(400);
+    expect(bindings.GG_FUND_DB.authSessions).toEqual([]);
+    await expect(verifyResponse.json()).resolves.toEqual({ error: { code: 'AUTH_CHALLENGE_INVALID', message: '验证码无效或已过期' } });
+  });
+
   it('returns OAuth redirect metadata for GitHub and WeChat providers', async () => {
     const api = createCloudflareApi({ marketData });
     const github = await api.fetch(new Request('https://example.com/api/auth/oauth-url?provider=github&redirect=/'), env());
@@ -155,7 +227,18 @@ describe('Cloudflare API', () => {
     }), env());
 
     expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({ error: { code: 'AUTH_IDENTIFIER_INVALID', message: '登录标识格式不正确' } });
+    await expect(response.json()).resolves.toEqual({ error: { code: 'AUTH_IDENTIFIER_INVALID', message: '邮箱格式不正确' } });
+  });
+
+  it('rejects phone OTP because phone login is not supported', async () => {
+    const api = createCloudflareApi({ marketData });
+    const response = await api.fetch(new Request('https://example.com/api/auth/challenge', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'phone', identifier: '13800000000' }),
+    }), env());
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: { code: 'AUTH_PROVIDER_UNSUPPORTED', message: '暂不支持该登录方式' } });
   });
 
   it('restores the current user with a valid session token and logs out', async () => {

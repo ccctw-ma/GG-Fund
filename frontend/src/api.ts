@@ -33,7 +33,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export type AuthProvider = 'email' | 'phone';
+export type AuthProvider = 'email';
 export type OAuthProvider = 'github' | 'wechat';
 export type AuthChallengeResponse = {
   challengeId: string;

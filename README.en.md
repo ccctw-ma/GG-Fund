@@ -11,7 +11,7 @@ GG Fund is a production-shaped China mutual fund market and portfolio analysis a
 - Fund detail: prefers Tiantian Fund intraday estimate and keeps the latest official net value.
 - Local portfolio: calculates market value, cost, profit/loss, return rate, and position weight in the browser.
 - Watchlist: tracks followed funds without counting them as holdings.
-- Auth entry: email/phone OTP challenge + verify flow with persistent sessions, refresh restore, logout, and D1-backed user sessions; provider switching, empty-identifier guard, and inline loading states are validated; GitHub/WeChat OAuth metadata remains available.
+- Auth entry: email OTP challenge + verify flow; when `RESEND_API_KEY` and `AUTH_EMAIL_FROM` are configured, the API sends OTP messages through Resend, otherwise local/test responses expose a development code. Sessions persist across refresh, support logout, and are backed by D1 user sessions; empty-identifier guard, OTP entry, and inline loading states are validated; GitHub/WeChat OAuth metadata remains available.
 - DeepSeek analysis: computes deterministic return, drawdown, momentum, volatility, and trend indicators before calling `deepseek-v4-flash`, then renders structured trend, risk, scenario, and watch-point reports. When `DEEPSEEK_API_KEY` is missing the API automatically returns a deterministic local report (`agent.model: "local-fallback"`) with the same shape, so the UI stays fully usable offline.
 - Cloudflare infrastructure: D1 for portfolio/auth data, KV for quote cache, Pages Functions for API.
 - Privacy-first: secrets are injected through Cloudflare Secrets and never enter source code or the frontend bundle.

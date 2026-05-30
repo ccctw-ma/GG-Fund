@@ -30,6 +30,14 @@ vi.mock('./api', () => ({
   },
 }));
 
+vi.mock('./supabaseAuth', () => ({
+  getInitialAuthSession: vi.fn(async () => undefined),
+  onAuthSessionChange: vi.fn(() => () => undefined),
+  signInWithEmailOtp: vi.fn(async () => undefined),
+  signOutSupabase: vi.fn(async () => undefined),
+  isSupabaseConfigured: vi.fn(() => false),
+}));
+
 describe('App', () => {
   let root: Root | undefined;
   let container: HTMLDivElement | undefined;
@@ -42,7 +50,7 @@ describe('App', () => {
     localStorage.clear();
   });
 
-  it('renders the Cloudflare-first fund dashboard shell', async () => {
+  it('renders the redesigned fund landing page and live workspace', async () => {
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -51,9 +59,16 @@ describe('App', () => {
       root?.render(<App />);
     });
 
-    expect(container.textContent).toContain('数字私人银行驾驶舱');
+    expect(container.textContent).toContain('智能基金账户');
+    expect(container.textContent).toContain('账户总览');
+    expect(container.textContent).toContain('交易与基金工具');
+    expect(container.textContent).toContain('安全与隐私');
+    expect(container.textContent).toContain('下载移动端');
+    expect(container.textContent).toContain('个人信息');
+    expect(container.textContent).toContain('未登录');
+    expect(container.textContent).toContain('Supabase 邮箱登录');
+    expect(container.textContent).toContain('发送 Magic Link / OTP');
     expect(container.textContent).toContain('中国基金行情');
-    expect(container.textContent).toContain('Market Pulse');
     expect(container.textContent).not.toContain('OTP / OAuth 登录');
   });
 });

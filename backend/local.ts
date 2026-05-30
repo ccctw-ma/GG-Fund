@@ -116,6 +116,8 @@ export function createLocalCloudflareEnv(): CloudflareEnv {
     DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
     GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
     WECHAT_CLIENT_ID: process.env.WECHAT_CLIENT_ID,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    AUTH_EMAIL_FROM: process.env.AUTH_EMAIL_FROM,
   };
 }
 

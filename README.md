@@ -11,7 +11,7 @@ GG Fund 是一个接近线上网站形态的中国基金行情与持仓分析应
 - 基金详情：优先展示天天基金盘中估算净值、估算涨跌和估算时间，同时保留上一交易日官方净值。
 - 本地持仓：添加基金后计算市值、成本、盈亏、收益率和组合占比。
 - 自选基金：关注基金但不计入持仓。
-- 登录入口：邮箱/电话使用 OTP challenge + verify 流程，登录态持久化保存，支持刷新恢复、退出登录和 D1 用户会话；切换通道、空标识、加载中按钮均有校验和 loading 状态；GitHub/微信暂保留 OAuth 跳转元数据。
+- 登录入口：邮箱使用 OTP challenge + verify 流程；配置 `RESEND_API_KEY` 与 `AUTH_EMAIL_FROM` 后服务端通过 Resend 发送验证码，未配置时仅在本地/测试响应中返回开发验证码。登录态持久化保存，支持刷新恢复、退出登录和 D1 用户会话；空标识、验证码输入、加载中按钮均有校验和 loading 状态；GitHub/微信暂保留 OAuth 跳转元数据。
 - DeepSeek 分析：基金研究 Agent 先采集实时行情/历史净值/指数环境，计算区间收益、回撤、动量、波动等确定性指标，再调用 `deepseek-v4-flash` 生成结构化趋势、风险、情景和观察点；当 `DEEPSEEK_API_KEY` 未配置时自动降级为本地确定性报告（`agent.model: "local-fallback"`），保持相同结构供 UI 展示。
 - 数据导入导出：使用 JSON 备份浏览器本地数据。
 - Cloudflare 基建：D1 存组合/登录数据，KV 缓存行情，Pages Functions 提供线上 API。

@@ -25,16 +25,19 @@ export type CloudflareEnv = {
   DEEPSEEK_API_KEY?: string;
   GITHUB_CLIENT_ID?: string;
   WECHAT_CLIENT_ID?: string;
+  RESEND_API_KEY?: string;
+  AUTH_EMAIL_FROM?: string;
 };
 
 type Options = {
   marketData?: MarketDataService;
   deepSeekFetch?: typeof fetch;
+  emailFetch?: typeof fetch;
 };
 
 const nowIso = () => new Date().toISOString();
-const AUTH_PROVIDERS = ['email-otp', 'phone-otp', 'github-oauth', 'wechat-oauth'] as const;
-const OTP_PROVIDERS = ['email', 'phone'] as const;
+const AUTH_PROVIDERS = ['email-otp', 'github-oauth', 'wechat-oauth'] as const;
+const OTP_PROVIDERS = ['email'] as const;
 const OAUTH_PROVIDERS = ['github', 'wechat'] as const;
 
 type OtpProvider = (typeof OTP_PROVIDERS)[number];
@@ -86,9 +89,8 @@ async function readJson(request: Request) {
   }
 }
 
-function isValidIdentifier(provider: OtpProvider, identifier: string) {
-  if (provider === 'email') return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
-  return /^\+?\d{8,15}$/.test(identifier);
+function isValidIdentifier(_provider: OtpProvider, identifier: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
 }
 
 function readBearerToken(request: Request) {
@@ -262,7 +264,26 @@ async function logout(db: D1Database, request: Request) {
   return json({ ok: true }, 200, { 'set-cookie': clearSessionCookie() });
 }
 
-async function createOtpChallenge(db: D1Database, body: Record<string, unknown> | undefined) {
+async function sendEmailOtp(env: CloudflareEnv, emailFetch: typeof fetch, to: string, code: string) {
+  if (!env.RESEND_API_KEY || !env.AUTH_EMAIL_FROM) return false;
+  const response = await emailFetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: env.AUTH_EMAIL_FROM,
+      to: [to],
+      subject: 'GG Fund 登录验证码',
+      text: `你的 GG Fund 登录验证码是 ${code}，10 分钟内有效。若不是你本人操作，请忽略此邮件。`,
+    }),
+  });
+  if (!response.ok) throw new Error('email_otp_delivery_failed');
+  return true;
+}
+
+async function createOtpChallenge(db: D1Database, env: CloudflareEnv, emailFetch: typeof fetch, body: Record<string, unknown> | undefined) {
   if (!isOtpProvider(body?.provider)) return undefined;
   const identifier = String(body?.identifier ?? '');
   if (!identifier) return undefined;
@@ -274,7 +295,6 @@ async function createOtpChallenge(db: D1Database, body: Record<string, unknown> 
     provider: body.provider,
     identifier,
     delivery: body.provider,
-    devCode: code,
     createdAt: timestamp,
     expiresAt: new Date(Date.now() + 1000 * 60 * 10).toISOString(),
   };
@@ -282,7 +302,8 @@ async function createOtpChallenge(db: D1Database, body: Record<string, unknown> 
     .prepare('insert into auth_challenges (id, provider, identifier, code, created_at, expires_at) values (?, ?, ?, ?, ?, ?)')
     .bind(challenge.challengeId, challenge.provider, challenge.identifier, code, challenge.createdAt, challenge.expiresAt)
     .run();
-  return challenge;
+  const delivered = await sendEmailOtp(env, emailFetch, identifier, code);
+  return delivered ? challenge : { ...challenge, devCode: code };
 }
 
 async function verifyOtpChallenge(db: D1Database, body: Record<string, unknown> | undefined) {
@@ -418,6 +439,7 @@ async function resolveFundQuote(code: string, env: CloudflareEnv, marketData: Ma
 export function createCloudflareApi(options: Options = {}) {
   const marketData = options.marketData ?? createMarketDataService();
   const deepSeekFetch = options.deepSeekFetch ?? fetch;
+  const emailFetch = options.emailFetch ?? fetch;
 
   return {
     async fetch(request: Request, env: CloudflareEnv): Promise<Response> {
@@ -453,8 +475,8 @@ export function createCloudflareApi(options: Options = {}) {
         if (request.method === 'POST') {
           const auth = await getAuthContext(env.GG_FUND_DB, request);
           if (path === '/api/auth/challenge') {
-            const result = await createOtpChallenge(env.GG_FUND_DB, (await readJson(request)) as Record<string, unknown> | undefined);
-            if (result && 'error' in result && result.error === 'invalid_identifier') return error(400, 'AUTH_IDENTIFIER_INVALID', '登录标识格式不正确');
+            const result = await createOtpChallenge(env.GG_FUND_DB, env, emailFetch, (await readJson(request)) as Record<string, unknown> | undefined);
+            if (result && 'error' in result && result.error === 'invalid_identifier') return error(400, 'AUTH_IDENTIFIER_INVALID', '邮箱格式不正确');
             return result ? json(result, 201) : error(400, 'AUTH_PROVIDER_UNSUPPORTED', '暂不支持该登录方式');
           }
           if (path === '/api/auth/verify') {

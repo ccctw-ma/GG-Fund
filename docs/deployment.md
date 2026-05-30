@@ -68,7 +68,11 @@ bunx wrangler@3 kv namespace create GG_FUND_CACHE --preview
 bunx wrangler@3 pages secret put DEEPSEEK_API_KEY --project-name gg-fund
 bunx wrangler@3 pages secret put GITHUB_CLIENT_ID --project-name gg-fund
 bunx wrangler@3 pages secret put WECHAT_CLIENT_ID --project-name gg-fund
+bunx wrangler@3 pages secret put RESEND_API_KEY --project-name gg-fund
+bunx wrangler@3 pages secret put AUTH_EMAIL_FROM --project-name gg-fund
 ```
+
+`RESEND_API_KEY` 与 `AUTH_EMAIL_FROM` 用于邮箱 OTP 登录。未配置时 `/api/auth/challenge` 仍会创建 challenge，但只在本地/测试响应中返回 `devCode`，便于开发验收；生产环境建议配置后再开放邮箱登录。
 
 ## 手动部署
 
@@ -118,6 +122,8 @@ GitHub 仓库 Secrets 需要配置：
 - `CF_D1_DATABASE`：D1 数据库名，默认 `gg-fund-db`。
 - `CF_VERIFY_BASE_URL`：线上验证地址，默认 `https://gg-fund.pages.dev`。
 - `E2E_API_PORT`：E2E 本地 API 端口，默认 `48787`，避免和默认开发端口 `8787` 冲突。
+- `RESEND_API_KEY`：Resend 邮件 API key，用于服务端发送邮箱登录验证码。
+- `AUTH_EMAIL_FROM`：邮箱验证码发件人，例如 `GG Fund <login@example.com>`。
 
 ## 注意事项
 
