@@ -1,0 +1,26 @@
+{
+  "name": "gg-fund",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-05-28",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "gg-fund"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "GG_FUND_CACHE",
+      "id": "ab630e246f6943208e41eb6f576686c8",
+      "preview_id": "8daa99e7276f424c8c5b19ccf36c756f"
+    }
+  ],
+  "vars": {
+    "NODE_VERSION": "22"
+  }
+}
