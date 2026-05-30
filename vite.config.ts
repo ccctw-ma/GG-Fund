@@ -15,7 +15,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    include: ['frontend/src/**/*.test.{ts,tsx}', 'shared/**/*.test.ts', 'tests/**/*.test.ts', 'backend/**/*.test.ts'],
+    include: ['frontend/src/**/*.test.{ts,tsx}', 'shared/**/*.test.ts', 'tests/**/*.test.ts', 'backend/**/*.test.ts', 'lib/**/*.test.ts', 'features/**/*.test.ts'],
     exclude: ['node_modules/**', 'dist/**'],
     coverage: {
       provider: 'v8',

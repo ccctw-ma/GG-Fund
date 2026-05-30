@@ -88,26 +88,28 @@ function parseCachedArray(raw: string): unknown[] {
   }
 }
 
+const browserStorage = () => (typeof globalThis.localStorage === 'undefined' ? undefined : globalThis.localStorage);
+
 export function loadHoldings(): Holding[] {
-  const raw = localStorage.getItem(HOLDINGS_KEY);
+  const raw = browserStorage()?.getItem(HOLDINGS_KEY);
   if (!raw) return [];
   const result = parseImportedData(JSON.stringify({ holdings: parseCachedArray(raw), watchlist: [] }));
   return result.ok ? result.data.holdings : [];
 }
 
 export function saveHoldings(holdings: Holding[]) {
-  localStorage.setItem(HOLDINGS_KEY, JSON.stringify(holdings));
+  browserStorage()?.setItem(HOLDINGS_KEY, JSON.stringify(holdings));
 }
 
 export function loadWatchlist(): WatchItem[] {
-  const raw = localStorage.getItem(WATCHLIST_KEY);
+  const raw = browserStorage()?.getItem(WATCHLIST_KEY);
   if (!raw) return [];
   const result = parseImportedData(JSON.stringify({ holdings: [], watchlist: parseCachedArray(raw) }));
   return result.ok ? result.data.watchlist : [];
 }
 
 export function saveWatchlist(watchlist: WatchItem[]) {
-  localStorage.setItem(WATCHLIST_KEY, JSON.stringify(watchlist));
+  browserStorage()?.setItem(WATCHLIST_KEY, JSON.stringify(watchlist));
 }
 
 export function exportLocalData(data: ExportedLocalData): string {

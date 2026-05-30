@@ -1,3 +1,5 @@
+'use client';
+
 import { Activity } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
 import type { IndexQuote } from '../types';

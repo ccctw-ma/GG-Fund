@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
   title: 'GG Fund',
-  description: 'Minimal Next.js entrypoint for GG Fund foundation compatibility.',
+  description: 'Cloudflare-first Next.js workspace for China fund market, portfolio, and AI analysis.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

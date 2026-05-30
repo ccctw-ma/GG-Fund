@@ -28,12 +28,24 @@
       {
         "name": "next"
       }
-    ]
+    ],
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
   },
   "include": [
     "next-env.d.ts",
     ".next/types/**/*.ts",
     "app",
+    "components",
+    "features",
+    "lib",
+    "middleware.ts",
+    "supabase",
     "frontend",
     "backend",
     "shared",

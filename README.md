@@ -2,41 +2,47 @@
 
 English version: [README.en.md](./README.en.md)
 
-GG Fund 是一个接近线上网站形态的中国基金行情与持仓分析应用。项目按前后端分层组织：`frontend/` 放 React + Vite 前端，`backend/` 放唯一业务 API 实现，根目录 `functions/` 仅保留 Cloudflare Pages Functions 路由 shim，`shared/` 放前后端共享 DTO 和行情适配器。线上运行在 Cloudflare Pages Functions + D1 + KV，本地开发通过 Bun 运行 `backend/local.ts` 注入内存 D1/KV bindings。
+GG Fund 正在从 React + Vite 逐步迁移到 Cloudflare-first 的 Next.js App Router 架构。当前仓库同时保留：`app/` 下的 Next.js 页面与 Route Handlers 作为新的主应用壳层，`frontend/` 下的既有工作台界面作为复用的基金工作区实现，`backend/` 与 `shared/` 中的现有行情和分析逻辑继续为迁移过程提供稳定能力。
 
 ## 功能
 
+- Next.js App Router 页面骨架：公开首页、`/app` 工作台、基金详情路由、组合页、定价页和设置页已经就位。
 - 大盘概览：通过东方财富 push2 / 腾讯行情备用源读取上证指数、深证成指、创业板指、沪深 300。
 - 真实基金搜索：按代码或名称查询公开基金数据，接口失败时自动回退内置示例行情。
 - 基金详情：优先展示天天基金盘中估算净值、估算涨跌和估算时间，同时保留上一交易日官方净值。
 - 本地持仓：添加基金后计算市值、成本、盈亏、收益率和组合占比。
 - 自选基金：关注基金但不计入持仓。
-- 登录入口：邮箱使用 OTP challenge + verify 流程；配置 `RESEND_API_KEY` 与 `AUTH_EMAIL_FROM` 后服务端通过 Resend 发送验证码，未配置时仅在本地/测试响应中返回开发验证码。登录态持久化保存，支持刷新恢复、退出登录和 D1 用户会话；空标识、验证码输入、加载中按钮均有校验和 loading 状态；GitHub/微信暂保留 OAuth 跳转元数据。
+- Supabase 基础：新增浏览器端/服务端 Supabase helper、请求会话归一化、Next middleware 和首个 `supabase/migrations/202605300001_core_schema.sql` 基础 schema。
+- 登录入口：前端界面已切到 Supabase 邮箱登录文案与客户端流程；旧 Cloudflare OTP 接口仍保留在 `backend/` 中用于兼容现有实现。
 - DeepSeek 分析：基金研究 Agent 先采集实时行情/历史净值/指数环境，计算区间收益、回撤、动量、波动等确定性指标，再调用 `deepseek-v4-flash` 生成结构化趋势、风险、情景和观察点；当 `DEEPSEEK_API_KEY` 未配置时自动降级为本地确定性报告（`agent.model: "local-fallback"`），保持相同结构供 UI 展示。
 - 数据导入导出：使用 JSON 备份浏览器本地数据。
-- Cloudflare 基建：D1 存组合/登录数据，KV 缓存行情，Pages Functions 提供线上 API。
-- 隐私优先：DeepSeek key 只通过 Cloudflare Secret 注入，不进入代码、git 或前端 bundle。
+- Cloudflare 基建：Cloudflare 仍是默认部署目标；Next Route Handlers 采用 edge runtime 约束，便于后续接入 OpenNext Cloudflare 产物。
+- 隐私优先：DeepSeek key、Supabase service role key 等服务端密钥不进入前端 bundle。
 
 ## 项目结构
 
-- `frontend/src/`：React 页面、组件、浏览器本地持仓逻辑和前端 API client。
-- `backend/api.ts`：唯一业务 API 实现，本地和线上都复用这里。
-- `backend/local.ts`：Bun 本地 Cloudflare bindings 适配器，使用内存 D1/KV。
-- `functions/api/[[path]].ts`：Cloudflare Pages Functions 入口，只负责转发到 `backend/api.ts`。
+- `app/`：Next.js App Router 页面与 `app/api/*` Route Handlers。
+- `components/workspace/FundWorkspace.tsx`：复用现有基金工作台界面作为 Next 工作区入口。
+- `features/market`、`features/portfolio`、`features/auth`、`features/ai`：迁移中的服务层模块。
+- `lib/`：环境、HTTP、Supabase runtime helper。
+- `frontend/src/`：既有 React 工作台、样式、浏览器端持仓逻辑和前端 API client。
+- `backend/api.ts`：现有 Cloudflare Pages Functions 业务 API，实现仍可作为兼容参考。
 - `shared/`：前后端共享类型、行情数据适配器和对应测试。
-- `migrations/`：Cloudflare D1 migrations。
+- `migrations/`：现有 Cloudflare D1 migrations。
+- `supabase/migrations/`：新的 Supabase Postgres schema 迁移。
 - `scripts/`：CI 测试、Cloudflare 部署和线上验证脚本。
 
 ## 技术栈
 
-- React + Vite + TypeScript
+- Next.js App Router + React + TypeScript
+- 迁移期兼容 React + Vite 工作台
 - Tailwind CSS v4 + Radix UI + shadcn/ui 风格组件
-- Cloudflare Pages Functions + D1 + KV
-- Bun 本地 Functions 适配器
+- Cloudflare Pages / OpenNext Cloudflare
+- Supabase SSR helpers + Supabase Auth / Postgres foundation
 - 东方财富/腾讯/天天基金公开接口 + fallback 示例行情
 - DeepSeek v4 Flash 服务端分析
 - ESLint + TypeScript 严格检查
-- Vitest 单元、组件、Cloudflare API 和行情适配器测试
+- Vitest 单元、组件、服务层和行情适配器测试
 - Vitest coverage，当前全局阈值：statements 70%、branches 60%、functions 70%、lines 70%
 - Apache ECharts 大盘图和基金研究走势图（区间收益、最大回撤、缩放、Tooltip）
 - Midscene 测试骨架
@@ -45,29 +51,35 @@ GG Fund 是一个接近线上网站形态的中国基金行情与持仓分析应
 
 ```bash
 bun install
+bun run dev
+```
+
+打开 `http://127.0.0.1:3000` 查看 Next.js App Router 工作台。
+
+如需继续调试旧 Vite/本地 API 组合，也可以使用：
+
+```bash
 bun run dev:api
 bun run dev:web
 ```
 
-打开 `http://127.0.0.1:5173`。
+## 环境变量
 
-也可以同时启动：
-
-```bash
-bun run dev
-```
-
-本地 API 使用与线上相同的 `backend/api.ts`，并通过 `backend/local.ts` 内存 D1/KV 适配器模拟 Cloudflare bindings。
-
-## Cloudflare Secret
-
-不要把 DeepSeek API key 写入代码或提交。使用 Cloudflare Secret：
+浏览器公开变量：
 
 ```bash
-bunx wrangler@3 pages secret put DEEPSEEK_API_KEY --project-name gg-fund
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 ```
 
-如果 key 出现在聊天、日志或截图里，视为已泄露，先去 DeepSeek 控制台撤销并换新 key。
+服务端变量：
+
+```bash
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+DEEPSEEK_API_KEY=your-deepseek-api-key
+```
+
+当前 `.env.example` 仍保留前端 Supabase 说明，后续会统一为 Next 风格变量。
 
 ## 测试
 
@@ -86,13 +98,7 @@ bun run test:midscene
 bun run ci:test
 ```
 
-`bun run ci:test` 会依次运行 lint、Vitest、coverage、build 和 E2E。`bun run test` 会运行 Vitest 单元、组件、行情适配器和 Cloudflare API 测试。E2E 覆盖实时指数非 mock、基金搜索/持仓、登录入口和 DeepSeek 分析 UI。`test:midscene` 在没有模型凭证时会运行跳过说明测试。
-
-`bun run test:midscene` 会通过 `scripts/test-midscene.sh` 读取本机 `~/.zshrc` 中的 Midscene 模型配置，自动启动本地 API/Web 服务，并验证 Midscene + Playwright 集成。若要强制执行真实 `aiAct` 模型动作，运行：
-
-```bash
-MIDSCENE_RUN_AI=1 bun run test:midscene
-```
+当前新增的 focused tests 覆盖环境变量 helper、HTTP helper、Supabase helper、会话归一化、市场服务、组合仓储、本地存储和 AI 分析服务。
 
 ## 提交前检查
 
@@ -117,18 +123,20 @@ bun run check
 
 ## Cloudflare 部署
 
-本地部署前先完成登录、D1/KV 绑定和 Pages Secret 配置，然后执行：
+本地部署前先完成 Cloudflare、Supabase 和 Secret 配置，然后执行：
 
 ```bash
 bun run deploy:cloudflare
 bun run verify:cloudflare
 ```
 
-`deploy:cloudflare` 会先执行远端 D1 migrations，再把 `dist/` 部署到 Cloudflare Pages 项目 `gg-fund`。可用环境变量覆盖默认值：`CF_PAGES_PROJECT`、`CF_PAGES_BRANCH`、`CF_D1_DATABASE`、`CF_VERIFY_BASE_URL`。
+当前默认 Cloudflare 验证接口：
 
-GitHub Actions 在 push/merge 到 `master` 后只跑 D1 迁移、Pages 部署和线上健康检查；仅当仓库 Variable `CLOUDFLARE_DEPLOY_ENABLED=true` 且 Secrets 配置了 `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID` 时触发，否则该 job 直接 skip。CI 安装依赖统一走 `bun install --frozen-lockfile --ignore-scripts`，跳过所有 postinstall（避免 Playwright/puppeteer 拉浏览器/二进制阻塞），并配 `timeout-minutes: 5` 防卡死。`bun.lock` 内的 tarball URL 必须保持为 GitHub-hosted runner 可访问的公开 `https://registry.npmjs.org/`，不要提交公司内网 registry URL。lint / Vitest / E2E 由本地 pre-commit hook 与 `bun run check` 兜底，不在 CI 中运行。
+- `GET /api/health`
+- `GET /api/market/indices`
+- `GET /api/funds/000001`
 
-## API
+## Next API
 
 - `GET /api/health`
 - `GET /api/market/indices`
@@ -137,13 +145,6 @@ GitHub Actions 在 push/merge 到 `master` 后只跑 D1 迁移、Pages 部署和
 - `GET /api/funds/:code/history?range=1m|3m|6m|1y|all`
 - `GET /api/funds/trending`
 - `GET /api/portfolio/default`
-- `POST /api/portfolio/default/holdings`
-- `POST /api/portfolio/default/watchlist`
-- `GET /api/auth/oauth-url?provider=github|wechat`
-- `GET /api/auth/me`
-- `POST /api/auth/challenge`
-- `POST /api/auth/verify`
-- `POST /api/auth/logout`
 - `POST /api/ai/analyze-fund`
 
 ## 数据来源

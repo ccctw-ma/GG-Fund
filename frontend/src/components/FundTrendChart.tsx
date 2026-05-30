@@ -1,3 +1,5 @@
+'use client';
+
 import ReactECharts from 'echarts-for-react';
 import { useMemo, useState } from 'react';
 import { calculateFundMetrics, selectHistoryRange, type FundRange } from '../fundMetrics';

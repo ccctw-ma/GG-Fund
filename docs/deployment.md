@@ -2,47 +2,38 @@
 
 ## 架构
 
-- 前端：Vite 构建后的静态文件，部署目录为 `dist/`。
-- API：Cloudflare Pages Functions，入口为 `functions/api/[[path]].ts`，业务逻辑唯一收敛在 `backend/api.ts`。
-- 本地开发：`backend/local.ts` 用 Bun 注入内存 D1/KV bindings，复用同一套 Functions API。
+- 应用壳层：Next.js App Router，页面位于 `app/`，通过 OpenNext Cloudflare 进行 Cloudflare 兼容构建。
+- 工作区 UI：`components/workspace/FundWorkspace.tsx` 复用现有 `frontend/src/App.tsx`，作为迁移期的主工作台。
+- API：优先使用 `app/api/*` Route Handlers；现有 `functions/api/[[path]].ts` + `backend/api.ts` 仍保留用于兼容和参考。
 - 共享层：`shared/` 保存前后端共用 DTO 和行情适配器。
-- 数据库：Cloudflare D1，binding 为 `GG_FUND_DB`，迁移目录为 `migrations/`；`0004_user_portfolios.sql` 为登录用户增加 portfolio 归属字段。
+- Cloudflare 数据库：现有 D1 binding 为 `GG_FUND_DB`，迁移目录为 `migrations/`。
+- Supabase 数据库：新增 `supabase/migrations/202605300001_core_schema.sql` 作为 Auth/Profile/Portfolio/Holdings/Watchlist 的 Postgres 基础 schema。
 - 缓存：Cloudflare KV，binding 为 `GG_FUND_CACHE`。
-- Secret：DeepSeek 和 OAuth 凭证通过 Cloudflare Pages Secret 注入，不进入代码和前端 bundle；OTP 登录会话保存在 D1 `auth_sessions`，前端只保存 session token。
+- Secret：DeepSeek 与 Supabase service role key 等服务端凭证必须通过部署环境注入，不进入代码和前端 bundle。
 
 ## 本地测试
 
-执行与 CI 一致的测试流水线：
+执行与 CI 尽量一致的测试流水线：
 
 ```bash
-bun run ci:test
-```
-
-该脚本依次执行：
-
-```bash
+bun run lint
 bun run test
+bun run coverage
 bun run build
 bun run test:e2e
 ```
 
-`ci:test` 会运行 lint、单元/API 测试、coverage、构建和 E2E。本地 E2E 通过 `backend/local.ts` 运行 Cloudflare API 适配器。
+当前新增 focused tests 已覆盖：
 
-覆盖率检查：
-
-```bash
-bun run coverage
-```
-
-当前全局阈值：statements 70%、branches 60%、functions 70%、lines 70%。
-
-Midscene 检查：
-
-```bash
-bun run test:midscene
-```
-
-该脚本会读取本机 `~/.zshrc` 中的 Midscene 模型变量并自动启动本地 API/Web 服务。默认验证 Midscene + Playwright 集成；如需强制执行真实模型 `aiAct`，使用 `MIDSCENE_RUN_AI=1 bun run test:midscene`。
+- `lib/env.ts`
+- `lib/http.ts`
+- `lib/supabase/browser.ts`
+- `lib/supabase/server.ts`
+- `features/auth/session.ts`
+- `features/market/service.ts`
+- `features/portfolio/repository.ts`
+- `features/portfolio/localStorage.ts`
+- `features/ai/service.ts`
 
 ## 首次配置
 
@@ -52,7 +43,16 @@ bun run test:midscene
 bunx wrangler@3 login
 ```
 
-如果需要从零创建资源：
+配置 Next / Supabase 相关环境变量：
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+DEEPSEEK_API_KEY=your-deepseek-api-key
+```
+
+如需继续使用现有 Cloudflare D1/KV 资源：
 
 ```bash
 bunx wrangler@3 d1 create gg-fund-db
@@ -60,36 +60,17 @@ bunx wrangler@3 kv namespace create GG_FUND_CACHE
 bunx wrangler@3 kv namespace create GG_FUND_CACHE --preview
 ```
 
-将生成的 D1/KV id 写入 `wrangler.toml`。
-
-配置 Pages Secret：
-
-```bash
-bunx wrangler@3 pages secret put DEEPSEEK_API_KEY --project-name gg-fund
-bunx wrangler@3 pages secret put GITHUB_CLIENT_ID --project-name gg-fund
-bunx wrangler@3 pages secret put WECHAT_CLIENT_ID --project-name gg-fund
-bunx wrangler@3 pages secret put RESEND_API_KEY --project-name gg-fund
-bunx wrangler@3 pages secret put AUTH_EMAIL_FROM --project-name gg-fund
-```
-
-`RESEND_API_KEY` 与 `AUTH_EMAIL_FROM` 用于邮箱 OTP 登录。未配置时 `/api/auth/challenge` 仍会创建 challenge，但只在本地/测试响应中返回 `devCode`，便于开发验收；生产环境建议配置后再开放邮箱登录。
+将生成的 D1/KV id 写入 `wrangler.toml` 或新的 OpenNext Cloudflare 配置。
 
 ## 手动部署
 
 ```bash
+bun run build
 bun run deploy:cloudflare
 bun run verify:cloudflare
 ```
 
-`deploy:cloudflare` 会执行：
-
-```bash
-bun run build
-bunx wrangler@3 d1 migrations apply gg-fund-db --remote
-bunx wrangler@3 pages deploy dist --project-name gg-fund --branch master
-```
-
-`verify:cloudflare` 默认检查：
+在新的 Next 架构下，重点验证：
 
 ```bash
 curl https://gg-fund.pages.dev/api/health
@@ -99,34 +80,26 @@ curl https://gg-fund.pages.dev/api/funds/000001
 
 ## GitHub CI/CD
 
-`.github/workflows/cloudflare-deploy.yml` 在 push/merge 到 `master` 后自动执行：
+`.github/workflows/cloudflare-deploy.yml` 仍以 Cloudflare 为默认部署目标。随着 Vite → Next/OpenNext 迁移推进，需要确保：
 
-- 使用固定 Bun `1.3.10` 运行项目脚本，避免 `latest` 版本变动。
-- 安装依赖一律用 `bun install --frozen-lockfile --ignore-scripts`：跳过所有 postinstall（Playwright/puppeteer 等浏览器或原生二进制下载），并由 `timeout-minutes: 5` 限制安装步骤总时长，避免 npm 在 GitHub runner 上偶发的 `Exit handler never called!` 把 job 拖到 10 分钟以上。
-- 不再在 CI 跑 lint/test/e2e（本地 pre-commit hook 与 `bun run check` 兜底）。
-- 使用 Wrangler 执行远端 D1 migrations。
-- 部署 `dist/` 到 Cloudflare Pages 项目 `gg-fund`。
-- 验证线上 `/api/health`、`/api/market/indices`、`/api/funds/000001`。
-
-整个 deploy job 受 `vars.CLOUDFLARE_DEPLOY_ENABLED == 'true'` 守卫，未配置 Cloudflare 凭据时不会执行。
-
-GitHub 仓库 Secrets 需要配置：
-
-- `CLOUDFLARE_API_TOKEN`：需要 D1 编辑、Pages 部署、KV/Pages 读取相关权限。
-- `CLOUDFLARE_ACCOUNT_ID`：Cloudflare 账户 ID。
+- 安装依赖使用 `bun install --frozen-lockfile --ignore-scripts`。
+- 构建步骤从 `vite build` 逐步切换到 `next build` / OpenNext Cloudflare build。
+- 线上验证继续覆盖 `/api/health`、`/api/market/indices`、`/api/funds/000001`。
 
 ## 可配置环境变量
 
-- `CF_PAGES_PROJECT`：Pages 项目名，默认 `gg-fund`。
-- `CF_PAGES_BRANCH`：部署分支名，默认 `master`。
-- `CF_D1_DATABASE`：D1 数据库名，默认 `gg-fund-db`。
-- `CF_VERIFY_BASE_URL`：线上验证地址，默认 `https://gg-fund.pages.dev`。
-- `E2E_API_PORT`：E2E 本地 API 端口，默认 `48787`，避免和默认开发端口 `8787` 冲突。
-- `RESEND_API_KEY`：Resend 邮件 API key，用于服务端发送邮箱登录验证码。
-- `AUTH_EMAIL_FROM`：邮箱验证码发件人，例如 `GG Fund <login@example.com>`。
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `DEEPSEEK_API_KEY`
+- `CF_PAGES_PROJECT`
+- `CF_PAGES_BRANCH`
+- `CF_D1_DATABASE`
+- `CF_VERIFY_BASE_URL`
+- `E2E_API_PORT`
 
 ## 注意事项
 
-- D1/KV binding 名必须与 `wrangler.toml` 和 `backend/api.ts` 保持一致。
-- 新增 migrations 后必须先在 CI 或手动部署中执行远端迁移，再验证线上接口；当前登录用户组合隔离依赖 `migrations/0004_user_portfolios.sql`。
+- 当前 `app/api/portfolio/default/route.ts` 仍依赖运行时可访问的 `GG_FUND_DB`，部署前需要把 Cloudflare binding 注入到 Next/OpenNext 运行环境。
+- Supabase RLS/表结构迁移需要先在 Supabase 侧执行，再启用登录后的持仓写入路径。
 - Secret 泄露后必须立即在提供商控制台吊销并重新配置。

@@ -1,7 +1,8 @@
 import { createClient, type Session } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const envSource = typeof process !== 'undefined' ? process.env : undefined;
+const supabaseUrl = envSource?.NEXT_PUBLIC_SUPABASE_URL ?? envSource?.VITE_SUPABASE_URL;
+const supabaseAnonKey = envSource?.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? envSource?.VITE_SUPABASE_ANON_KEY;
 
 export type UiAuthSession = {
   user: {
@@ -60,7 +61,7 @@ export function onAuthSessionChange(callback: (session?: UiAuthSession) => void)
 }
 
 export async function signInWithEmailOtp(email: string) {
-  if (!supabase) throw new Error('Supabase 尚未配置，请设置 VITE_SUPABASE_URL 和 VITE_SUPABASE_ANON_KEY');
+  if (!supabase) throw new Error('Supabase 尚未配置，请设置 NEXT_PUBLIC_SUPABASE_URL 和 NEXT_PUBLIC_SUPABASE_ANON_KEY');
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
