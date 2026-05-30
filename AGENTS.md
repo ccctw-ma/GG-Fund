@@ -51,7 +51,7 @@ curl https://gg-fund.workers.dev/api/funds/000001
 
 ## Secrets
 
-Never commit API keys, tokens, OAuth secrets, Supabase service role keys, Resend keys, PostHog private keys, DeepSeek credentials, auth mailer secrets, or provider client secrets. Use Cloudflare secrets for server values and `NEXT_PUBLIC_*` only for browser-safe public keys.
+Never commit API keys, tokens, OAuth secrets, Supabase service role keys, Resend keys, DeepSeek credentials, auth mailer secrets, or provider client secrets. Use Cloudflare secrets for server values and `NEXT_PUBLIC_*` only for browser-safe public keys.
 
 Required server secrets for production:
 

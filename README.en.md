@@ -12,10 +12,9 @@ GG Fund now uses a Cloudflare-first Next.js App Router architecture as its main 
 - Fund detail that prefers Tiantian Fund intraday estimate data while keeping the latest official net value.
 - Local portfolio calculations for market value, cost basis, profit/loss, return rate, and allocation weight.
 - Watchlist management without counting items as holdings.
-- Supabase foundation with browser/server helpers, normalized request session handling, Next middleware, and `supabase/migrations/202605300001_core_schema.sql`, while preserving `supabase/migrations/202605300002_billing_customers.sql` as historical migration record only.
+- Supabase foundation with browser/server helpers, normalized request session handling, Next middleware, and `supabase/migrations/202605300001_core_schema.sql`.
 - DeepSeek analysis that computes deterministic indicators before calling `deepseek-v4-flash`, with an automatic local fallback when `DEEPSEEK_API_KEY` is missing.
 - Cloudflare Worker deployment with edge-compatible Route Handlers, OpenNext output, and bindings such as `GG_FUND_DB` and `GG_FUND_CACHE` configured via `wrangler.jsonc`.
-- Privacy-first handling for Supabase service role keys, Resend keys, and DeepSeek credentials.
 
 ## Project Structure
 
@@ -65,7 +64,7 @@ Server values:
 ```bash
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 RESEND_API_KEY=re_your_key
-AUTH_EMAIL_FROM="GG Fund <login@example.com>"
+AUTH_EMAIL_FROM="GG Fund <onboarding@resend.dev>"
 DEEPSEEK_API_KEY=your-deepseek-api-key
 ```
 

@@ -12,10 +12,9 @@ GG Fund 现已以 Cloudflare-first 的 Next.js App Router 架构为主：`app/` 
 - 基金详情：优先展示天天基金盘中估算净值、估算涨跌和估算时间，同时保留上一交易日官方净值。
 - 本地持仓：添加基金后计算市值、成本、盈亏、收益率和组合占比。
 - 自选基金：关注基金但不计入持仓。
-- Supabase 基础：浏览器端/服务端 helper、请求会话归一化、Next middleware，以及 `supabase/migrations/202605300001_core_schema.sql` 基础 schema 迁移，并保留 `supabase/migrations/202605300002_billing_customers.sql` 仅作为历史迁移记录；`/api/portfolio/default` 会优先读取登录用户组合。
+- Supabase 基础：浏览器端/服务端 helper、请求会话归一化、Next middleware，以及 `supabase/migrations/202605300001_core_schema.sql` 基础 schema 迁移；`/api/portfolio/default` 会优先读取登录用户组合。
 - DeepSeek 分析：服务端先计算确定性指标，再调用 `deepseek-v4-flash`；当 `DEEPSEEK_API_KEY` 缺失时自动回退为本地确定性报告。
 - Cloudflare Worker 部署：Next Route Handlers 采用 edge runtime，OpenNext 输出 Worker，`wrangler.jsonc` 提供 `GG_FUND_DB`、`GG_FUND_CACHE` 等 binding。
-- 隐私优先：Supabase service role、Resend 与 DeepSeek key 均保持服务端注入。
 
 ## 项目结构
 
@@ -65,7 +64,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 ```bash
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 RESEND_API_KEY=re_your_key
-AUTH_EMAIL_FROM="GG Fund <login@example.com>"
+AUTH_EMAIL_FROM="GG Fund <onboarding@resend.dev>"
 DEEPSEEK_API_KEY=your-deepseek-api-key
 ```
 

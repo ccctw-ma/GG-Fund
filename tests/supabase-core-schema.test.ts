@@ -12,30 +12,22 @@ const sqlByFile = new Map(
 );
 
 const allSql = [...sqlByFile.values()].join('\n\n');
-const coreSchemaSql = sqlByFile.get('202605300001_core_schema.sql') ?? '';
-const billingCustomersSql = sqlByFile.get('202605300002_billing_customers.sql') ?? '';
 
 describe('supabase schema migrations', () => {
-  it('creates the core public tables across the migration set', () => {
+  it('creates the active public tables across the migration set', () => {
     expect(allSql).toMatch(/create table if not exists public\.profiles\s*\(/);
     expect(allSql).toMatch(/create table if not exists public\.portfolios\s*\(/);
     expect(allSql).toMatch(/create table if not exists public\.holdings\s*\(/);
     expect(allSql).toMatch(/create table if not exists public\.watchlist\s*\(/);
-    expect(allSql).toMatch(/create table if not exists public\.billing_customers\s*\(/);
+    expect(allSql).not.toMatch(/billing_customers/);
+    expect(migrationFiles).not.toContain('202605300002_billing_customers.sql');
   });
 
-  it('keeps billing_customers in a follow-up migration for existing environments', () => {
-    expect(migrationFiles).toContain('202605300002_billing_customers.sql');
-    expect(coreSchemaSql).not.toMatch(/billing_customers/);
-    expect(billingCustomersSql).toMatch(/create table if not exists public\.billing_customers\s*\(/);
-  });
-
-  it('enables row level security on every core table across all migrations', () => {
+  it('enables row level security on every active table across all migrations', () => {
     expect(allSql).toContain('alter table public.profiles enable row level security;');
     expect(allSql).toContain('alter table public.portfolios enable row level security;');
     expect(allSql).toContain('alter table public.holdings enable row level security;');
     expect(allSql).toContain('alter table public.watchlist enable row level security;');
-    expect(allSql).toMatch(/alter table(?: if exists)? public\.billing_customers enable row level security;/);
   });
 
   it('defines owner-scoped read and write policies for profile and portfolio tables', () => {
@@ -60,7 +52,4 @@ describe('supabase schema migrations', () => {
     expect(allSql).toMatch(/create policy "watchlist is writable by owner"[\s\S]*?with check \(\s*auth\.uid\(\) = user_id\s+and exists \(\s*select 1\s+from public\.portfolios p\s+where p\.id = watchlist\.portfolio_id\s+and p\.user_id = auth\.uid\(\)\s*\)\s*\);/);
   });
 
-  it('keeps historical billing customer migration owner-scoped for existing environments', () => {
-    expect(billingCustomersSql).toMatch(/do \$\$[\s\S]*?from pg_policies[\s\S]*?billing customers are readable by owner[\s\S]*?create policy "billing customers are readable by owner"[\s\S]*?on public\.billing_customers for select[\s\S]*?using \(auth\.uid\(\) = user_id\);[\s\S]*?end\s*\$\$;/i);
-  });
 });

@@ -1,7 +1,6 @@
 # Node / Bun / Vite
 node_modules/
 bun.lockb
-package-lock.json
 .next
 .open-next
 .vercel
@@ -15,6 +14,8 @@ cloudflare-env.d.ts
 playwright-report/
 test-results/
 coverage/
+tsconfig.tsbuildinfo
+.wrangler/
 data/
 __pycache__/
 *.py[codz]

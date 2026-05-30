@@ -1,13 +1,31 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+
+describe('Resend sender config docs', () => {
+  it('documents the Resend-provided sender domain instead of a placeholder custom domain', () => {
+    const envExample = readFileSync(join(process.cwd(), '.env.example'), 'utf8');
+    const readme = readFileSync(join(process.cwd(), 'README.md'), 'utf8');
+    const readmeEn = readFileSync(join(process.cwd(), 'README.en.md'), 'utf8');
+    const deployment = readFileSync(join(process.cwd(), 'docs/deployment.md'), 'utf8');
+
+    for (const content of [envExample, readme, readmeEn, deployment]) {
+      expect(content).toContain('AUTH_EMAIL_FROM="GG Fund <onboarding@resend.dev>"');
+      expect(content).not.toContain('login@example.com');
+    }
+
+    expect([...envExample.matchAll(/AUTH_EMAIL_FROM="GG Fund <([^>]+)>"/g)].map((match) => match[1])).toEqual(['onboarding@resend.dev']);
+  });
+});
 
 describe('CI dependency lockfile', () => {
   it('uses a registry reachable from GitHub-hosted runners', () => {
     const lockfile = readFileSync(join(process.cwd(), 'bun.lock'), 'utf8');
+    const packageLock = readFileSync(join(process.cwd(), 'package-lock.json'), 'utf8');
 
     expect(lockfile).not.toContain('https://bnpm.byted.org/');
+    expect(packageLock).not.toContain('https://bnpm.byted.org/');
   });
 });
 
@@ -23,6 +41,7 @@ describe('Wrangler OpenNext config', () => {
   it('declares the GG_FUND_DB D1 binding for the Next worker', () => {
     const wranglerJsonc = readFileSync(join(process.cwd(), 'wrangler.jsonc'), 'utf8');
 
+    expect(existsSync(join(process.cwd(), 'wrangler.toml'))).toBe(false);
     expect(wranglerJsonc).toContain('"d1_databases"');
     expect(wranglerJsonc).toContain('"binding": "GG_FUND_DB"');
     expect(wranglerJsonc).toContain('"database_name": "gg-fund-db"');
@@ -52,6 +71,7 @@ describe('Cloudflare deploy verification config', () => {
   it('builds, migrates, deploys, and verifies the OpenNext worker with configurable env wiring', () => {
     const deployScript = readFileSync(join(process.cwd(), 'scripts/deploy-cloudflare.sh'), 'utf8');
     const verifyScript = readFileSync(join(process.cwd(), 'scripts/verify-cloudflare.sh'), 'utf8');
+    const installScript = readFileSync(join(process.cwd(), 'scripts/ci-install.sh'), 'utf8');
     const ciScript = readFileSync(join(process.cwd(), 'scripts/ci-test.sh'), 'utf8');
     const workflow = readFileSync(join(process.cwd(), '.github/workflows/cloudflare-deploy.yml'), 'utf8');
 
@@ -68,6 +88,8 @@ describe('Cloudflare deploy verification config', () => {
     expect(verifyScript).toContain('CF_VERIFY_BASE_URL="${CF_VERIFY_BASE_URL:-https://${CF_WORKER_NAME}.workers.dev}"');
     expect(verifyScript).not.toContain('pages.dev');
 
+    expect(installScript).toContain('npm ci --ignore-scripts');
+
     expect(ciScript).toContain('bun run lint');
     expect(ciScript).toContain('bun run test');
     expect(ciScript).toContain('bun run coverage');
@@ -78,6 +100,13 @@ describe('Cloudflare deploy verification config', () => {
     expect(workflow).toContain("CF_WORKER_NAME: ${{ vars.CF_WORKER_NAME || 'gg-fund' }}");
     expect(workflow).toContain("CF_D1_DATABASE: ${{ vars.CF_D1_DATABASE || 'gg-fund-db' }}");
     expect(workflow).toContain('CF_D1_MIGRATIONS_DIR: migrations');
+    expect(workflow).toContain('actions/setup-node@v4');
+    expect(workflow).toContain('node-version: 22');
+    expect(workflow).toContain('cache: npm');
+    expect(workflow).toContain('oven-sh/setup-bun@v2');
+    expect(workflow).toContain('bun-version: 1.3.10');
+    expect(workflow).toContain('bash scripts/ci-install.sh');
+    expect(workflow).not.toContain('bun install --frozen-lockfile --ignore-scripts');
     expect(workflow).toContain('NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}');
     expect(workflow).toContain('NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}');
     expect(workflow).not.toContain('NEXT_PUBLIC_POSTHOG');
@@ -94,4 +123,3 @@ describe('Cloudflare deploy verification config', () => {
     expect(workflow).not.toContain('Deploy Cloudflare Pages');
   });
 });
-

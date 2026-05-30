@@ -43,7 +43,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 RESEND_API_KEY=re_your_key
-AUTH_EMAIL_FROM="GG Fund <login@example.com>"
+AUTH_EMAIL_FROM="GG Fund <onboarding@resend.dev>"
 DEEPSEEK_API_KEY=your-deepseek-api-key
 ```
 
@@ -88,9 +88,9 @@ curl https://gg-fund.workers.dev/api/funds/000001
 
 ## GitHub CI/CD
 
-`.github/workflows/cloudflare-deploy.yml` 使用 Bun 安装依赖，并通过仓库 Variables 注入 `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY` 供 OpenNext 构建使用，然后执行 Worker 构建、远程 D1 迁移、部署与验证：
+`.github/workflows/cloudflare-deploy.yml` 使用 `actions/setup-node` + `scripts/ci-install.sh` 执行 `npm ci`，再通过 `setup-bun` 固定 Bun 1.3.10 运行构建和部署命令。仓库 Variables 注入 `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY` 供 OpenNext 构建使用，然后执行 Worker 构建、远程 D1 迁移、部署与验证：
 
-- `bun install --frozen-lockfile --ignore-scripts`
+- `bash scripts/ci-install.sh`
 - `bun run build`
 - `bunx --package @opennextjs/cloudflare opennextjs-cloudflare build`
 - `bunx wrangler d1 migrations apply "$CF_D1_DATABASE" --remote --config wrangler.jsonc --migrations-dir "$CF_D1_MIGRATIONS_DIR"`

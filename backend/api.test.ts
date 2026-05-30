@@ -127,7 +127,7 @@ describe('Cloudflare API', () => {
     });
     const bindings = env();
     bindings.RESEND_API_KEY = 'resend-test-key';
-    bindings.AUTH_EMAIL_FROM = 'GG Fund <login@example.com>';
+    bindings.AUTH_EMAIL_FROM = 'GG Fund <onboarding@resend.dev>';
 
     const response = await api.fetch(new Request('https://example.com/api/auth/challenge', {
       method: 'POST',
@@ -141,7 +141,7 @@ describe('Cloudflare API', () => {
     expect(sentMessages[0].url).toBe('https://api.resend.com/emails');
     expect(sentMessages[0].init?.headers).toEqual(expect.objectContaining({ Authorization: 'Bearer resend-test-key' }));
     expect(JSON.parse(String(sentMessages[0].init?.body))).toEqual(expect.objectContaining({
-      from: 'GG Fund <login@example.com>',
+      from: 'GG Fund <onboarding@resend.dev>',
       to: ['demo@example.com'],
       subject: 'GG Fund 登录验证码',
     }));
