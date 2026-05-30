@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createEnv, getOptionalEnv, getRequiredEnv, hasEnv } from './env';
+import { createEnv, getOptionalEnv, getPublicEnv, getRequiredEnv, hasEnv, readOptionalEnv, readRequiredEnv } from './env';
 
 describe('env helpers', () => {
   it('reads optional values and treats blank strings as missing', () => {
@@ -9,12 +9,32 @@ describe('env helpers', () => {
     expect(getOptionalEnv('EMPTY_VALUE', source)).toBeUndefined();
     expect(hasEnv('NEXT_PUBLIC_SITE_URL', source)).toBe(true);
     expect(hasEnv('EMPTY_VALUE', source)).toBe(false);
+    expect(readOptionalEnv('NEXT_PUBLIC_SITE_URL', source)).toBe('https://gg-fund.test');
   });
 
   it('throws for required missing values', () => {
     expect(() => getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY', {})).toThrow(
       'Missing required environment variable: SUPABASE_SERVICE_ROLE_KEY',
     );
+    expect(() => readRequiredEnv('STRIPE_SECRET_KEY', {})).toThrow(
+      'Missing required environment variable: STRIPE_SECRET_KEY',
+    );
+  });
+
+  it('returns browser-safe public env values', () => {
+    expect(
+      getPublicEnv({
+        NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon',
+        NEXT_PUBLIC_POSTHOG_KEY: 'phc_test',
+        NEXT_PUBLIC_POSTHOG_HOST: 'https://eu.i.posthog.com',
+      }),
+    ).toEqual({
+      supabaseUrl: 'https://example.supabase.co',
+      supabaseAnonKey: 'anon',
+      posthogKey: 'phc_test',
+      posthogHost: 'https://eu.i.posthog.com',
+    });
   });
 
   it('creates a reusable env reader', () => {

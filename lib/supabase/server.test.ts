@@ -1,13 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const createServerClient = vi.fn(() => ({ auth: { getUser: vi.fn() } }));
+const createClient = vi.fn(() => ({ from: vi.fn() }));
 
 vi.mock('@supabase/ssr', () => ({
   createServerClient,
 }));
 
+vi.mock('@supabase/supabase-js', () => ({
+  createClient,
+}));
+
 beforeEach(() => {
   createServerClient.mockClear();
+  createClient.mockClear();
 });
 
 describe('supabase server helpers', () => {
@@ -67,6 +73,28 @@ describe('supabase server helpers', () => {
         remove: expect.any(Function),
       }),
     }));
+  });
+
+  it('creates a privileged service client with the service role key', async () => {
+    const { createSupabaseServiceClient } = await import('./server');
+
+    const client = createSupabaseServiceClient({
+      NEXT_PUBLIC_SUPABASE_URL: 'https://demo.supabase.co',
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon',
+      SUPABASE_SERVICE_ROLE_KEY: 'service',
+    });
+
+    expect(client).toEqual({ from: expect.any(Function) });
+    expect(createClient).toHaveBeenCalledWith(
+      'https://demo.supabase.co',
+      'service',
+      expect.objectContaining({
+        auth: expect.objectContaining({
+          persistSession: false,
+          autoRefreshToken: false,
+        }),
+      }),
+    );
   });
 
   it('returns undefined when request client env is incomplete', async () => {

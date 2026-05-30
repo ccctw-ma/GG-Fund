@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { getOptionalEnv, getRequiredEnv } from '../env';
 
 export type SupabaseServerConfig = {
@@ -53,6 +54,16 @@ export function createSupabaseServerClient(
       get: (name: string) => cookieAdapter.get(name),
       set: (name: string, value: string, options?: Record<string, unknown>) => cookieAdapter.set(name, value, options),
       remove: (name: string, options?: Record<string, unknown>) => cookieAdapter.remove(name, options),
+    },
+  });
+}
+
+export function createSupabaseServiceClient(source: Record<string, string | undefined> = process.env) {
+  const config = getSupabaseServerConfig(source);
+  return createClient(config.url, config.serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
     },
   });
 }
