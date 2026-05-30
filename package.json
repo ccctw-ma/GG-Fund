@@ -7,6 +7,8 @@
     "dev:web": "vite --host 0.0.0.0",
     "dev:api": "bun run backend/local.ts",
     "dev": "next dev --hostname 0.0.0.0",
+    "dev:web": "vite --host 0.0.0.0",
+    "dev:api": "bun run backend/local.ts",
     "build": "bun run typecheck && next build",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy:cloudflare": "bash scripts/deploy-cloudflare.sh",
