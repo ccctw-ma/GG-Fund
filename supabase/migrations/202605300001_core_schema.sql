@@ -65,18 +65,66 @@ create policy "portfolios are writable by owner"
 
 create policy "holdings are readable by owner"
   on public.holdings for select
-  using (auth.uid() = user_id);
+  using (
+    auth.uid() = user_id
+    and exists (
+      select 1
+      from public.portfolios p
+      where p.id = holdings.portfolio_id
+        and p.user_id = auth.uid()
+    )
+  );
 
 create policy "holdings are writable by owner"
   on public.holdings for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using (
+    auth.uid() = user_id
+    and exists (
+      select 1
+      from public.portfolios p
+      where p.id = holdings.portfolio_id
+        and p.user_id = auth.uid()
+    )
+  )
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1
+      from public.portfolios p
+      where p.id = holdings.portfolio_id
+        and p.user_id = auth.uid()
+    )
+  );
 
 create policy "watchlist is readable by owner"
   on public.watchlist for select
-  using (auth.uid() = user_id);
+  using (
+    auth.uid() = user_id
+    and exists (
+      select 1
+      from public.portfolios p
+      where p.id = watchlist.portfolio_id
+        and p.user_id = auth.uid()
+    )
+  );
 
 create policy "watchlist is writable by owner"
   on public.watchlist for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using (
+    auth.uid() = user_id
+    and exists (
+      select 1
+      from public.portfolios p
+      where p.id = watchlist.portfolio_id
+        and p.user_id = auth.uid()
+    )
+  )
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1
+      from public.portfolios p
+      where p.id = watchlist.portfolio_id
+        and p.user_id = auth.uid()
+    )
+  );

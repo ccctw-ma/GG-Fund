@@ -13,6 +13,14 @@
       "service": "gg-fund"
     }
   ],
+  "d1_databases": [
+    {
+      "binding": "GG_FUND_DB",
+      "database_name": "gg-fund-db",
+      "database_id": "2b9e820e-7895-429c-9f4d-195af56ac38f",
+      "migrations_dir": "migrations"
+    }
+  ],
   "kv_namespaces": [
     {
       "binding": "GG_FUND_CACHE",

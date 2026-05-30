@@ -12,10 +12,10 @@ GG Fund is migrating from a React + Vite setup toward a Cloudflare-first Next.js
 - Fund detail: prefers Tiantian Fund intraday estimate and keeps the latest official net value.
 - Local portfolio: calculates market value, cost, profit/loss, return rate, and position weight in the browser.
 - Watchlist: tracks followed funds without counting them as holdings.
-- Supabase foundation: browser/server helpers, normalized request session helpers, Next middleware, and an initial `supabase/migrations/202605300001_core_schema.sql` schema migration are now included.
+- Supabase foundation: browser/server helpers, normalized request session helpers, Next middleware, and an initial `supabase/migrations/202605300001_core_schema.sql` schema migration are now included; `/api/portfolio/default` now maps request sessions to signed-in user portfolios and only falls back to the anonymous default deliberately.
 - Auth entry: the frontend now uses Supabase email login wording and client flow; legacy Cloudflare OTP endpoints remain in `backend/` for compatibility during migration.
 - DeepSeek analysis: computes deterministic return, drawdown, momentum, volatility, and trend indicators before calling `deepseek-v4-flash`, then renders structured trend, risk, scenario, and watch-point reports. When `DEEPSEEK_API_KEY` is missing the API automatically returns a deterministic local report (`agent.model: "local-fallback"`) with the same shape, so the UI stays fully usable offline.
-- Cloudflare-first deployment: Next Route Handlers are kept edge-friendly so they can move into OpenNext Cloudflare deployment cleanly.
+- Cloudflare-first deployment: Next Route Handlers are kept edge-friendly and resolve bindings such as `GG_FUND_DB` through `wrangler.jsonc` and the OpenNext Cloudflare runtime context.
 - Privacy-first: Supabase service role and DeepSeek secrets stay server-only.
 
 ## Project Structure

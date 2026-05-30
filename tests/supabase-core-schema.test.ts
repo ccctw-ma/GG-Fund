@@ -34,4 +34,11 @@ describe('supabase core schema migration', () => {
     expect(sql).toContain('with check (auth.uid() = id);');
     expect(sql).toContain('with check (auth.uid() = user_id);');
   });
+
+  it('verifies holdings and watchlist access through portfolio ownership checks', () => {
+    expect(sql).toMatch(/create policy "holdings are readable by owner"[\s\S]*?using \(\s*auth\.uid\(\) = user_id\s+and exists \(\s*select 1\s+from public\.portfolios p\s+where p\.id = holdings\.portfolio_id\s+and p\.user_id = auth\.uid\(\)\s*\)\s*\);/);
+    expect(sql).toMatch(/create policy "holdings are writable by owner"[\s\S]*?with check \(\s*auth\.uid\(\) = user_id\s+and exists \(\s*select 1\s+from public\.portfolios p\s+where p\.id = holdings\.portfolio_id\s+and p\.user_id = auth\.uid\(\)\s*\)\s*\);/);
+    expect(sql).toMatch(/create policy "watchlist is readable by owner"[\s\S]*?using \(\s*auth\.uid\(\) = user_id\s+and exists \(\s*select 1\s+from public\.portfolios p\s+where p\.id = watchlist\.portfolio_id\s+and p\.user_id = auth\.uid\(\)\s*\)\s*\);/);
+    expect(sql).toMatch(/create policy "watchlist is writable by owner"[\s\S]*?with check \(\s*auth\.uid\(\) = user_id\s+and exists \(\s*select 1\s+from public\.portfolios p\s+where p\.id = watchlist\.portfolio_id\s+and p\.user_id = auth\.uid\(\)\s*\)\s*\);/);
+  });
 });

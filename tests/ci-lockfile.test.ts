@@ -20,6 +20,18 @@ describe('CI tracked source files', () => {
 });
 
 
+describe('Wrangler OpenNext config', () => {
+  it('declares the GG_FUND_DB D1 binding for the Next worker', () => {
+    const wranglerJsonc = readFileSync(join(process.cwd(), 'wrangler.jsonc'), 'utf8');
+
+    expect(wranglerJsonc).toContain('"d1_databases"');
+    expect(wranglerJsonc).toContain('"binding": "GG_FUND_DB"');
+    expect(wranglerJsonc).toContain('"database_name": "gg-fund-db"');
+    expect(wranglerJsonc).toContain('"database_id": "2b9e820e-7895-429c-9f4d-195af56ac38f"');
+    expect(wranglerJsonc).toContain('"migrations_dir": "migrations"');
+  });
+});
+
 describe('Cloudflare deploy verification config', () => {
   it('verifies the deployed Worker surface by default', () => {
     const verifyScript = readFileSync(join(process.cwd(), 'scripts/verify-cloudflare.sh'), 'utf8');

@@ -60,7 +60,7 @@ bunx wrangler@3 kv namespace create GG_FUND_CACHE
 bunx wrangler@3 kv namespace create GG_FUND_CACHE --preview
 ```
 
-将生成的 D1/KV id 写入 `wrangler.toml` 或新的 OpenNext Cloudflare 配置。
+将生成的 D1/KV id 同步写入 `wrangler.toml`、`wrangler.jsonc` 或对应的 OpenNext Cloudflare 配置。
 
 ## 手动部署
 
@@ -100,6 +100,6 @@ curl https://gg-fund.pages.dev/api/funds/000001
 
 ## 注意事项
 
-- 当前 `app/api/portfolio/default/route.ts` 仍依赖运行时可访问的 `GG_FUND_DB`，部署前需要把 Cloudflare binding 注入到 Next/OpenNext 运行环境。
-- Supabase RLS/表结构迁移需要先在 Supabase 侧执行，再启用登录后的持仓写入路径。
+- `app/api/portfolio/default/route.ts` 会优先读取 OpenNext Cloudflare runtime context 中的 `GG_FUND_DB`，并保留对 dev/test 全局 binding 的兼容；部署前需确保 `wrangler.jsonc` 与实际 Worker binding 保持一致。
+- Supabase RLS/表结构迁移需要先在 Supabase 侧执行；持仓和自选策略现在会同时校验 `user_id` 与所属 `portfolio` 的 `user_id`。
 - Secret 泄露后必须立即在提供商控制台吊销并重新配置。

@@ -1,16 +1,44 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HttpError } from '../lib/http';
 
-const marketService = {
-  getIndices: vi.fn(),
-  searchFunds: vi.fn(),
-  getFund: vi.fn(),
-  getFundHistory: vi.fn(),
-  getTrendingFunds: vi.fn(),
-};
+const {
+  marketService,
+  createSupabaseServerClientMock,
+  getRequestSessionMock,
+  cookiesMock,
+  getCloudflareContextMock,
+} = vi.hoisted(() => ({
+  marketService: {
+    getIndices: vi.fn(),
+    searchFunds: vi.fn(),
+    getFund: vi.fn(),
+    getFundHistory: vi.fn(),
+    getTrendingFunds: vi.fn(),
+  },
+  createSupabaseServerClientMock: vi.fn(),
+  getRequestSessionMock: vi.fn(),
+  cookiesMock: vi.fn(),
+  getCloudflareContextMock: vi.fn(),
+}));
 
 vi.mock('../features/market/service', () => ({
   getDefaultMarketService: vi.fn(() => marketService),
+}));
+
+vi.mock('../lib/supabase/server', () => ({
+  createSupabaseServerClient: createSupabaseServerClientMock,
+}));
+
+vi.mock('../features/auth/session', () => ({
+  getRequestSession: getRequestSessionMock,
+}));
+
+vi.mock('next/headers', () => ({
+  cookies: cookiesMock,
+}));
+
+vi.mock('@opennextjs/cloudflare', () => ({
+  getCloudflareContext: getCloudflareContextMock,
 }));
 
 vi.mock('../features/ai/service', async (importOriginal) => {
@@ -152,6 +180,14 @@ describe('app api routes', () => {
 
     resetMarketServiceMocks();
     buildAnalyzeFundResponseMock.mockReset();
+    createSupabaseServerClientMock.mockReset().mockReturnValue(undefined);
+    getRequestSessionMock.mockReset().mockResolvedValue(undefined);
+    cookiesMock.mockReset().mockResolvedValue({
+      get: vi.fn(() => undefined),
+      set: vi.fn(),
+      remove: vi.fn(),
+    });
+    getCloudflareContextMock.mockReset().mockRejectedValue(new Error('Cloudflare context not available'));
     delete (globalThis as { GG_FUND_DB?: unknown }).GG_FUND_DB;
     process.env.DEEPSEEK_API_KEY = 'test-deepseek-key';
   });
@@ -393,13 +429,96 @@ describe('app api routes', () => {
     });
   });
 
-  it('creates an anonymous default portfolio when auth context is absent', async () => {
+  it('returns the signed-in user portfolio instead of the anonymous default when a Supabase session is available', async () => {
+    const db = new FakeD1();
+    const supabaseClient = { auth: { getUser: vi.fn() } };
+    db.portfolios.push({
+      id: 'portfolio-anon',
+      userId: null,
+      name: '默认组合',
+      createdAt: '2026-05-30T00:00:00.000Z',
+      updatedAt: '2026-05-30T00:00:00.000Z',
+    });
+    db.portfolios.push({
+      id: 'portfolio-user',
+      userId: 'user-1',
+      name: '我的组合',
+      createdAt: '2026-05-30T01:00:00.000Z',
+      updatedAt: '2026-05-30T01:00:00.000Z',
+    });
+    db.holdings.push({
+      id: 'holding-user-1',
+      portfolioId: 'portfolio-user',
+      fundCode: '000003',
+      fundName: '中欧医疗健康混合',
+      shares: 50,
+      costAmount: 80,
+      purchaseDate: '2026-05-12',
+      note: '登录用户持仓',
+      createdAt: '2026-05-30T01:00:00.000Z',
+      updatedAt: '2026-05-30T01:00:00.000Z',
+    });
+    db.watchlist.push({
+      portfolioId: 'portfolio-user',
+      fundCode: '519674',
+      fundName: '银河创新成长混合',
+      createdAt: '2026-05-30T01:00:00.000Z',
+    });
+    (globalThis as { GG_FUND_DB?: FakeD1 }).GG_FUND_DB = db;
+    createSupabaseServerClientMock.mockReturnValueOnce(supabaseClient);
+    getRequestSessionMock.mockResolvedValueOnce({
+      user: {
+        id: 'user-1',
+        email: 'demo@example.com',
+        displayName: 'Demo User',
+      },
+    });
+
+    const response = await getDefaultPortfolio();
+
+    expect(createSupabaseServerClientMock).toHaveBeenCalledTimes(1);
+    expect(getRequestSessionMock).toHaveBeenCalledWith(supabaseClient);
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      portfolio: {
+        id: 'portfolio-user',
+        name: '我的组合',
+        createdAt: '2026-05-30T01:00:00.000Z',
+        updatedAt: '2026-05-30T01:00:00.000Z',
+      },
+      holdings: [
+        {
+          id: 'holding-user-1',
+          fundCode: '000003',
+          fundName: '中欧医疗健康混合',
+          shares: 50,
+          costAmount: 80,
+          purchaseDate: '2026-05-12',
+          note: '登录用户持仓',
+          createdAt: '2026-05-30T01:00:00.000Z',
+          updatedAt: '2026-05-30T01:00:00.000Z',
+        },
+      ],
+      watchlist: [
+        {
+          fundCode: '519674',
+          fundName: '银河创新成长混合',
+          createdAt: '2026-05-30T01:00:00.000Z',
+        },
+      ],
+    });
+  });
+
+  it('creates an anonymous default portfolio deliberately when Supabase request auth is unavailable', async () => {
     const db = new FakeD1();
     (globalThis as { GG_FUND_DB?: FakeD1 }).GG_FUND_DB = db;
+    createSupabaseServerClientMock.mockReturnValueOnce(undefined);
 
     const response = await getDefaultPortfolio();
     const snapshot = await response.json();
 
+    expect(createSupabaseServerClientMock).toHaveBeenCalledTimes(1);
+    expect(getRequestSessionMock).not.toHaveBeenCalled();
     expect(response.status).toBe(200);
     expect(snapshot).toEqual({
       portfolio: expect.objectContaining({ name: '默认组合' }),
@@ -410,8 +529,47 @@ describe('app api routes', () => {
     expect(db.portfolios[0]?.userId).toBeNull();
   });
 
-  it('throws when the D1 binding is missing', async () => {
-    await expect(getDefaultPortfolio()).rejects.toThrow('GG_FUND_DB is not available in the current runtime');
+  it('reads the D1 binding from the OpenNext Cloudflare context when the global binding is unavailable', async () => {
+    const db = new FakeD1();
+    db.portfolios.push({
+      id: 'portfolio-context',
+      userId: null,
+      name: '上下文组合',
+      createdAt: '2026-05-30T02:00:00.000Z',
+      updatedAt: '2026-05-30T02:00:00.000Z',
+    });
+    getCloudflareContextMock.mockResolvedValueOnce({
+      env: { GG_FUND_DB: db },
+      cf: undefined,
+      ctx: {},
+    });
+
+    const response = await getDefaultPortfolio();
+
+    expect(getCloudflareContextMock).toHaveBeenCalledWith({ async: true });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      portfolio: {
+        id: 'portfolio-context',
+        name: '上下文组合',
+        createdAt: '2026-05-30T02:00:00.000Z',
+        updatedAt: '2026-05-30T02:00:00.000Z',
+      },
+      holdings: [],
+      watchlist: [],
+    });
+  });
+
+  it('returns a structured 500 when the D1 binding is missing', async () => {
+    const response = await getDefaultPortfolio();
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'PORTFOLIO_DB_UNAVAILABLE',
+        message: 'GG_FUND_DB is not available in the current runtime',
+      },
+    });
   });
 
   it('returns AI analysis for a valid POST payload', async () => {
