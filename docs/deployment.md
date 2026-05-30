@@ -8,7 +8,6 @@
 - 运行时存储：Cloudflare D1 仍通过 `GG_FUND_DB` 为组合默认快照等 Worker 侧能力提供绑定支持。
 - 缓存：Cloudflare KV 可作为行情短缓存，访问封装在 market service 中。
 - 邮件：Resend 产品邮件。
-- 分析：PostHog。
 - Secret：所有服务端 key 通过 Cloudflare Secret 或本地 `.env.local` 注入，不进入前端 bundle。
 
 ## 本地测试
@@ -42,13 +41,10 @@ bunx wrangler login
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-NEXT_PUBLIC_POSTHOG_KEY=phc_your_project_key
-NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 RESEND_API_KEY=re_your_key
 AUTH_EMAIL_FROM="GG Fund <login@example.com>"
 DEEPSEEK_API_KEY=your-deepseek-api-key
-POSTHOG_API_KEY=phx_your_private_key
 ```
 
 如需继续使用现有 Cloudflare D1/KV 资源：
@@ -92,7 +88,7 @@ curl https://gg-fund.workers.dev/api/funds/000001
 
 ## GitHub CI/CD
 
-`.github/workflows/cloudflare-deploy.yml` 使用 Bun 安装依赖，并通过仓库 Variables 注入 `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY`、`NEXT_PUBLIC_POSTHOG_KEY`、`NEXT_PUBLIC_POSTHOG_HOST` 供 OpenNext 构建使用，然后执行 Worker 构建、远程 D1 迁移、部署与验证：
+`.github/workflows/cloudflare-deploy.yml` 使用 Bun 安装依赖，并通过仓库 Variables 注入 `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY` 供 OpenNext 构建使用，然后执行 Worker 构建、远程 D1 迁移、部署与验证：
 
 - `bun install --frozen-lockfile --ignore-scripts`
 - `bun run build`
@@ -105,13 +101,10 @@ curl https://gg-fund.workers.dev/api/funds/000001
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `NEXT_PUBLIC_POSTHOG_KEY`
-- `NEXT_PUBLIC_POSTHOG_HOST`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `RESEND_API_KEY`
 - `AUTH_EMAIL_FROM`
 - `DEEPSEEK_API_KEY`
-- `POSTHOG_API_KEY`
 - `CF_WORKER_NAME`
 - `CF_D1_DATABASE`
 - `CF_D1_MIGRATIONS_DIR`

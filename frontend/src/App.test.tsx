@@ -1,5 +1,6 @@
 import { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
@@ -62,13 +63,39 @@ describe('App', () => {
     expect(container.textContent).toContain('智能基金账户');
     expect(container.textContent).toContain('账户总览');
     expect(container.textContent).toContain('交易与基金工具');
-    expect(container.textContent).toContain('安全与隐私');
-    expect(container.textContent).toContain('下载移动端');
+    expect(container.textContent).not.toContain('安全与隐私');
+    expect(container.textContent).not.toContain('下载移动端');
+    expect(container.textContent).not.toContain('移动端');
     expect(container.textContent).toContain('个人信息');
     expect(container.textContent).toContain('未登录');
     expect(container.textContent).toContain('Supabase 邮箱登录');
     expect(container.textContent).toContain('发送 Magic Link / OTP');
     expect(container.textContent).toContain('中国基金行情');
     expect(container.textContent).not.toContain('OTP / OAuth 登录');
+  });
+
+  it('hydrates without mismatching locally cached holdings', async () => {
+    localStorage.setItem('gg-fund:holdings', JSON.stringify([{
+      id: 'holding-1',
+      fundCode: fund.code,
+      fundName: fund.name,
+      shares: 1000,
+      costAmount: 2000,
+      createdAt: '2026-05-29T00:00:00.000Z',
+      updatedAt: '2026-05-29T00:00:00.000Z',
+    }]));
+    const hydrationContainer = document.createElement('div');
+    hydrationContainer.innerHTML = renderToString(<App />);
+    container = hydrationContainer;
+    document.body.appendChild(hydrationContainer);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await act(async () => {
+      root = hydrateRoot(hydrationContainer, <App />);
+      await Promise.resolve();
+    });
+
+    expect(errorSpy.mock.calls.some((call) => String(call[0]).includes('Hydration failed'))).toBe(false);
+    errorSpy.mockRestore();
   });
 });

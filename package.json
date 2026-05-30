@@ -38,8 +38,6 @@
     "echarts-for-react": "^3.0.6",
     "lucide-react": "latest",
     "next": "^16.2.6",
-    "posthog-js": "^1.376.4",
-    "posthog-node": "^5.35.6",
     "react": "latest",
     "react-dom": "latest",
     "recharts": "latest",

@@ -60,7 +60,6 @@ bunx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 bunx wrangler secret put RESEND_API_KEY
 bunx wrangler secret put AUTH_EMAIL_FROM
 bunx wrangler secret put DEEPSEEK_API_KEY
-bunx wrangler secret put POSTHOG_API_KEY
 ```
 
 If a secret appears in chat, logs, screenshots, or git history, treat it as leaked and rotate it before using it in production.

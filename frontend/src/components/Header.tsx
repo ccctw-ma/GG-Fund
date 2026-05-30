@@ -1,4 +1,4 @@
-import { BarChart3, LineChart, LogOut, ShieldCheck, Smartphone, Sparkles, UserRound, WalletCards } from 'lucide-react';
+import { BarChart3, LineChart, LogOut, Sparkles, UserRound, WalletCards } from 'lucide-react';
 import type { UiAuthSession } from '../supabaseAuth';
 
 type HeaderProps = {
@@ -21,8 +21,6 @@ export function Header({ session, onLogout, logoutPending = false }: HeaderProps
         {[
           ['#overview', '账户总览', WalletCards],
           ['#features', '交易工具', LineChart],
-          ['#security', '安全隐私', ShieldCheck],
-          ['#download', '移动端', Smartphone],
           ['#workspace', '行情工作台', BarChart3],
         ].map(([href, label, Icon]) => (
           <a key={String(href)} href={String(href)}>

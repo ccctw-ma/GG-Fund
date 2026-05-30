@@ -53,16 +53,17 @@ describe('Midscene fund dashboard flow', () => {
     await browser?.close();
   });
 
-  it.skipIf(!hasLocalServer)('opens the local app with Playwright while Midscene agent is initialized', async () => {
+  it.skipIf(!hasLocalServer)('opens the local workspace with Playwright while Midscene agent is initialized', async () => {
     await page.goto('/');
 
-    await expect(page.locator('body').textContent()).resolves.toContain('GG Fund 中国基金行情');
+    expect(page.url()).toMatch(/\/app$/);
+    await expect(page.locator('body').textContent()).resolves.toContain('智能基金账户');
     expect(agent).toBeInstanceOf(PlaywrightAgent);
   });
 
   it.skipIf(!shouldRunAiAction)('uses natural language to verify the live fund dashboard shell', async () => {
     await page.goto('/');
 
-    await agent.aiAct('verify the page shows the Chinese GG Fund landing page and workspace entry, including the main heading, workspace link, and access to the fund workspace');
+    await agent.aiAct('verify the page opens the Chinese GG Fund workspace directly, including the account overview, fund search, and live market workspace');
   }, 180_000);
 });

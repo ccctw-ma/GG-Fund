@@ -3,8 +3,6 @@ export type EnvSource = Record<string, string | undefined>;
 export type PublicEnv = {
   supabaseUrl: string;
   supabaseAnonKey: string;
-  posthogKey: string;
-  posthogHost: string;
 };
 
 function normalizeEnvValue(value: string | undefined) {
@@ -40,8 +38,6 @@ export function getPublicEnv(source: EnvSource = process.env): PublicEnv {
   return {
     supabaseUrl: getOptionalEnv('NEXT_PUBLIC_SUPABASE_URL', source) ?? '',
     supabaseAnonKey: getOptionalEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', source) ?? '',
-    posthogKey: getOptionalEnv('NEXT_PUBLIC_POSTHOG_KEY', source) ?? '',
-    posthogHost: getOptionalEnv('NEXT_PUBLIC_POSTHOG_HOST', source) ?? 'https://us.i.posthog.com',
   };
 }
 

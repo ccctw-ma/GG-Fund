@@ -2,11 +2,11 @@
 
 English version: [README.en.md](./README.en.md)
 
-GG Fund 现已以 Cloudflare-first 的 Next.js App Router 架构为主：`app/` 承载页面与 Route Handlers，`components/workspace/FundWorkspace.tsx` 作为工作台入口复用现有可迁移的 React 模块，部署通过 OpenNext 输出 Cloudflare Worker，服务端能力聚合在 `features/*` 与 `lib/*`。
+GG Fund 现已以 Cloudflare-first 的 Next.js App Router 架构为主：`app/` 承载页面与 Route Handlers，根路径 `/` 会直接跳转到 `/app` 工作台，`components/workspace/FundWorkspace.tsx` 作为工作台入口复用现有可迁移的 React 模块，部署通过 OpenNext 输出 Cloudflare Worker，服务端能力聚合在 `features/*` 与 `lib/*`。
 
 ## 功能
 
-- Next.js App Router 页面：公开首页、`/app` 工作台、基金详情路由、组合页和设置页。
+- Next.js App Router 页面：根路径直接进入 `/app` 工作台，并保留基金详情路由、组合页和设置页。
 - 大盘概览：通过东方财富 push2 / 腾讯行情备用源读取上证指数、深证成指、创业板指、沪深 300。
 - 真实基金搜索：按代码或名称查询公开基金数据，接口失败时自动回退内置示例行情。
 - 基金详情：优先展示天天基金盘中估算净值、估算涨跌和估算时间，同时保留上一交易日官方净值。
@@ -15,13 +15,13 @@ GG Fund 现已以 Cloudflare-first 的 Next.js App Router 架构为主：`app/` 
 - Supabase 基础：浏览器端/服务端 helper、请求会话归一化、Next middleware，以及 `supabase/migrations/202605300001_core_schema.sql` 基础 schema 迁移，并保留 `supabase/migrations/202605300002_billing_customers.sql` 仅作为历史迁移记录；`/api/portfolio/default` 会优先读取登录用户组合。
 - DeepSeek 分析：服务端先计算确定性指标，再调用 `deepseek-v4-flash`；当 `DEEPSEEK_API_KEY` 缺失时自动回退为本地确定性报告。
 - Cloudflare Worker 部署：Next Route Handlers 采用 edge runtime，OpenNext 输出 Worker，`wrangler.jsonc` 提供 `GG_FUND_DB`、`GG_FUND_CACHE` 等 binding。
-- 隐私优先：Supabase service role、Resend、PostHog private key 与 DeepSeek key 均保持服务端注入。
+- 隐私优先：Supabase service role、Resend 与 DeepSeek key 均保持服务端注入。
 
 ## 项目结构
 
 - `app/`：Next.js App Router 页面与 `app/api/*` Route Handlers。
 - `components/workspace/FundWorkspace.tsx`：Next 工作区入口。
-- `features/market`、`features/portfolio`、`features/auth`、`features/ai`、`features/email`、`features/analytics`：服务层模块。
+- `features/market`、`features/portfolio`、`features/auth`、`features/ai`、`features/email`：服务层模块。
 - `lib/`：环境、HTTP、Supabase runtime helper。
 - `frontend/src/`：仍被 Next 复用的 React 组件、样式和浏览器端逻辑；不再作为独立 Vite 应用入口。
 - `shared/`：前后端共享类型、行情数据适配器和对应测试。
@@ -35,7 +35,6 @@ GG Fund 现已以 Cloudflare-first 的 Next.js App Router 架构为主：`app/` 
 - Tailwind CSS v4 + Radix UI + shadcn/ui 风格组件
 - Supabase Auth + Supabase Postgres + RLS
 - Resend 产品邮件
-- PostHog 产品分析
 - OpenNext Cloudflare Workers 部署
 - 东方财富/腾讯/天天基金公开接口 + fallback 示例行情
 - DeepSeek v4 Flash 服务端分析
@@ -59,8 +58,6 @@ bun run dev
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-NEXT_PUBLIC_POSTHOG_KEY=phc_your_project_key
-NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 ```
 
 服务端变量：
@@ -70,7 +67,6 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 RESEND_API_KEY=re_your_key
 AUTH_EMAIL_FROM="GG Fund <login@example.com>"
 DEEPSEEK_API_KEY=your-deepseek-api-key
-POSTHOG_API_KEY=phx_your_private_key
 ```
 
 ## 测试
@@ -115,8 +111,6 @@ GitHub Actions 部署需要在仓库 Variables 中提供以下公开构建变量
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `NEXT_PUBLIC_POSTHOG_KEY`
-- `NEXT_PUBLIC_POSTHOG_HOST`
 
 默认验证接口：
 

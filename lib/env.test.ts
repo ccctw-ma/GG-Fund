@@ -26,14 +26,10 @@ describe('env helpers', () => {
       getPublicEnv({
         NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
         NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon',
-        NEXT_PUBLIC_POSTHOG_KEY: 'phc_test',
-        NEXT_PUBLIC_POSTHOG_HOST: 'https://eu.i.posthog.com',
       }),
     ).toEqual({
       supabaseUrl: 'https://example.supabase.co',
       supabaseAnonKey: 'anon',
-      posthogKey: 'phc_test',
-      posthogHost: 'https://eu.i.posthog.com',
     });
   });
 

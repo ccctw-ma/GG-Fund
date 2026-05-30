@@ -5,19 +5,13 @@ import {
   BadgeCheck,
   BarChart3,
   BellRing,
-  CheckCircle2,
   ChevronRight,
   Database,
-  Download,
-  Fingerprint,
   LineChart,
-  LockKeyhole,
   ShieldCheck,
-  Smartphone,
   Sparkles,
   WalletCards,
   Wifi,
-  Zap,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from './api';
@@ -49,18 +43,6 @@ const transactionFeatures = [
   { title: '导入导出备份', description: '本地组合数据可导出 JSON，迁移设备或回滚数据更可控。', icon: Database },
 ];
 
-const securityHighlights = [
-  { title: 'Local-first 数据边界', description: '持仓与自选默认留在当前浏览器，减少不必要的服务端暴露。', icon: Fingerprint },
-  { title: 'Cloudflare API 隔离', description: '行情、登录和 AI 请求通过 Functions 统一代理，Secret 不进入前端。', icon: ShieldCheck },
-  { title: '可撤回的账户入口', description: 'OTP 与 OAuth 入口保留清晰退出路径，避免不可控的假会话。', icon: LockKeyhole },
-];
-
-const appChannels = [
-  { label: 'iOS App', detail: 'TestFlight 即将开放' },
-  { label: 'Android', detail: 'PWA 安装体验' },
-  { label: '桌面 Web', detail: '当前版本可直接使用' },
-];
-
 export default function App() {
   const [indices, setIndices] = useState<IndexQuote[]>([]);
   const [marketLoading, setMarketLoading] = useState(true);
@@ -71,12 +53,13 @@ export default function App() {
   const [history, setHistory] = useState<FundHistoryPoint[]>([]);
   const [fundLoading, setFundLoading] = useState(false);
   const [fundError, setFundError] = useState<string>();
-  const [holdings, setHoldings] = useState<Holding[]>(() => loadHoldings());
-  const [watchlist, setWatchlist] = useState<WatchItem[]>(() => loadWatchlist());
+  const [holdings, setHoldings] = useState<Holding[]>([]);
+  const [watchlist, setWatchlist] = useState<WatchItem[]>([]);
   const [quotes, setQuotes] = useState<Record<string, FundQuote>>({});
   const [importError, setImportError] = useState<string>();
   const [session, setSession] = useState<UiAuthSession>();
   const [authPending, setAuthPending] = useState<'idle' | 'logout'>('idle');
+  const [storageReady, setStorageReady] = useState(false);
 
   useEffect(() => {
     api.getIndices()
@@ -85,21 +68,33 @@ export default function App() {
       .finally(() => setMarketLoading(false));
     api.getTrendingFunds().then(setResults).catch(() => undefined);
     getInitialAuthSession().then(setSession).catch(() => setSession(undefined));
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setHoldings(loadHoldings());
+      setWatchlist(loadWatchlist());
+      setStorageReady(true);
+    });
     const unsubscribe = onAuthSessionChange(setSession);
-    return unsubscribe;
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
+    if (!storageReady) return;
     saveHoldings(holdings);
     const codes = Array.from(new Set(holdings.map((holding) => holding.fundCode)));
     codes.forEach((code) => {
       api.getFund(code).then((quote) => setQuotes((current) => ({ ...current, [code]: quote }))).catch(() => undefined);
     });
-  }, [holdings]);
+  }, [holdings, storageReady]);
 
   useEffect(() => {
+    if (!storageReady) return;
     saveWatchlist(watchlist);
-  }, [watchlist]);
+  }, [watchlist, storageReady]);
 
   const summary = useMemo(() => calculatePortfolioSummary(holdings, quotes), [holdings, quotes]);
   const exportText = useMemo(() => exportLocalData({ holdings, watchlist }), [holdings, watchlist]);
@@ -193,13 +188,12 @@ export default function App() {
           <section className="landing-hero" aria-label="智能基金账户">
             <div className="hero-copy">
               <div className="trust-pill"><ShieldCheck className="h-4 w-4" /> Cloudflare-first · Local-first · AI-ready</div>
-              <h2 className="hero-title">智能基金账户，把持仓、交易与投研装进一张安全玻璃卡。</h2>
+              <h2 className="hero-title">智能基金账户，把持仓、交易与投研装进一张专业玻璃卡。</h2>
               <p className="hero-subtitle">
                 GG Fund 重新设计为面向个人投资者的基金账户中枢：实时行情、组合盈亏、AI 研究、身份登录和备份迁移在同一个可信界面里完成。
               </p>
               <div className="hero-actions">
                 <a className="gold-cta" href="#workspace">立即体验 <ArrowUpRight className="h-4 w-4" /></a>
-                <a className="ghost-cta" href="#download">下载移动端 <Download className="h-4 w-4" /></a>
               </div>
               <div className="hero-stat-grid">
                 {heroStats.map((item) => (
@@ -213,7 +207,7 @@ export default function App() {
             </div>
 
             <div className="hero-device" data-testid="banking-hero-card">
-              <div className="phone-frame" aria-label="移动端账户预览">
+              <div className="phone-frame" aria-label="账户卡片预览">
                 <div className="phone-speaker" />
                 <div className="phone-topline">
                   <span>GG Fund</span>
@@ -273,42 +267,6 @@ export default function App() {
                   </article>
                 );
               })}
-            </div>
-          </section>
-
-          <section className="security-band" id="security" aria-labelledby="security-title">
-            <div className="section-heading compact-heading">
-              <span className="section-kicker">Security Highlights</span>
-              <h2 id="security-title">安全与隐私</h2>
-              <p>用明确的数据边界和透明提示建立信任，而不是只展示空泛徽章。</p>
-            </div>
-            <div className="security-grid">
-              {securityHighlights.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <article className="security-card" key={item.title}>
-                    <Icon className="h-6 w-6" />
-                    <h3>{item.title}</h3>
-                    <p>{item.description}</p>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="download-section" id="download" aria-labelledby="download-title">
-            <div>
-              <span className="section-kicker">Mobile App</span>
-              <h2 id="download-title">下载移动端</h2>
-              <p>当前 Web 版已经可用，移动端入口以 PWA / TestFlight / Android 安装包的产品路径呈现，方便后续接入真实下载链接。</p>
-              <div className="download-actions">
-                <a href="#workspace"><Smartphone className="h-5 w-5" /> iOS 预约</a>
-                <a href="#workspace"><Zap className="h-5 w-5" /> Android 体验</a>
-              </div>
-            </div>
-            <div className="qr-panel" aria-label="移动端下载二维码占位">
-              <div className="qr-code"><Download className="h-10 w-10" /></div>
-              {appChannels.map((item) => <p key={item.label}><CheckCircle2 className="h-4 w-4" /><strong>{item.label}</strong><span>{item.detail}</span></p>)}
             </div>
           </section>
 

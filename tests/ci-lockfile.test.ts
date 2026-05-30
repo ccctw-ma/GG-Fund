@@ -80,8 +80,7 @@ describe('Cloudflare deploy verification config', () => {
     expect(workflow).toContain('CF_D1_MIGRATIONS_DIR: migrations');
     expect(workflow).toContain('NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}');
     expect(workflow).toContain('NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}');
-    expect(workflow).toContain('NEXT_PUBLIC_POSTHOG_KEY: ${{ vars.NEXT_PUBLIC_POSTHOG_KEY }}');
-    expect(workflow).toContain('NEXT_PUBLIC_POSTHOG_HOST: ${{ vars.NEXT_PUBLIC_POSTHOG_HOST }}');
+    expect(workflow).not.toContain('NEXT_PUBLIC_POSTHOG');
     expect(workflow).toContain('Build OpenNext worker');
     expect(workflow).toContain('bun run build');
     expect(workflow).toContain('bunx --package @opennextjs/cloudflare opennextjs-cloudflare build');
@@ -95,5 +94,4 @@ describe('Cloudflare deploy verification config', () => {
     expect(workflow).not.toContain('Deploy Cloudflare Pages');
   });
 });
-
 
