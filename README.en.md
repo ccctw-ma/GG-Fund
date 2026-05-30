@@ -14,7 +14,7 @@ GG Fund now uses a Cloudflare-first Next.js App Router architecture as its main 
 - Watchlist management without counting items as holdings.
 - Supabase foundation with browser/server helpers, normalized request session handling, Next middleware, and `supabase/migrations/202605300001_core_schema.sql`.
 - DeepSeek analysis that computes deterministic indicators before calling `deepseek-v4-flash`, with an automatic local fallback when `DEEPSEEK_API_KEY` is missing.
-- Cloudflare Worker deployment with edge-compatible Route Handlers, OpenNext output, and bindings such as `GG_FUND_DB` and `GG_FUND_CACHE` configured via `wrangler.jsonc`.
+- Cloudflare Worker deployment with Route Handlers emitted by OpenNext to the Worker default runtime, plus bindings such as `GG_FUND_DB` and `GG_FUND_CACHE` configured via `wrangler.jsonc`.
 
 ## Project Structure
 

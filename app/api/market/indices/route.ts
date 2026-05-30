@@ -1,7 +1,6 @@
 import { isHttpError, jsonError } from '../../../../lib/http';
 import { getDefaultMarketService } from '../../../../features/market/service';
 
-export const runtime = 'edge';
 
 export async function GET() {
   try {

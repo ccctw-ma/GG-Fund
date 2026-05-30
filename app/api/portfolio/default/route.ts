@@ -5,7 +5,6 @@ import { createPortfolioRepository } from '../../../../features/portfolio/reposi
 import { jsonError } from '../../../../lib/http';
 import { createSupabaseServerClient } from '../../../../lib/supabase/server';
 
-export const runtime = 'edge';
 
 type PortfolioDatabase = Parameters<typeof createPortfolioRepository>[0];
 type CloudflareBindings = {

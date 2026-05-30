@@ -14,7 +14,7 @@ GG Fund 现已以 Cloudflare-first 的 Next.js App Router 架构为主：`app/` 
 - 自选基金：关注基金但不计入持仓。
 - Supabase 基础：浏览器端/服务端 helper、请求会话归一化、Next middleware，以及 `supabase/migrations/202605300001_core_schema.sql` 基础 schema 迁移；`/api/portfolio/default` 会优先读取登录用户组合。
 - DeepSeek 分析：服务端先计算确定性指标，再调用 `deepseek-v4-flash`；当 `DEEPSEEK_API_KEY` 缺失时自动回退为本地确定性报告。
-- Cloudflare Worker 部署：Next Route Handlers 采用 edge runtime，OpenNext 输出 Worker，`wrangler.jsonc` 提供 `GG_FUND_DB`、`GG_FUND_CACHE` 等 binding。
+- Cloudflare Worker 部署：Next Route Handlers 由 OpenNext 输出到 Worker 默认运行时，`wrangler.jsonc` 提供 `GG_FUND_DB`、`GG_FUND_CACHE` 等 binding。
 
 ## 项目结构
 

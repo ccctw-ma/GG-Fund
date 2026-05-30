@@ -2,7 +2,6 @@ import { buildAnalyzeFundResponse, normalizeAnalyzeFundRequest } from '../../../
 import { getDefaultMarketService } from '../../../../features/market/service';
 import { isHttpError, jsonError, readJson } from '../../../../lib/http';
 
-export const runtime = 'edge';
 
 export async function POST(request: Request) {
   try {
