@@ -12,9 +12,6 @@ export default function HomePage() {
         <Link href="/app" style={{ padding: '12px 18px', borderRadius: '999px', background: '#10251f', color: '#fbf1df', fontWeight: 700 }}>
           进入工作台
         </Link>
-        <Link href="/pricing" style={{ padding: '12px 18px', borderRadius: '999px', border: '1px solid rgba(16,37,31,0.14)', fontWeight: 700 }}>
-          查看定价
-        </Link>
       </div>
     </main>
   );

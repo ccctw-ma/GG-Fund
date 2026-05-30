@@ -6,23 +6,22 @@ GG Fund now uses a Cloudflare-first Next.js App Router architecture as its main 
 
 ## Features
 
-- Next.js App Router pages for the public landing page, `/app` workspace, fund detail route, portfolio page, pricing page, and settings page.
+- Next.js App Router pages for the public landing page, `/app` workspace, fund detail route, portfolio page, and settings page.
 - Market overview via Eastmoney push2 with Tencent fallback for major China indices.
 - Real fund search by code or name, with built-in fallback samples when upstreams fail.
 - Fund detail that prefers Tiantian Fund intraday estimate data while keeping the latest official net value.
 - Local portfolio calculations for market value, cost basis, profit/loss, return rate, and allocation weight.
 - Watchlist management without counting items as holdings.
-- Supabase foundation with browser/server helpers, normalized request session handling, Next middleware, and the paired `supabase/migrations/202605300001_core_schema.sql` plus `supabase/migrations/202605300002_billing_customers.sql` migrations.
-- Stripe billing with Checkout Session and Subscription metadata tied to `supabaseUserId`, plus server-side price allowlisting.
+- Supabase foundation with browser/server helpers, normalized request session handling, Next middleware, and `supabase/migrations/202605300001_core_schema.sql`, while preserving `supabase/migrations/202605300002_billing_customers.sql` as historical migration record only.
 - DeepSeek analysis that computes deterministic indicators before calling `deepseek-v4-flash`, with an automatic local fallback when `DEEPSEEK_API_KEY` is missing.
 - Cloudflare Worker deployment with edge-compatible Route Handlers, OpenNext output, and bindings such as `GG_FUND_DB` and `GG_FUND_CACHE` configured via `wrangler.jsonc`.
-- Privacy-first handling for Supabase service role keys, Stripe secrets, Resend keys, PostHog private keys, and DeepSeek credentials.
+- Privacy-first handling for Supabase service role keys, Resend keys, PostHog private keys, and DeepSeek credentials.
 
 ## Project Structure
 
 - `app/`: Next.js App Router pages and `app/api/*` Route Handlers.
 - `components/workspace/FundWorkspace.tsx`: Next workspace entry.
-- `features/market`, `features/portfolio`, `features/auth`, `features/ai`, `features/billing`, `features/email`, `features/analytics`: service modules.
+- `features/market`, `features/portfolio`, `features/auth`, `features/ai`, `features/email`, `features/analytics`: service modules.
 - `lib/`: environment, HTTP, and Supabase runtime helpers.
 - `frontend/src/`: React components, styles, and browser-side logic still reused by Next; no longer a standalone Vite app entry.
 - `shared/`: shared DTOs, market adapters, and tests.
@@ -35,7 +34,6 @@ GG Fund now uses a Cloudflare-first Next.js App Router architecture as its main 
 - Next.js App Router + TypeScript
 - Tailwind CSS v4 + Radix UI + shadcn/ui-style components
 - Supabase Auth + Supabase Postgres + RLS
-- Stripe Checkout/Webhook subscription foundation
 - Resend transactional email
 - PostHog product analytics
 - OpenNext Cloudflare Workers deployment
@@ -69,11 +67,6 @@ Server values:
 
 ```bash
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-STRIPE_SECRET_KEY=your-stripe-secret-key
-STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
-STRIPE_PRICE_ID=price_monthly_default
-STRIPE_PRICE_PRO_MONTHLY=price_monthly_default
-STRIPE_ALLOWED_PRICE_IDS=price_monthly_default,price_annual_optional
 RESEND_API_KEY=re_your_key
 AUTH_EMAIL_FROM="GG Fund <login@example.com>"
 DEEPSEEK_API_KEY=your-deepseek-api-key
@@ -141,8 +134,6 @@ Default smoke endpoints:
 - `GET /api/funds/trending`
 - `GET /api/portfolio/default`
 - `POST /api/ai/analyze-fund`
-- `POST /api/billing/checkout`
-- `POST /api/billing/webhook`
 
 ## Disclaimer
 

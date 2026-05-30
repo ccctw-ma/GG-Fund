@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-const PUBLIC_PATHS = ['/', '/pricing', '/settings', '/api/health'];
+const PUBLIC_PATHS = ['/', '/settings', '/api/health'];
 
 export function middleware(request: NextRequest) {
   if (PUBLIC_PATHS.includes(request.nextUrl.pathname)) {

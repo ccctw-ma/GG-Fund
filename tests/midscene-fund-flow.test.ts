@@ -63,6 +63,6 @@ describe('Midscene fund dashboard flow', () => {
   it.skipIf(!shouldRunAiAction)('uses natural language to verify the live fund dashboard shell', async () => {
     await page.goto('/');
 
-    await agent.aiAct('verify the page shows the Chinese GG Fund landing page and workspace entry, including the main heading, workspace link, pricing link, and access to the fund workspace');
+    await agent.aiAct('verify the page shows the Chinese GG Fund landing page and workspace entry, including the main heading, workspace link, and access to the fund workspace');
   }, 180_000);
 });

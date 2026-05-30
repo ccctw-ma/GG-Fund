@@ -60,8 +60,7 @@ describe('supabase schema migrations', () => {
     expect(allSql).toMatch(/create policy "watchlist is writable by owner"[\s\S]*?with check \(\s*auth\.uid\(\) = user_id\s+and exists \(\s*select 1\s+from public\.portfolios p\s+where p\.id = watchlist\.portfolio_id\s+and p\.user_id = auth\.uid\(\)\s*\)\s*\);/);
   });
 
-  it('stores Stripe customer status with owner-only read access in an idempotent follow-up migration', () => {
-    expect(billingCustomersSql).toMatch(/create table if not exists public\.billing_customers\s*\([\s\S]*?user_id uuid primary key references auth\.users\(id\) on delete cascade,[\s\S]*?stripe_customer_id text not null unique,[\s\S]*?status text not null,[\s\S]*?price_id text,[\s\S]*?created_at timestamptz not null default timezone\('utc', now\(\)\),[\s\S]*?updated_at timestamptz not null default timezone\('utc', now\(\)\)[\s\S]*?\);/);
+  it('keeps historical billing customer migration owner-scoped for existing environments', () => {
     expect(billingCustomersSql).toMatch(/do \$\$[\s\S]*?from pg_policies[\s\S]*?billing customers are readable by owner[\s\S]*?create policy "billing customers are readable by owner"[\s\S]*?on public\.billing_customers for select[\s\S]*?using \(auth\.uid\(\) = user_id\);[\s\S]*?end\s*\$\$;/i);
   });
 });

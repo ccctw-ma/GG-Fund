@@ -16,8 +16,8 @@ describe('env helpers', () => {
     expect(() => getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY', {})).toThrow(
       'Missing required environment variable: SUPABASE_SERVICE_ROLE_KEY',
     );
-    expect(() => readRequiredEnv('STRIPE_SECRET_KEY', {})).toThrow(
-      'Missing required environment variable: STRIPE_SECRET_KEY',
+    expect(() => readRequiredEnv('DEEPSEEK_API_KEY', {})).toThrow(
+      'Missing required environment variable: DEEPSEEK_API_KEY',
     );
   });
 
