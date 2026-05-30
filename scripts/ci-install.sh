@@ -2,4 +2,4 @@
 set -euo pipefail
 
 echo "==> Install dependencies with npm ci"
-npm ci --ignore-scripts
+npm ci --include=optional --ignore-scripts

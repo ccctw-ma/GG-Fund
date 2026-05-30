@@ -88,7 +88,7 @@ curl https://gg-fund.workers.dev/api/funds/000001
 
 ## GitHub CI/CD
 
-`.github/workflows/cloudflare-deploy.yml` 使用 `actions/setup-node` + `scripts/ci-install.sh` 执行 `npm ci`，再通过 `setup-bun` 固定 Bun 1.3.10 运行构建和部署命令。仓库 Variables 注入 `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY` 供 OpenNext 构建使用，然后执行 Worker 构建、远程 D1 迁移、部署与验证：
+`.github/workflows/cloudflare-deploy.yml` 使用 `actions/setup-node` + `scripts/ci-install.sh` 执行 `npm ci --include=optional --ignore-scripts`，确保 Linux runner 安装 OpenNext / Wrangler 依赖的 `workerd` 平台二进制包，再通过 `setup-bun` 固定 Bun 1.3.10 运行构建和部署命令。仓库 Variables 注入 `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY` 供 OpenNext 构建使用，然后执行 Worker 构建、远程 D1 迁移、部署与验证：
 
 - `bash scripts/ci-install.sh`
 - `bun run build`

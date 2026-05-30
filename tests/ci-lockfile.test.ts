@@ -88,7 +88,7 @@ describe('Cloudflare deploy verification config', () => {
     expect(verifyScript).toContain('CF_VERIFY_BASE_URL="${CF_VERIFY_BASE_URL:-https://${CF_WORKER_NAME}.workers.dev}"');
     expect(verifyScript).not.toContain('pages.dev');
 
-    expect(installScript).toContain('npm ci --ignore-scripts');
+    expect(installScript).toContain('npm ci --include=optional --ignore-scripts');
 
     expect(ciScript).toContain('bun run lint');
     expect(ciScript).toContain('bun run test');
