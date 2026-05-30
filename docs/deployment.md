@@ -7,7 +7,6 @@
 - 数据库/Auth：Supabase Auth + Supabase Postgres + RLS。
 - 运行时存储：Cloudflare D1 仍通过 `GG_FUND_DB` 为组合默认快照等 Worker 侧能力提供绑定支持。
 - 缓存：Cloudflare KV 可作为行情短缓存，访问封装在 market service 中。
-- 支付：Stripe Checkout 与 webhook。
 - 邮件：Resend 产品邮件。
 - 分析：PostHog。
 - Secret：所有服务端 key 通过 Cloudflare Secret 或本地 `.env.local` 注入，不进入前端 bundle。
@@ -46,11 +45,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 NEXT_PUBLIC_POSTHOG_KEY=phc_your_project_key
 NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-STRIPE_SECRET_KEY=your-stripe-secret-key
-STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
-STRIPE_PRICE_ID=price_monthly_default
-STRIPE_PRICE_PRO_MONTHLY=price_monthly_default
-STRIPE_ALLOWED_PRICE_IDS=price_monthly_default,price_annual_optional
 RESEND_API_KEY=re_your_key
 AUTH_EMAIL_FROM="GG Fund <login@example.com>"
 DEEPSEEK_API_KEY=your-deepseek-api-key
@@ -114,11 +108,6 @@ curl https://gg-fund.workers.dev/api/funds/000001
 - `NEXT_PUBLIC_POSTHOG_KEY`
 - `NEXT_PUBLIC_POSTHOG_HOST`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PRICE_ID`
-- `STRIPE_PRICE_PRO_MONTHLY`
-- `STRIPE_ALLOWED_PRICE_IDS`
 - `RESEND_API_KEY`
 - `AUTH_EMAIL_FROM`
 - `DEEPSEEK_API_KEY`
