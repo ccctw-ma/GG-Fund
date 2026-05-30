@@ -53,6 +53,7 @@ describe('App', () => {
 
     expect(container.textContent).toContain('数字私人银行驾驶舱');
     expect(container.textContent).toContain('中国基金行情');
-    expect(container.textContent).toContain('Cloudflare D1/KV 数据层');
+    expect(container.textContent).toContain('Market Pulse');
+    expect(container.textContent).not.toContain('OTP / OAuth 登录');
   });
 });

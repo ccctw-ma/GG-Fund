@@ -1,4 +1,4 @@
-import { ArrowUpRight, DatabaseZap, LockKeyhole, ShieldCheck, WalletCards } from 'lucide-react';
+import { ArrowUpRight, ShieldCheck } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from './api';
 import { AnalysisPanel } from './components/AnalysisPanel';
@@ -167,13 +167,6 @@ export default function App() {
                 </div>
               </article>
             </div>
-          </section>
-
-          <section className="trust-rail" data-testid="trust-rail" aria-label="安全与基础设施">
-            <div><LockKeyhole className="h-5 w-5" /><span>OTP / OAuth 登录</span></div>
-            <div><DatabaseZap className="h-5 w-5" /><span>Cloudflare D1/KV 数据层</span></div>
-            <div><WalletCards className="h-5 w-5" /><span>本地组合隐私优先</span></div>
-            <div><ShieldCheck className="h-5 w-5" /><span>仅参考，不构成投资建议</span></div>
           </section>
 
           <div className="banking-grid">
