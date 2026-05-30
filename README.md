@@ -13,6 +13,7 @@ GG Fund 正在从 React + Vite 逐步迁移到 Cloudflare-first 的 Next.js App 
 - 本地持仓：添加基金后计算市值、成本、盈亏、收益率和组合占比。
 - 自选基金：关注基金但不计入持仓。
 - Supabase 基础：新增浏览器端/服务端 Supabase helper、请求会话归一化、Next middleware 和首个 `supabase/migrations/202605300001_core_schema.sql` 基础 schema；`/api/portfolio/default` 会在请求会话可用时读取登录用户组合，否则才显式回退到匿名默认组合。
+- Stripe Billing：`/api/billing/checkout` 现在会把 `supabaseUserId` 同时写入 Checkout Session 和 Subscription metadata，并且只接受服务端配置的 `STRIPE_PRICE_ID` / `STRIPE_PRICE_PRO_MONTHLY` 或 `STRIPE_ALLOWED_PRICE_IDS` 白名单价格；`billing_customers` 表用于 webhook 同步订阅状态。
 - 登录入口：前端界面已切到 Supabase 邮箱登录文案与客户端流程；旧 Cloudflare OTP 接口仍保留在 `backend/` 中用于兼容现有实现。
 - DeepSeek 分析：基金研究 Agent 先采集实时行情/历史净值/指数环境，计算区间收益、回撤、动量、波动等确定性指标，再调用 `deepseek-v4-flash` 生成结构化趋势、风险、情景和观察点；当 `DEEPSEEK_API_KEY` 未配置时自动降级为本地确定性报告（`agent.model: "local-fallback"`），保持相同结构供 UI 展示。
 - 数据导入导出：使用 JSON 备份浏览器本地数据。
@@ -77,6 +78,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 ```bash
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 DEEPSEEK_API_KEY=your-deepseek-api-key
+STRIPE_SECRET_KEY=your-stripe-secret-key
+STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
+STRIPE_PRICE_ID=price_monthly_default
+STRIPE_ALLOWED_PRICE_IDS=price_monthly_default,price_annual_optional
 ```
 
 当前 `.env.example` 仍保留前端 Supabase 说明，后续会统一为 Next 风格变量。

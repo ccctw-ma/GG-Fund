@@ -13,6 +13,7 @@ GG Fund is migrating from a React + Vite setup toward a Cloudflare-first Next.js
 - Local portfolio: calculates market value, cost, profit/loss, return rate, and position weight in the browser.
 - Watchlist: tracks followed funds without counting them as holdings.
 - Supabase foundation: browser/server helpers, normalized request session helpers, Next middleware, and an initial `supabase/migrations/202605300001_core_schema.sql` schema migration are now included; `/api/portfolio/default` now maps request sessions to signed-in user portfolios and only falls back to the anonymous default deliberately.
+- Stripe billing: `/api/billing/checkout` now writes `supabaseUserId` into both Checkout Session and Subscription metadata, only accepts server-configured `STRIPE_PRICE_ID` / `STRIPE_PRICE_PRO_MONTHLY` values or the optional `STRIPE_ALLOWED_PRICE_IDS` allowlist, and stores webhook subscription state in `billing_customers`.
 - Auth entry: the frontend now uses Supabase email login wording and client flow; legacy Cloudflare OTP endpoints remain in `backend/` for compatibility during migration.
 - DeepSeek analysis: computes deterministic return, drawdown, momentum, volatility, and trend indicators before calling `deepseek-v4-flash`, then renders structured trend, risk, scenario, and watch-point reports. When `DEEPSEEK_API_KEY` is missing the API automatically returns a deterministic local report (`agent.model: "local-fallback"`) with the same shape, so the UI stays fully usable offline.
 - Cloudflare-first deployment: Next Route Handlers are kept edge-friendly and resolve bindings such as `GG_FUND_DB` through `wrangler.jsonc` and the OpenNext Cloudflare runtime context.
@@ -76,6 +77,10 @@ Server variables:
 ```bash
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 DEEPSEEK_API_KEY=your-deepseek-api-key
+STRIPE_SECRET_KEY=your-stripe-secret-key
+STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
+STRIPE_PRICE_ID=price_monthly_default
+STRIPE_ALLOWED_PRICE_IDS=price_monthly_default,price_annual_optional
 ```
 
 ## Quality Gates

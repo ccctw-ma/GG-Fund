@@ -7,7 +7,7 @@
 - API：优先使用 `app/api/*` Route Handlers；现有 `functions/api/[[path]].ts` + `backend/api.ts` 仍保留用于兼容和参考。
 - 共享层：`shared/` 保存前后端共用 DTO 和行情适配器。
 - Cloudflare 数据库：现有 D1 binding 为 `GG_FUND_DB`，迁移目录为 `migrations/`。
-- Supabase 数据库：新增 `supabase/migrations/202605300001_core_schema.sql` 作为 Auth/Profile/Portfolio/Holdings/Watchlist 的 Postgres 基础 schema。
+- Supabase 数据库：新增 `supabase/migrations/202605300001_core_schema.sql` 作为 Auth/Profile/Portfolio/Holdings/Watchlist/Billing Customers 的 Postgres 基础 schema。
 - 缓存：Cloudflare KV，binding 为 `GG_FUND_CACHE`。
 - Secret：DeepSeek 与 Supabase service role key 等服务端凭证必须通过部署环境注入，不进入代码和前端 bundle。
 
@@ -50,6 +50,10 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 DEEPSEEK_API_KEY=your-deepseek-api-key
+STRIPE_SECRET_KEY=your-stripe-secret-key
+STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
+STRIPE_PRICE_ID=price_monthly_default
+STRIPE_ALLOWED_PRICE_IDS=price_monthly_default,price_annual_optional
 ```
 
 如需继续使用现有 Cloudflare D1/KV 资源：
@@ -92,6 +96,11 @@ curl https://gg-fund.pages.dev/api/funds/000001
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `DEEPSEEK_API_KEY`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PRICE_ID`
+- `STRIPE_PRICE_PRO_MONTHLY`
+- `STRIPE_ALLOWED_PRICE_IDS`
 - `CF_PAGES_PROJECT`
 - `CF_PAGES_BRANCH`
 - `CF_D1_DATABASE`

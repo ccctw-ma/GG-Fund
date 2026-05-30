@@ -107,6 +107,29 @@ describe('billing api routes', () => {
     });
   });
 
+  it('returns a structured 400 when checkout price does not match the server configuration', async () => {
+    isConfiguredCheckoutPriceIdMock.mockReturnValueOnce(false);
+
+    const response = await checkout(
+      new Request('https://example.com/api/billing/checkout', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          accept: 'application/json',
+        },
+        body: JSON.stringify({ priceId: 'price_untrusted' }),
+      }),
+    );
+
+    expect(isConfiguredCheckoutPriceIdMock).toHaveBeenCalledWith('price_untrusted');
+    expect(createSupabaseServerClientMock).not.toHaveBeenCalled();
+    expect(checkoutCreate).not.toHaveBeenCalled();
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'PRICE_NOT_CONFIGURED', message: 'Stripe 订阅价格尚未配置' },
+    });
+  });
+
   it('returns a structured 401 when checkout requires login', async () => {
     createSupabaseServerClientMock.mockReturnValueOnce({
       auth: {
@@ -151,6 +174,9 @@ describe('billing api routes', () => {
       client_reference_id: 'user-1',
       customer_email: 'demo@example.com',
       metadata: { supabaseUserId: 'user-1' },
+      subscription_data: {
+        metadata: { supabaseUserId: 'user-1' },
+      },
     });
     expect(response.status).toBe(303);
     expect(response.headers.get('location')).toBe('https://checkout.stripe.test/session_123');

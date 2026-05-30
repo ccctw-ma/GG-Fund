@@ -59,6 +59,7 @@ export async function POST(request: Request) {
       return jsonError('AUTH_REQUIRED', '请先登录', 401);
     }
 
+    const metadata = buildCheckoutMetadata(data.user.id);
     const url = new URL(request.url);
     const stripe = createStripeClient();
     const session = await stripe.checkout.sessions.create({
@@ -68,7 +69,10 @@ export async function POST(request: Request) {
       cancel_url: `${url.origin}/pricing?checkout=cancelled`,
       client_reference_id: data.user.id,
       customer_email: data.user.email ?? undefined,
-      metadata: buildCheckoutMetadata(data.user.id),
+      metadata,
+      subscription_data: {
+        metadata,
+      },
     });
 
     if (!session.url) {

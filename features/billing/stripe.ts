@@ -14,6 +14,37 @@ export type StripeSubscriptionLike = {
   } | null;
 };
 
+function normalizeCheckoutPriceId(priceId: string | undefined) {
+  const normalized = priceId?.trim();
+  if (!normalized || normalized === STRIPE_PLACEHOLDER_PRICE_ID) {
+    return undefined;
+  }
+  return normalized;
+}
+
+function getConfiguredCheckoutPriceIds(source: Record<string, string | undefined> = process.env) {
+  const configured = new Set<string>();
+
+  const add = (priceId: string | undefined) => {
+    const normalized = normalizeCheckoutPriceId(priceId);
+    if (normalized) {
+      configured.add(normalized);
+    }
+  };
+
+  add(readOptionalEnv('STRIPE_PRICE_PRO_MONTHLY', source));
+  add(readOptionalEnv('STRIPE_PRICE_ID', source));
+
+  const allowlist = readOptionalEnv('STRIPE_ALLOWED_PRICE_IDS', source);
+  if (allowlist) {
+    for (const entry of allowlist.split(',')) {
+      add(entry);
+    }
+  }
+
+  return configured;
+}
+
 export function createStripeClient() {
   return new Stripe(readRequiredEnv('STRIPE_SECRET_KEY'), {
     apiVersion: Stripe.API_VERSION,
@@ -33,8 +64,13 @@ export function getCheckoutPriceId(source: Record<string, string | undefined> = 
   );
 }
 
-export function isConfiguredCheckoutPriceId(priceId: string) {
-  return Boolean(priceId) && priceId !== STRIPE_PLACEHOLDER_PRICE_ID;
+export function isConfiguredCheckoutPriceId(priceId: string, source: Record<string, string | undefined> = process.env) {
+  const requestedPriceId = normalizeCheckoutPriceId(priceId);
+  if (!requestedPriceId) {
+    return false;
+  }
+
+  return getConfiguredCheckoutPriceIds(source).has(requestedPriceId);
 }
 
 export function subscriptionStatusFromStripe(subscription: StripeSubscriptionLike) {
