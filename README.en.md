@@ -6,16 +6,21 @@ GG Fund now uses a Cloudflare-first Next.js App Router architecture as its main 
 
 ## Features
 
-- Next.js App Router pages with the root path entering the `/app` workspace directly, plus fund detail, portfolio, and settings pages.
-- Market overview via Eastmoney push2 with Tencent fallback for major China indices.
-- Real fund search by code or name, with built-in fallback samples when upstreams fail.
-- Fund detail that prefers Tiantian Fund intraday estimate data while keeping the latest official net value.
-- Beginner decision map that explains fund net value, market temperature, portfolio state, and staged action paths in one view so retail investors avoid reacting only to one-day moves.
-- Local portfolio calculations for market value, cost basis, profit/loss, return rate, and allocation weight.
-- Watchlist management without counting items as holdings.
-- Supabase foundation with browser/server helpers, normalized request session handling, Next middleware, and `supabase/migrations/202605300001_core_schema.sql`.
-- DeepSeek analysis that computes return, drawdown, momentum, and volatility indicators before calling `deepseek-v4-flash`, then returns beginner explanations, risk level, and staged hold/watch/add/reduce action paths with a local deterministic fallback when `DEEPSEEK_API_KEY` is missing.
-- Cloudflare Worker deployment with Route Handlers emitted by OpenNext to the Worker default runtime, plus bindings such as `GG_FUND_DB` and `GG_FUND_CACHE` configured via `wrangler.jsonc`.
+- Next.js App Router workspace: `/` redirects to `/app`, with fund detail, portfolio, and settings pages kept available.
+- Tool Universe: reorganizes common stock/fund website capabilities into a browsable map for quotes, screening, comparison, diagnostics, accounts, news, disclosures, and open-source quant research.
+- Multi-asset navigation: A-share indices and fund NAVs are live; ETF / LOF, REITs, bonds and convertible bonds, new bonds / newly issued funds, and global market watch are labeled as connectable or roadmap capabilities.
+- Fund research tools: fund discovery, comparison, diagnostics, local holdings, watchlist, staged action paths, and AI research summaries.
+- Research sources and disclosures: separates Eastmoney/10jqka/Tiantian-style market data, Howbuy-style fund screening and diagnostics, Snowball-style community opinions, and exchange official disclosures into explicit content layers.
+- Open research stack roadmap: AKShare / AKTools, Qlib, Tushare, Backtrader, Pyfolio, and Streamlit are documented as inspiration for data ingestion, quant research, backtesting, portfolio attribution, and dashboards.
+- Market overview: reads SSE Composite, SZSE Component, ChiNext, and CSI 300 from Eastmoney push2 with Tencent quote fallback.
+- Real fund search: searches public fund data by code or name, with built-in fallback samples when upstream APIs fail.
+- Fund details: prefers Tiantian intraday estimated NAV, estimated change, and estimate time while keeping the previous official NAV.
+- Beginner decision map: explains fund type, NAV, market temperature, holding status, risk level, single-fund concentration, and monthly review paths.
+- Local portfolio: calculates market value, cost, profit/loss, return rate, and weights after adding funds.
+- Watchlist: follows funds without counting them as holdings.
+- Supabase foundation: browser/server helpers, normalized request sessions, Next middleware, and the core Supabase schema migration; `/api/portfolio/default` prefers the signed-in user's portfolio.
+- DeepSeek analysis: computes deterministic return, drawdown, momentum, and volatility indicators before calling `deepseek-v4-flash`; falls back to a local deterministic report when `DEEPSEEK_API_KEY` is missing.
+- Cloudflare Worker deployment: Next Route Handlers are built by OpenNext into the Worker runtime with `GG_FUND_DB` and `GG_FUND_CACHE` bindings.
 
 ## Project Structure
 
@@ -131,6 +136,16 @@ Default smoke endpoints:
 - `GET /api/funds/trending`
 - `GET /api/portfolio/default`
 - `POST /api/ai/analyze-fund`
+
+## Capability Status
+
+GG Fund uses three explicit status labels:
+
+- `Live`: real API or local product capability is available today, such as A-share indices, fund NAVs, search, history, local holdings, watchlist, AI analysis, import, and export.
+- `Connectable`: the product shape is defined and can be wired to real data or stronger algorithms later, such as ETF / LOF topics, fund comparison, recurring investment plans, and AKShare / AKTools data infrastructure.
+- `Roadmap`: shown as the reconstructed product direction, not as a live production claim, such as REITs, convertible bonds, issuance calendars, official disclosure aggregation, community opinions, Qlib backtesting, and portfolio optimization.
+
+All displayed data and AI analysis are for learning and reference only and are not investment advice.
 
 ## Disclaimer
 
