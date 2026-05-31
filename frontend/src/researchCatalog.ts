@@ -1,4 +1,4 @@
-import { BadgeCheck, BarChart3, BellRing, BookOpenCheck, CandlestickChart, CircleDollarSign, Compass, Database, FileSearch, Landmark, LineChart, Network, PieChart, Repeat, Scale, ShieldCheck, Sparkles, TrendingUp, WalletCards } from 'lucide-react';
+import { BarChart3, BellRing, BookOpenCheck, CircleDollarSign, Compass, Database, FileSearch, Landmark, LineChart, Network, PieChart, Scale, ShieldCheck, WalletCards } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type CatalogStatus = 'live' | 'connectable' | 'roadmap';
