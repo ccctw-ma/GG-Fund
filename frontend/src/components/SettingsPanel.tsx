@@ -47,7 +47,7 @@ export function SettingsPanel({
           {importError && <p className="mt-3 rounded-3xl bg-red-50 p-3 text-sm font-semibold text-red-700">{importError}</p>}
           <div className="mt-4 grid gap-3 text-sm font-semibold text-ink/58">
             <p>持仓和自选默认只保存在当前浏览器，不上传服务端。</p>
-            <p>线上 API 统一运行在 Cloudflare Pages Functions，D1/KV 用于组合、登录数据和行情缓存。</p>
+            <p>线上 API 统一运行在 Cloudflare Worker / OpenNext，D1/KV 用于组合、登录数据和行情缓存。</p>
           </div>
         </div>
       </div>

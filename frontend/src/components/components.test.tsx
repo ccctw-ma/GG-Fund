@@ -73,6 +73,7 @@ describe('dashboard components', () => {
     roots.push(settings.root);
 
     expect(portfolio.container.textContent).toContain('还没有持仓');
+    expect(settings.container.textContent).toContain('Cloudflare Worker / OpenNext');
     expect(settings.container.textContent).toContain('Cloudflare D1/KV');
   });
 

@@ -6,10 +6,10 @@ GG Fund now uses a Cloudflare-first Next.js App Router architecture as its main 
 
 ## Features
 
-- Next.js App Router workspace: `/` redirects to `/app`, with fund detail, portfolio, and settings pages kept available.
+- Next.js App Router workspace: the root path `/` redirects directly to the `/app` workspace, `/settings` is available today, and `/app/portfolio` currently serves as a landing page while local-first holdings and watchlist stay in the main workspace.
 - Tool Universe: reorganizes common stock/fund website capabilities into a browsable map for quotes, screening, comparison, diagnostics, accounts, news, disclosures, and open-source quant research.
 - Multi-asset navigation: A-share indices and fund NAVs are live; ETF / LOF, REITs, bonds and convertible bonds, new bonds / newly issued funds, and global market watch are labeled as connectable or roadmap capabilities.
-- Fund research tools: fund discovery, comparison, diagnostics, local holdings, watchlist, staged action paths, and AI research summaries.
+- Fund research tools: fund discovery, diagnostics, local holdings, watchlist, and AI research summaries are live today; fund comparison, ETF / LOF topics, and recurring investment paths are explicitly marked as connectable.
 - Research sources and disclosures: separates Eastmoney/10jqka/Tiantian-style market data, Howbuy-style fund screening and diagnostics, Snowball-style community opinions, and exchange official disclosures into explicit content layers.
 - Open research stack roadmap: AKShare / AKTools, Qlib, Tushare, Backtrader, Pyfolio, and Streamlit are documented as inspiration for data ingestion, quant research, backtesting, portfolio attribution, and dashboards.
 - Market overview: reads SSE Composite, SZSE Component, ChiNext, and CSI 300 from Eastmoney push2 with Tencent quote fallback.
@@ -141,7 +141,7 @@ Default smoke endpoints:
 
 GG Fund uses three explicit status labels:
 
-- `Live`: real API or local product capability is available today, such as A-share indices, fund NAVs, search, history, local holdings, watchlist, AI analysis, import, and export.
+- `Live`: real API or local product capability is available today, such as A-share indices, fund NAVs, fund discovery/search, diagnostics, history, local holdings, watchlist, AI analysis, import, and export.
 - `Connectable`: the product shape is defined and can be wired to real data or stronger algorithms later, such as ETF / LOF topics, fund comparison, recurring investment plans, and AKShare / AKTools data infrastructure.
 - `Roadmap`: shown as the reconstructed product direction, not as a live production claim, such as REITs, convertible bonds, issuance calendars, official disclosure aggregation, community opinions, Qlib backtesting, and portfolio optimization.
 
