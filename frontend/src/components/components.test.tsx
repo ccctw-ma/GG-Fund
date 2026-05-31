@@ -8,6 +8,7 @@ import { FundSearch } from './FundSearch';
 import { MarketOverview } from './MarketOverview';
 import { PortfolioPanel } from './PortfolioPanel';
 import { SettingsPanel } from './SettingsPanel';
+import { ToolUniverse } from './ToolUniverse';
 
 const fund = { code: '000001', name: '华夏成长混合', netValue: 1.35, quoteDate: '2026-05-29', quoteType: 'estimate' as const, source: 'test' };
 
@@ -125,6 +126,22 @@ describe('dashboard components', () => {
     expect(guide.container.textContent).toContain('基金小白决策地图');
     expect(guide.container.textContent).toContain('华夏成长混合');
     expect(guide.container.textContent).toContain('确认资金期限');
+  });
+
+  it('renders the investment tool universe catalog', () => {
+    const universe = render(<ToolUniverse />);
+    roots.push(universe.root);
+
+    [
+      '全景工具宇宙',
+      'A 股指数',
+      '基金筛选、对比与诊断',
+      '官方公告与高信任披露',
+      'AKShare / AKTools',
+      '已接入',
+      '可接入',
+      '路线图',
+    ].forEach((text) => expect(universe.container.textContent).toContain(text));
   });
 
   it('exposes a complete typed research catalog with live and roadmap capabilities', () => {
