@@ -1,4 +1,64 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
+
+type OtpRequestBody = {
+  email?: string;
+};
+
+type OtpRequest = {
+  url: string;
+  body: OtpRequestBody;
+};
+
+type OAuthMetadata = {
+  provider: 'github' | 'wechat';
+  authUrl: string;
+  configured: boolean;
+  callback: string;
+};
+
+const PLAYWRIGHT_BASE_URL = 'http://127.0.0.1:3000';
+
+const marketIndicesFixture = [
+  {
+    code: '000001.SH',
+    name: '上证指数',
+    value: 3128.42,
+    change: 18.24,
+    changePercent: 0.59,
+    quoteTime: '2026-05-29 15:00',
+  },
+  {
+    code: '399001.SZ',
+    name: '深证成指',
+    value: 9876.54,
+    change: -24.68,
+    changePercent: -0.25,
+    quoteTime: '2026-05-29 15:00',
+  },
+];
+
+const fundQuoteFixture = {
+  code: '000001',
+  name: '华夏成长混合',
+  netValue: 1.235,
+  officialNetValue: 1.2286,
+  dailyChangePercent: 0.86,
+  quoteDate: '2026-05-29',
+  estimateTime: '14:35',
+  quoteType: 'estimate',
+  source: '天天基金实时估算',
+};
+
+const fundHistoryFixture = [
+  { date: '2025-06-03', netValue: 1.018 },
+  { date: '2025-09-02', netValue: 1.067 },
+  { date: '2025-12-02', netValue: 1.103 },
+  { date: '2026-02-03', netValue: 1.154 },
+  { date: '2026-03-31', netValue: 1.189 },
+  { date: '2026-04-30', netValue: 1.208 },
+  { date: '2026-05-15', netValue: 1.221 },
+  { date: '2026-05-29', netValue: 1.235 },
+];
 
 const validImportData = {
   holdings: [
@@ -21,29 +81,106 @@ const validImportData = {
   ],
 };
 
+const githubOAuthMetadata: OAuthMetadata = {
+  provider: 'github',
+  authUrl: 'https://github.com/login/oauth/authorize?client_id=test',
+  configured: true,
+  callback: 'https://example.com/api/auth/oauth-callback?provider=github&redirect=%2F',
+};
+
+const wechatOAuthMetadata: OAuthMetadata = {
+  provider: 'wechat',
+  authUrl: 'https://open.weixin.qq.com/connect/qrconnect?client_id=test',
+  configured: true,
+  callback: 'https://example.com/api/auth/oauth-callback?provider=wechat&redirect=%2F',
+};
+
+let otpRequests: OtpRequest[] = [];
+
+async function expectDemoOtpRequest(authPanel: Locator) {
+  await expect(authPanel).toContainText('未登录：请发送邮箱链接并在邮箱中完成登录。');
+  await expect(authPanel).toContainText('Supabase 已向 demo@example.com 发送 Magic Link / OTP，请查收邮箱完成登录。');
+  await expect.poll(() => otpRequests.length).toBe(1);
+  await expect.poll(() => otpRequests[0]?.body.email).toBe('demo@example.com');
+
+  const redirectTarget = new URL(otpRequests[0]!.url).searchParams.get('redirect_to');
+  if (!redirectTarget) throw new Error('OTP request is missing redirect_to');
+
+  const redirectUrl = new URL(redirectTarget);
+  expect(redirectUrl.origin).toBe(PLAYWRIGHT_BASE_URL);
+  expect(['/','/app']).toContain(redirectUrl.pathname);
+}
+
 test.beforeEach(async ({ page }) => {
-  let lastAuthProvider = 'email';
-  let lastIdentifier = 'demo@example.com';
-  await page.route('**/api/auth/challenge', async (route) => {
-    const payload = JSON.parse(route.request().postData() ?? '{}') as { provider?: string; identifier?: string };
-    lastAuthProvider = payload.provider ?? 'email';
-    lastIdentifier = payload.identifier ?? 'demo@example.com';
-    await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ challengeId: 'challenge_e2e', provider: payload.provider ?? 'email', identifier: payload.identifier ?? 'demo@example.com', delivery: payload.provider ?? 'email', devCode: '123456', expiresAt: '2026-05-28T12:00:00.000Z' }) });
+  otpRequests = [];
+
+  await page.route('**/auth/v1/otp?*', async (route) => {
+    otpRequests.push({
+      url: route.request().url(),
+      body: JSON.parse(route.request().postData() ?? '{}') as OtpRequestBody,
+    });
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ message_id: 'e2e-otp-message' }),
+    });
   });
-  await page.route('**/api/auth/verify', async (route) => {
-    await route.fulfill({ contentType: 'application/json', status: 201, body: JSON.stringify({ user: { id: 'user_e2e', provider: lastAuthProvider, identifier: lastIdentifier, displayName: lastIdentifier }, session: { token: 'session_e2e', expiresAt: '2026-06-28T12:00:00.000Z' } }) });
+
+  await page.route('**/api/market/indices', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(marketIndicesFixture),
+    });
   });
+
+  await page.route('**/api/funds/trending', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify([fundQuoteFixture]),
+    });
+  });
+
+  await page.route('**/api/funds/search?q=000001', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify([fundQuoteFixture]),
+    });
+  });
+
+  await page.route('**/api/funds/000001/history?*', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(fundHistoryFixture),
+    });
+  });
+
+  await page.route('**/api/funds/000001', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(fundQuoteFixture),
+    });
+  });
+
   await page.route('**/api/auth/oauth-url?provider=github&redirect=/', async (route) => {
-    await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ provider: 'github', authUrl: 'https://github.com/login/oauth/authorize?client_id=test', configured: true, callback: 'https://example.com/api/auth/oauth-callback' }) });
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(githubOAuthMetadata),
+    });
   });
+
   await page.route('**/api/auth/oauth-url?provider=wechat&redirect=/', async (route) => {
-    await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ provider: 'wechat', authUrl: 'https://open.weixin.qq.com/connect/qrconnect?client_id=test', configured: true, callback: 'https://example.com/api/auth/oauth-callback' }) });
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(wechatOAuthMetadata),
+    });
   });
+
   await page.route('**/api/ai/analyze-fund', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify({
-        fund: { code: '000001', name: '华夏成长混合', netValue: 1.35, quoteDate: '2026-05-28', source: '天天基金实时估算' },
+        fund: { ...fundQuoteFixture },
         agent: {
           model: 'deepseek-v4-flash',
           indicators: { totalReturn: 3.2, maxDrawdown: -1.1, shortMomentum: 1.2, volatility: 0.5, trendSlope: 0.1, sampleSize: 8 },
@@ -57,7 +194,24 @@ test.beforeEach(async ({ page }) => {
             { name: 'normalize_report', status: 'done', summary: '规范化报告' },
           ],
         },
-        report: { summary: '上涨原因：估算净值走强。', trend: '趋势判断：震荡向上', risk: '风险提示：注意波动。', scenarios: [{ name: '中性情景', probability: 'medium', description: '维持震荡' }], watchPoints: ['最大回撤'], disclaimer: '不构成投资建议' },
+        report: {
+          summary: '上涨原因：估算净值走强。',
+          trend: '趋势判断：震荡向上',
+          risk: '风险提示：注意波动。',
+          beginnerGuide: {
+            riskLevel: 'R3',
+            riskExplanation: '风险等级不是收益承诺，要结合波动和最大回撤判断。',
+            netValueExplanation: '净值上涨不代表更贵，要结合持仓成本和买入节奏理解。',
+            trendExplanation: '市场震荡向上，适合先按计划观察，不必一次性追涨。',
+            suggestedAction: '观察等待',
+            actionPath: ['先确认资金期限', '再看单只基金权重', '最后决定是否分批操作'],
+            suitableFor: ['能承受波动并持续复盘的长期资金'],
+            avoid: ['把风险等级当成收益承诺', '单只基金仓位过重时继续追涨'],
+          },
+          scenarios: [{ name: '中性情景', probability: 'medium', description: '维持震荡' }],
+          watchPoints: ['最大回撤'],
+          disclaimer: '不构成投资建议',
+        },
         chartAnnotations: [{ label: '动量改善', description: '短期净值走强', tone: 'positive' }],
         analysis: '上涨原因：估算净值走强。',
       }),
@@ -65,40 +219,51 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('searches realtime data, uses OTP auth, runs agent analysis, renders charts, adds a holding, and exports local data', async ({ page }) => {
+test('searches realtime data, covers reconstructed content, uses deterministic Supabase OTP, runs agent analysis, renders charts, adds a holding, and exports local data', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: '中国基金行情' })).toBeVisible();
-  await expect(page.getByText('智能基金账户，把持仓、交易与投研装进一张安全玻璃卡。')).toBeVisible();
+  await expect(page.getByText('基金研究操作系统').first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: '全景工具宇宙' })).toBeVisible();
+  await expect(page.getByText('基金筛选、对比与诊断').first()).toBeVisible();
+  await expect(page.getByText('官方公告与高信任披露').first()).toBeVisible();
+  await expect(page.getByText('AKShare / AKTools').first()).toBeVisible();
   await expect(page.getByTestId('banking-hero-card')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '中国基金行情' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '今日大盘' })).toBeVisible();
   await expect(page.locator('#markets')).toContainText('上证指数');
+  await expect(page.locator('#markets')).toContainText('3128.42');
   await expect(page.getByTestId('market-chart').locator('svg')).toBeVisible();
-  await expect(page.getByText('3128.42')).toHaveCount(0);
 
   await page.getByLabel('基金代码或名称').fill('000001');
   await page.getByRole('button', { name: '搜索' }).click();
-  await page.getByRole('button', { name: /华夏成长混合/ }).click();
+  await page.locator('#funds').getByRole('button').filter({ hasText: '华夏成长混合' }).first().click();
   await expect(page.getByRole('heading', { name: '华夏成长混合' })).toBeVisible();
   await expect(page.getByText('实时估算').or(page.getByText('官方净值')).first()).toBeVisible();
+  await expect(page.locator('#funds')).toContainText('日涨跌：0.86%');
+  await expect(page.locator('#funds')).toContainText('1.2350');
   await expect(page.getByTestId('fund-chart')).toBeVisible();
   await expect(page.getByText(/区间收益/)).toBeVisible();
-  await expect(page.getByText(/最大回撤/)).toBeVisible();
 
+  const beginnerGuide = page.locator('[aria-labelledby="beginner-guide-title"]');
+  await expect(beginnerGuide).toContainText('华夏成长混合 当前净值');
+  await expect(beginnerGuide).toContainText('单只基金权重过高时');
+  await expect(beginnerGuide).toContainText('风险等级不是收益承诺');
+
+  const authPanel = page.locator('#auth');
+  await expect(authPanel.getByRole('heading', { name: 'Supabase 邮箱登录' })).toBeVisible();
+  await expect(authPanel).toContainText('未登录：请发送邮箱链接并在邮箱中完成登录。');
   await page.getByLabel('邮箱地址').fill('demo@example.com');
-  await page.getByRole('button', { name: '发送验证码' }).click();
-  await expect(page.getByText(/开发环境验证码/)).toBeVisible();
-  await page.getByRole('button', { name: '验证登录' }).click();
-  await expect(page.getByText(/已登录：demo@example.com/)).toBeVisible();
-  await page.getByRole('button', { name: /GitHub OAuth/ }).click();
-  await expect(page.getByText(/github.com\/login\/oauth\/authorize/)).toBeVisible();
+  await page.getByRole('button', { name: '发送 Magic Link / OTP' }).click();
+  await expectDemoOtpRequest(authPanel);
 
   await page.getByRole('button', { name: /分析 华夏成长混合/ }).click();
+  const aiAnalysis = page.locator('#ai-analysis');
   await expect(page.getByTestId('agent-steps')).toContainText('compute_indicators');
-  await expect(page.getByRole('heading', { name: '趋势判断' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '风险提示' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '观察点' })).toBeVisible();
-  await expect(page.getByText('上涨原因：估算净值走强。')).toBeVisible();
+  await expect(aiAnalysis).toContainText('最大回撤');
+  await expect(aiAnalysis.getByRole('heading', { name: '趋势判断' })).toBeVisible();
+  await expect(aiAnalysis.getByRole('heading', { name: '风险提示' })).toBeVisible();
+  await expect(aiAnalysis.getByRole('heading', { name: '观察点' })).toBeVisible();
+  await expect(aiAnalysis).toContainText('上涨原因：估算净值走强。');
 
   await page.getByRole('button', { name: '加入持仓' }).click();
   await expect(page.getByRole('heading', { name: '我的持仓分析' })).toBeVisible();
@@ -143,24 +308,30 @@ test('shows import and fund search errors without breaking the dashboard', async
   await expect(page.getByRole('heading', { name: '今日大盘' })).toBeVisible();
 });
 
-test('toggles watchlist and supports email OTP plus WeChat OAuth metadata', async ({ page }) => {
+test('toggles watchlist and preserves deterministic OAuth metadata coverage', async ({ page }) => {
   await page.goto('/');
 
   await page.getByLabel('基金代码或名称').fill('000001');
   await page.getByRole('button', { name: '搜索' }).click();
-  await page.getByRole('button', { name: /华夏成长混合/ }).click();
+  await page.locator('#funds').getByRole('button').filter({ hasText: '华夏成长混合' }).first().click();
 
   await page.getByRole('button', { name: '加入自选' }).click();
   await expect(page.locator('#portfolio').getByText('华夏成长混合 000001')).toBeVisible();
   await page.getByRole('button', { name: '移出自选' }).click();
   await expect(page.locator('#portfolio').getByText('华夏成长混合 000001')).toHaveCount(0);
 
+  const authPanel = page.locator('#auth');
+  await expect(authPanel.getByRole('heading', { name: 'Supabase 邮箱登录' })).toBeVisible();
+  await expect(authPanel).toContainText('未登录：请发送邮箱链接并在邮箱中完成登录。');
   await page.getByLabel('邮箱地址').fill('demo@example.com');
-  await page.getByRole('button', { name: '发送验证码' }).click();
-  await expect(page.getByText(/开发环境验证码：123456/)).toBeVisible();
-  await page.getByRole('button', { name: '验证登录' }).click();
-  await expect(page.getByText(/已登录：demo@example\.com/)).toBeVisible();
+  await page.getByRole('button', { name: '发送 Magic Link / OTP' }).click();
+  await expectDemoOtpRequest(authPanel);
 
-  await page.getByRole('button', { name: '微信扫码' }).click();
-  await expect(page.getByText(/open\.weixin\.qq\.com\/connect\/qrconnect/)).toBeVisible();
+  const [githubMetadata, wechatMetadata] = await Promise.all([
+    page.evaluate(async () => (await fetch('/api/auth/oauth-url?provider=github&redirect=/')).json()),
+    page.evaluate(async () => (await fetch('/api/auth/oauth-url?provider=wechat&redirect=/')).json()),
+  ]);
+
+  expect(githubMetadata).toMatchObject(githubOAuthMetadata);
+  expect(wechatMetadata).toMatchObject(wechatOAuthMetadata);
 });

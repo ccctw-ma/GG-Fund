@@ -15,7 +15,7 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
-    "test:e2e": "playwright test tests/e2e/next-core.spec.ts",
+    "test:e2e": "playwright test tests/e2e/next-core.spec.ts tests/fund-flow.spec.ts",
     "test:midscene": "zsh scripts/test-midscene.sh",
     "check": "bun run lint && bun run test && bun run coverage && bun run build && bun run test:e2e",
     "precommit:install": "git config core.hooksPath .githooks",

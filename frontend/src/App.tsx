@@ -9,7 +9,6 @@ import {
   Database,
   LineChart,
   ShieldCheck,
-  Sparkles,
   WalletCards,
   Wifi,
 } from 'lucide-react';
@@ -24,6 +23,7 @@ import { FundSearch } from './components/FundSearch';
 import { MarketOverview } from './components/MarketOverview';
 import { PortfolioPanel } from './components/PortfolioPanel';
 import { SettingsPanel } from './components/SettingsPanel';
+import { ToolUniverse } from './components/ToolUniverse';
 import { calculatePortfolioSummary } from './portfolio';
 import { exportLocalData, loadHoldings, loadWatchlist, parseImportedData, saveHoldings, saveWatchlist } from './storage';
 import type { FundHistoryPoint, FundQuote, Holding, IndexQuote, WatchItem } from './types';
@@ -32,16 +32,16 @@ const nowIso = () => new Date().toISOString();
 const money = new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY', maximumFractionDigits: 2 });
 
 const heroStats = [
-  { label: '实时行情 API', value: 'Cloudflare', detail: 'D1 / KV 缓存' },
-  { label: '本地持仓', value: 'Local-first', detail: '浏览器私有存储' },
-  { label: 'AI 投研', value: 'Agent', detail: '多步骤分析报告' },
+  { label: '实时行情', value: '指数 + 基金', detail: '公开数据源 + fallback' },
+  { label: '研究工具', value: '8 类能力', detail: '筛选 / 对比 / 诊断 / 公告' },
+  { label: '开源底座', value: 'AKShare · Qlib', detail: '数据与量化路线图' },
 ];
 
 const transactionFeatures = [
-  { title: '基金搜索与估值', description: '输入基金代码或名称，快速查看盘中估算、官方净值与历史走势。', icon: LineChart },
-  { title: '自选与持仓管理', description: '把关注基金加入自选，或一键加入持仓形成账户级收益视图。', icon: WalletCards },
-  { title: 'AI 研究报告', description: '整合净值历史、动量、回撤和情景推演，生成结构化投研摘要。', icon: Sparkles },
-  { title: '导入导出备份', description: '本地组合数据可导出 JSON，迁移设备或回滚数据更可控。', icon: Database },
+  { title: '基金搜索与估值', description: '输入基金代码或名称，查看盘中估算、官方净值、历史走势和自选状态。', icon: LineChart },
+  { title: '筛选、对比与诊断', description: '把好买式筛选、对比、诊断抽象为 GG Fund 的基金研究工具层。', icon: BarChart3 },
+  { title: '持仓与分批行动', description: '用本地持仓、收益、权重和新手路径承接定投、止盈、减仓等教育决策。', icon: WalletCards },
+  { title: '公告、资讯与开源研究', description: '把东方财富、雪球、同花顺、交易所披露和 AKShare/Qlib 能力纳入路线图。', icon: Database },
 ];
 
 export default function App() {
@@ -186,12 +186,12 @@ export default function App() {
       <div className="fund-page">
         <Header session={session} onLogout={logout} logoutPending={authPending === 'logout'} />
         <main className="landing-flow">
-          <section className="landing-hero" aria-label="智能基金账户">
+          <section className="landing-hero" aria-labelledby="hero-title">
             <div className="hero-copy">
               <div className="trust-pill"><ShieldCheck className="h-4 w-4" /> Cloudflare-first · Local-first · AI-ready</div>
-              <h2 className="hero-title">智能基金账户，把持仓、交易与投研装进一张专业玻璃卡。</h2>
+              <h2 className="hero-title" id="hero-title">基金研究操作系统，把行情、工具、公告、组合与 AI 装进一张专业工作台。</h2>
               <p className="hero-subtitle">
-                GG Fund 重新设计为面向个人投资者的基金账户中枢：实时行情、组合盈亏、AI 研究、身份登录和备份迁移在同一个可信界面里完成。
+                GG Fund 重构为面向中国基金投资者的全景工具站：实时基金净值、ETF/LOF/REITs/转债路线图、官方披露、资讯社区、开源量化底座和本地组合分析在同一个可信界面里串起来。
               </p>
               <div className="hero-actions">
                 <a className="gold-cta" href="#workspace">立即体验 <ArrowUpRight className="h-4 w-4" /></a>
@@ -211,11 +211,11 @@ export default function App() {
               <div className="phone-frame" aria-label="账户卡片预览">
                 <div className="phone-speaker" />
                 <div className="phone-topline">
-                  <span>GG Fund</span>
+                  <span>GG Fund · 研究工作台</span>
                   <BadgeCheck className="h-4 w-4 text-[var(--mint)]" />
                 </div>
                 <div className="balance-card">
-                  <span>智能基金账户</span>
+                  <span>智能基金账户 · 研究工作台</span>
                   <strong>{money.format(summary.totalMarketValue)}</strong>
                   <small className={positive ? 'profit-up' : 'profit-down'}>{positive ? '+' : ''}{summary.totalReturnRate.toFixed(2)}% · {money.format(summary.totalProfit)}</small>
                 </div>
@@ -271,12 +271,14 @@ export default function App() {
             </div>
           </section>
 
+          <ToolUniverse />
+
           <section className="workspace-section" id="workspace" aria-labelledby="workspace-title">
             <div className="workspace-heading">
               <div>
                 <span className="section-kicker">Live Workspace</span>
                 <h2 id="workspace-title">中国基金行情</h2>
-                <p>保留现有实时数据、基金搜索、AI 分析、账户登录和本地备份能力，并统一为新的玻璃拟态工作台。</p>
+                <p>保留现有实时数据、基金搜索、AI 分析、账户登录和本地备份能力，并接入全新的工具宇宙、研究来源和开源能力路线图。</p>
               </div>
               <a className="ghost-cta" href="#funds"><BarChart3 className="h-4 w-4" /> 查看基金工具</a>
             </div>

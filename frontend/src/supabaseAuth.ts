@@ -1,8 +1,7 @@
 import { createClient, type Session } from '@supabase/supabase-js';
 
-const envSource = typeof process !== 'undefined' ? process.env : undefined;
-const supabaseUrl = envSource?.NEXT_PUBLIC_SUPABASE_URL ?? envSource?.VITE_SUPABASE_URL;
-const supabaseAnonKey = envSource?.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? envSource?.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY;
 
 export type UiAuthSession = {
   user: {
