@@ -30,13 +30,13 @@ const nowIso = () => new Date().toISOString();
 const money = new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY', maximumFractionDigits: 2 });
 
 const heroStats = [
-  { label: '实时行情', value: '指数 + 基金', detail: '公开数据源 + fallback' },
+  { label: '实时行情', value: '指数 + 基金 + 股票', detail: '东方财富 / 腾讯 / 天天基金' },
   { label: '研究工具', value: '8 类能力', detail: '筛选 / 对比 / 诊断 / 公告' },
   { label: '开源底座', value: 'AKShare · Qlib', detail: '数据与量化路线图' },
 ];
 
 const transactionFeatures = [
-  { title: '基金搜索与估值', description: '输入基金代码或名称，查看盘中估算、官方净值、历史走势和自选状态。', icon: LineChart },
+  { title: '多源行情搜索', description: '输入基金、股票代码或名称，自动聚合基金净值、A股实时价格和公开数据备用源。', icon: LineChart },
   { title: '筛选、对比与诊断', description: '把好买式筛选、对比、诊断抽象为 GG Fund 的基金研究工具层。', icon: BarChart3 },
   { title: '持仓与分批行动', description: '用本地持仓、收益、权重和新手路径承接定投、止盈、减仓等教育决策。', icon: WalletCards },
   { title: '公告、资讯与开源研究', description: '把东方财富、雪球、同花顺、交易所披露和 AKShare/Qlib 能力纳入路线图。', icon: Database },
@@ -313,7 +313,7 @@ export default function App() {
                 <div>
                   <span className="section-kicker">Live Workspace</span>
                   <h2 id="workspace-title">中国基金行情</h2>
-                  <p>实时查看大盘、搜索基金、添加自选或持仓，并用新手决策地图快速判断下一步动作。</p>
+                  <p>实时查看全球核心指数、搜索基金或A股股票、添加自选或持仓，并用新手决策地图快速判断下一步动作。</p>
                 </div>
                 <button type="button" className="ghost-cta" onClick={() => changePage('portfolio')}><BarChart3 className="h-4 w-4" /> 查看组合</button>
               </div>

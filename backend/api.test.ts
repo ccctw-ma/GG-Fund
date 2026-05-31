@@ -148,6 +148,31 @@ describe('Cloudflare API', () => {
     expect(String(sentMessages[0].init?.body)).toContain(String(bindings.GG_FUND_DB.authChallenges[0].code));
   });
 
+  it('returns a specific Resend delivery error when email OTP sending fails', async () => {
+    const api = createCloudflareApi({
+      marketData,
+      emailFetch: (async () => new Response(JSON.stringify({
+        message: 'The from address is not verified',
+      }), { status: 403, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch,
+    });
+    const bindings = env();
+    bindings.RESEND_API_KEY = 'resend-test-key';
+    bindings.AUTH_EMAIL_FROM = 'GG Fund <noreply@example.com>';
+
+    const response = await api.fetch(new Request('https://example.com/api/auth/challenge', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'email', identifier: 'demo@example.com' }),
+    }), bindings);
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'EMAIL_OTP_DELIVERY_FAILED',
+        message: '邮件发送失败：Resend 返回 403，{"message":"The from address is not verified"}。请检查 Resend API Key、发件域名验证和 AUTH_EMAIL_FROM 配置。',
+      },
+    });
+  });
+
   it('returns dev code only when email delivery is not configured', async () => {
     const api = createCloudflareApi({
       marketData,

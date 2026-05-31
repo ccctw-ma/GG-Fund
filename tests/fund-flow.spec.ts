@@ -198,12 +198,12 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
 
   await page.getByRole('button', { name: /行情工作台/ }).click();
   await expect(page.getByRole('heading', { name: '中国基金行情' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '今日大盘' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '全球市场雷达' })).toBeVisible();
   await expect(page.locator('#markets')).toContainText('上证指数');
   await expect(page.locator('#markets')).toContainText('3128.42');
   await expect(page.getByTestId('market-chart').locator('svg')).toBeVisible();
 
-  await page.getByLabel('基金代码或名称').fill('000001');
+  await page.getByLabel('基金、股票代码或名称').fill('000001');
   await page.getByRole('button', { name: '搜索' }).click();
   await page.locator('#funds').getByRole('button').filter({ hasText: '华夏成长混合' }).first().click();
   await expect(page.getByRole('heading', { name: '华夏成长混合' })).toBeVisible();
@@ -261,17 +261,17 @@ test('shows import and fund search errors without breaking the dashboard', async
   await expect(page.getByText('导入文件不是有效 JSON')).toBeVisible();
 
   await page.getByRole('button', { name: /行情工作台/ }).click();
-  await page.getByLabel('基金代码或名称').fill('bad-query');
+  await page.getByLabel('基金、股票代码或名称').fill('bad-query');
   await page.getByRole('button', { name: '搜索' }).click();
   await expect(page.getByText('基金查询服务暂不可用')).toBeVisible();
-  await expect(page.getByRole('heading', { name: '今日大盘' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '全球市场雷达' })).toBeVisible();
 });
 
 test('toggles watchlist and keeps portfolio focused on holdings', async ({ page }) => {
   await page.goto('/');
 
   await page.getByRole('button', { name: /行情工作台/ }).click();
-  await page.getByLabel('基金代码或名称').fill('000001');
+  await page.getByLabel('基金、股票代码或名称').fill('000001');
   await page.getByRole('button', { name: '搜索' }).click();
   await page.locator('#funds').getByRole('button').filter({ hasText: '华夏成长混合' }).first().click();
 

@@ -19,6 +19,13 @@ const challenges = new Map<string, Challenge>();
 const sessions = new Map<string, SessionPayload>();
 const routeApi = createCloudflareApi();
 
+class EmailOtpDeliveryError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'EmailOtpDeliveryError';
+  }
+}
+
 function json(body: unknown, status = 200, headers: Record<string, string> = {}) {
   return Response.json(body, { status, headers });
 }
@@ -75,7 +82,13 @@ async function sendOtp(env: RuntimeEnv, to: string, code: string) {
       text: `你的 GG Fund 登录验证码是 ${code}，10 分钟内有效。若不是你本人操作，请忽略此邮件。`,
     }),
   });
-  if (!response.ok) throw new Error('email_otp_delivery_failed');
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    const summary = detail.trim().slice(0, 240);
+    throw new EmailOtpDeliveryError(
+      `邮件发送失败：Resend 返回 ${response.status}${summary ? `，${summary}` : ''}。请检查 Resend API Key、发件域名验证和 AUTH_EMAIL_FROM 配置。`,
+    );
+  }
   return true;
 }
 
@@ -145,12 +158,19 @@ function localLogout(request: Request) {
 
 async function dispatch(request: Request, action: string) {
   const env = await readRuntimeEnv();
-  if (env.GG_FUND_DB) return routeApi.fetch(request, env as CloudflareEnv);
-  if (request.method === 'POST' && action === 'challenge') return localChallenge(request, env);
-  if (request.method === 'POST' && action === 'verify') return localVerify(request);
-  if (request.method === 'POST' && action === 'logout') return localLogout(request);
-  if (request.method === 'GET' && action === 'me') return localMe(request);
-  return jsonError('NOT_FOUND', '接口不存在', 404);
+  try {
+    if (env.GG_FUND_DB) return routeApi.fetch(request, env as CloudflareEnv);
+    if (request.method === 'POST' && action === 'challenge') return localChallenge(request, env);
+    if (request.method === 'POST' && action === 'verify') return localVerify(request);
+    if (request.method === 'POST' && action === 'logout') return localLogout(request);
+    if (request.method === 'GET' && action === 'me') return localMe(request);
+    return jsonError('NOT_FOUND', '接口不存在', 404);
+  } catch (event) {
+    if (event instanceof EmailOtpDeliveryError) {
+      return jsonError('EMAIL_OTP_DELIVERY_FAILED', event.message, 502);
+    }
+    throw event;
+  }
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ action: string }> }) {

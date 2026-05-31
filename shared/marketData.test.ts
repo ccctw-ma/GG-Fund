@@ -22,6 +22,28 @@ describe('market data service', () => {
     ]);
   });
 
+  it('normalizes expanded Eastmoney index quotes for A/H/US market radar', async () => {
+    const service = createMarketDataService({
+      now: () => 1_779_951_200_000,
+      fetchText: async () => JSON.stringify({
+        rc: 0,
+        data: {
+          diff: [
+            { f12: '000688', f14: '科创50', f2: 1288.88, f3: 1.08, f4: 13.7, f124: 1779951051 },
+            { f12: 'HSI', f14: '恒生指数', f2: 26888.66, f3: -0.35, f4: -94.1, f124: 1779951051 },
+            { f12: 'IXIC', f14: '纳斯达克', f2: 19888.12, f3: 0.42, f4: 83.3, f124: 1779951051 },
+          ],
+        },
+      }),
+    });
+
+    await expect(service.getIndices()).resolves.toEqual([
+      expect.objectContaining({ code: '000688.SH', name: '科创50' }),
+      expect.objectContaining({ code: 'HSI.HK', name: '恒生指数' }),
+      expect.objectContaining({ code: 'IXIC.US', name: '纳斯达克' }),
+    ]);
+  });
+
   it('uses canonical Chinese index names when upstream names are mojibake', async () => {
     const service = createMarketDataService({
       fetchText: async () => JSON.stringify({
@@ -110,6 +132,30 @@ describe('market data service', () => {
     ]);
   });
 
+  it('mixes Eastmoney stock quotes into financial asset search results', async () => {
+    const service = createMarketDataService({
+      fetchText: async () => 'jQuery123([]);',
+      fetchJson: async () => ({
+        data: {
+          diff: [
+            { f12: '600519', f13: '1.600519', f14: '贵州茅台', f2: 1668.88, f3: 0.72, f4: 11.94, f5: 123456, f6: 987654321, f15: 1688, f16: 1648, f17: 1650, f18: 1656.94, f124: 1779951051 },
+          ],
+        },
+      }),
+    });
+
+    await expect(service.searchFunds('茅台')).resolves.toEqual([
+      expect.objectContaining({
+        code: '600519',
+        name: '贵州茅台',
+        assetType: 'stock',
+        market: 'SH',
+        netValue: 1668.88,
+        source: '东方财富 A股行情',
+      }),
+    ]);
+  });
+
   it('normalizes Eastmoney fund detail json into a real quote', async () => {
     const service = createMarketDataService({
       fetchText: async () => {
@@ -131,6 +177,56 @@ describe('market data service', () => {
     );
   });
 
+  it('falls through to A-share stock quote when fund endpoints do not return a fund', async () => {
+    const service = createMarketDataService({
+      fetchText: async () => {
+        throw new Error('fund estimate unavailable');
+      },
+      fetchJson: async (url) => {
+        if (url.includes('FundMNewApi')) return {};
+        return {
+          data: {
+            diff: [
+              { f12: '600519', f13: '1.600519', f14: '贵州茅台', f2: 1668.88, f3: 0.72, f4: 11.94, f5: 123456, f6: 987654321, f15: 1688, f16: 1648, f17: 1650, f18: 1656.94, f124: 1779951051 },
+            ],
+          },
+        };
+      },
+    });
+
+    await expect(service.getFund('600519')).resolves.toEqual(
+      expect.objectContaining({
+        code: '600519',
+        name: '贵州茅台',
+        assetType: 'stock',
+        high: 1688,
+        low: 1648,
+        turnover: 987654321,
+      }),
+    );
+  });
+
+  it('uses Tencent stock quote fallback when Eastmoney stock detail is unavailable', async () => {
+    const service = createMarketDataService({
+      fetchText: async (url) => {
+        if (url.includes('fundgz')) throw new Error('fund estimate unavailable');
+        return 'v_sh600519="1~贵州茅台~600519~1668.88~1656.94~1650.00~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~20260529150000~11.94~0.72~1688.00~1648.00~1668.88~123456~987654321";';
+      },
+      fetchJson: async () => ({}),
+    });
+
+    await expect(service.getFund('600519')).resolves.toEqual(
+      expect.objectContaining({
+        code: '600519',
+        name: '贵州茅台',
+        assetType: 'stock',
+        source: '腾讯证券行情',
+        quoteDate: '2026-05-29',
+        estimateTime: '15:00:00',
+      }),
+    );
+  });
+
   it('searches fallback Chinese funds when upstream search fails', async () => {
     const service = createMarketDataService({
       fetchText: async () => {
@@ -138,9 +234,10 @@ describe('market data service', () => {
       },
     });
 
-    await expect(service.searchFunds('000001')).resolves.toEqual([
+    await expect(service.searchFunds('000001')).resolves.toEqual(expect.arrayContaining([
       expect.objectContaining({ code: '000001', name: '华夏成长混合' }),
-    ]);
+      expect.objectContaining({ code: '000001', name: '平安银行', assetType: 'stock' }),
+    ]));
     await expect(service.searchFunds('消费')).resolves.toEqual([
       expect.objectContaining({ code: '110022', name: '易方达消费行业股票' }),
     ]);

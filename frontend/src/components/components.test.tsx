@@ -2,7 +2,7 @@ import { act } from 'react';
 import type { ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
-import { researchCatalog, getLiveCatalogItems, getRoadmapCatalogItems } from '../researchCatalog';
+import { researchCatalog, getLiveCatalogItems } from '../researchCatalog';
 import { BeginnerGuide } from './BeginnerGuide';
 import { FundSearch } from './FundSearch';
 import { MarketOverview } from './MarketOverview';
@@ -54,11 +54,52 @@ describe('dashboard components', () => {
     );
     roots.push(search.root);
 
-    expect(market.container.textContent).toContain('今日大盘');
+    expect(market.container.textContent).toContain('全球市场雷达');
     expect(search.container.textContent).toContain('华夏成长混合');
     expect(search.container.textContent).toContain('实时估算');
     expect(search.container.textContent).toContain('基金分析走势图');
     expect(search.container.textContent).toContain('Fund Signal Matrix');
+  });
+
+  it('renders stock quote details without the fund trend matrix', () => {
+    const stock = {
+      code: '600519',
+      name: '贵州茅台',
+      assetType: 'stock' as const,
+      market: 'SH' as const,
+      netValue: 1668.88,
+      dailyChangePercent: 0.72,
+      open: 1650,
+      previousClose: 1656.94,
+      high: 1688,
+      low: 1648,
+      volume: 123456,
+      turnover: 987654321,
+      quoteDate: '2026-05-29',
+      source: '东方财富 A股行情',
+    };
+    const search = render(
+      <FundSearch
+        query="茅台"
+        setQuery={() => undefined}
+        results={[stock]}
+        selectedFund={stock}
+        history={[]}
+        loading={false}
+        onSearch={() => undefined}
+        onSelect={() => undefined}
+        onAddHolding={() => undefined}
+        onToggleWatch={() => undefined}
+        watchlist={[]}
+      />,
+    );
+    roots.push(search.root);
+
+    expect(search.container.textContent).toContain('金融资产搜索');
+    expect(search.container.textContent).toContain('实时股价');
+    expect(search.container.textContent).toContain('今开');
+    expect(search.container.textContent).toContain('成交量 / 成交额');
+    expect(search.container.textContent).not.toContain('Fund Signal Matrix');
   });
 
   it('renders portfolio and settings empty states', () => {
@@ -143,7 +184,7 @@ describe('dashboard components', () => {
 
     [
       '全景工具宇宙',
-      'A 股指数',
+      '全球核心指数',
       '基金筛选、对比与诊断',
       '官方公告与高信任披露',
       'AKShare / AKTools',
@@ -155,8 +196,8 @@ describe('dashboard components', () => {
 
   it('exposes a complete typed research catalog with live and roadmap capabilities', () => {
     expect(researchCatalog.assetNavigation.map((item) => item.title)).toEqual([
-      'A 股指数',
-      '基金净值',
+      '全球核心指数',
+      '基金与 A 股行情',
       'ETF / LOF',
       'REITs',
       '债券与可转债',
@@ -166,7 +207,7 @@ describe('dashboard components', () => {
     expect(researchCatalog.toolGroups.map((group) => group.title)).toContain('基金筛选、对比与诊断');
     expect(researchCatalog.sourceGroups.map((group) => group.title)).toContain('官方公告与高信任披露');
     expect(researchCatalog.openSourceStack.map((item) => item.name)).toEqual(['AKShare / AKTools', 'Qlib', 'Tushare', 'Backtrader', 'Pyfolio', 'Streamlit']);
-    expect(getLiveCatalogItems().some((item) => item.title === '基金净值')).toBe(true);
-    expect(getRoadmapCatalogItems().some((item) => item.title === '港美与全球观察')).toBe(true);
+    expect(getLiveCatalogItems().some((item) => item.title === '基金与 A 股行情')).toBe(true);
+    expect(researchCatalog.assetNavigation.find((item) => item.title === '港美与全球观察')?.status).toBe('connectable');
   });
 });

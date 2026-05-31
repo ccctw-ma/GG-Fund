@@ -19,9 +19,18 @@ export type WatchItem = {
 export type FundQuote = {
   code: string;
   name: string;
+  assetType?: 'fund' | 'stock' | 'index';
+  market?: 'SH' | 'SZ' | 'BJ' | 'HK' | 'US';
   netValue: number;
   officialNetValue?: number;
   dailyChangePercent?: number;
+  change?: number;
+  open?: number;
+  previousClose?: number;
+  high?: number;
+  low?: number;
+  volume?: number;
+  turnover?: number;
   quoteDate: string;
   estimateTime?: string;
   quoteType?: 'official' | 'estimate' | 'fallback';

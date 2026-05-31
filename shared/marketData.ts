@@ -11,6 +11,8 @@ type MarketDataOptions = {
 
 const EASTMONEY_SOURCE = '东方财富公开接口';
 const EASTMONEY_SEARCH_SOURCE = '东方财富搜索接口';
+const EASTMONEY_STOCK_SOURCE = '东方财富 A股行情';
+const TENCENT_STOCK_SOURCE = '腾讯证券行情';
 const TIANTIAN_ESTIMATE_SOURCE = '天天基金实时估算';
 
 const INDEX_NAMES: Record<string, string> = {
@@ -18,20 +20,27 @@ const INDEX_NAMES: Record<string, string> = {
   '399001': '深证成指',
   '399006': '创业板指',
   '000300': '沪深300',
+  '000688': '科创50',
+  '899050': '北证50',
+  HSI: '恒生指数',
+  IXIC: '纳斯达克',
 };
 
 const fallbackFunds: FundQuote[] = [
-  { code: '000001', name: '华夏成长混合', netValue: 1.35, dailyChangePercent: 0.8, quoteDate: '2026-05-28', source: '内置示例行情' },
-  { code: '110022', name: '易方达消费行业股票', netValue: 1.6, dailyChangePercent: -0.2, quoteDate: '2026-05-28', source: '内置示例行情' },
-  { code: '161725', name: '招商中证白酒指数', netValue: 0.92, dailyChangePercent: 1.1, quoteDate: '2026-05-28', source: '内置示例行情' },
-  { code: '003096', name: '中欧医疗健康混合', netValue: 1.12, dailyChangePercent: -0.5, quoteDate: '2026-05-28', source: '内置示例行情' },
-  { code: '050002', name: '博时沪深300指数', netValue: 1.48, dailyChangePercent: 0.36, quoteDate: '2026-05-28', source: '内置示例行情' },
+  { code: '000001', name: '华夏成长混合', assetType: 'fund', netValue: 1.35, dailyChangePercent: 0.8, quoteDate: '2026-05-28', source: '内置示例行情' },
+  { code: '110022', name: '易方达消费行业股票', assetType: 'fund', netValue: 1.6, dailyChangePercent: -0.2, quoteDate: '2026-05-28', source: '内置示例行情' },
+  { code: '161725', name: '招商中证白酒指数', assetType: 'fund', netValue: 0.92, dailyChangePercent: 1.1, quoteDate: '2026-05-28', source: '内置示例行情' },
+  { code: '003096', name: '中欧医疗健康混合', assetType: 'fund', netValue: 1.12, dailyChangePercent: -0.5, quoteDate: '2026-05-28', source: '内置示例行情' },
+  { code: '050002', name: '博时沪深300指数', assetType: 'fund', netValue: 1.48, dailyChangePercent: 0.36, quoteDate: '2026-05-28', source: '内置示例行情' },
+  { code: '600519', name: '贵州茅台', assetType: 'stock', market: 'SH', netValue: 1668.88, dailyChangePercent: 0.72, quoteDate: '2026-05-28', source: '内置示例行情' },
+  { code: '000001', name: '平安银行', assetType: 'stock', market: 'SZ', netValue: 11.28, dailyChangePercent: -0.18, quoteDate: '2026-05-28', source: '内置示例行情' },
+  { code: '300750', name: '宁德时代', assetType: 'stock', market: 'SZ', netValue: 218.36, dailyChangePercent: 1.12, quoteDate: '2026-05-28', source: '内置示例行情' },
 ];
 
 const fallbackIndices: IndexQuote[] = [];
 
 const historyByCode: Record<string, FundHistoryPoint[]> = Object.fromEntries(
-  fallbackFunds.map((fund, fundIndex) => [
+  fallbackFunds.filter((fund) => fund.assetType !== 'stock').map((fund, fundIndex) => [
     fund.code,
     Array.from({ length: 12 }, (_, index) => ({
       date: `2026-05-${String(17 + index).padStart(2, '0')}`,
@@ -62,7 +71,7 @@ function indexFromEastmoneyPush2Item(item: unknown): IndexQuote | undefined {
   const change = toNumber(record.f4);
   const quoteTimestamp = toNumber(record.f124);
   if (!rawCode || value === undefined || changePercent === undefined || change === undefined || !quoteTimestamp) return undefined;
-  const market = rawCode.startsWith('399') ? 'SZ' : 'SH';
+  const market = rawCode === 'HSI' ? 'HK' : rawCode === 'IXIC' ? 'US' : rawCode.startsWith('399') || rawCode.startsWith('899') ? 'SZ' : 'SH';
   const quoteTime = new Intl.DateTimeFormat('sv-SE', {
     timeZone: 'Asia/Shanghai',
     year: 'numeric',
@@ -133,6 +142,7 @@ function fundFromSearchRow(row: unknown): FundQuote | undefined {
   return {
     code: row[0],
     name: row[2],
+    assetType: 'fund',
     netValue: 0,
     quoteDate: '',
     quoteType: 'official',
@@ -151,11 +161,100 @@ function fundFromCurrentSearchItem(item: unknown): FundQuote | undefined {
   return {
     code,
     name,
+    assetType: 'fund',
     netValue,
     officialNetValue: netValue,
     quoteDate: String(base?.FSRQ ?? ''),
     quoteType: 'official',
     source: EASTMONEY_SEARCH_SOURCE,
+  };
+}
+
+function marketFromEastmoneySecid(secid: string, code: string): FundQuote['market'] {
+  if (secid.startsWith('1.') || code.startsWith('6')) return 'SH';
+  if (secid.startsWith('0.') || code.startsWith('0') || code.startsWith('3')) return 'SZ';
+  if (secid.startsWith('2.') || code.startsWith('8') || code.startsWith('4')) return 'BJ';
+  return undefined;
+}
+
+function eastmoneySecidForStock(code: string) {
+  if (code.startsWith('6')) return `1.${code}`;
+  if (code.startsWith('8') || code.startsWith('4')) return `2.${code}`;
+  return `0.${code}`;
+}
+
+function stockFromEastmoneyItem(item: unknown): FundQuote | undefined {
+  if (typeof item !== 'object' || item === null) return undefined;
+  const record = item as Record<string, unknown>;
+  const code = String(record.f12 ?? '');
+  const name = String(record.f14 ?? '');
+  const price = toNumber(record.f2);
+  if (!/^\d{6}$/.test(code) || !name || price === undefined || price <= 0) return undefined;
+  const timestamp = toNumber(record.f124);
+  const quoteDate = timestamp
+    ? new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(timestamp * 1000))
+    : new Date().toISOString().slice(0, 10);
+  return {
+    code,
+    name,
+    assetType: 'stock',
+    market: marketFromEastmoneySecid(String(record.f13 ?? ''), code),
+    netValue: price,
+    dailyChangePercent: toNumber(record.f3),
+    change: toNumber(record.f4),
+    open: toNumber(record.f17),
+    previousClose: toNumber(record.f18),
+    high: toNumber(record.f15),
+    low: toNumber(record.f16),
+    volume: toNumber(record.f5),
+    turnover: toNumber(record.f6),
+    quoteDate,
+    estimateTime: timestamp
+      ? new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date(timestamp * 1000))
+      : undefined,
+    quoteType: 'official',
+    source: EASTMONEY_STOCK_SOURCE,
+  };
+}
+
+function stocksFromEastmoneyClist(data: unknown): FundQuote[] {
+  if (typeof data !== 'object' || data === null) return [];
+  const root = data as { data?: unknown };
+  if (typeof root.data !== 'object' || root.data === null) return [];
+  const diff = (root.data as { diff?: unknown }).diff;
+  if (!Array.isArray(diff)) return [];
+  return diff.map(stockFromEastmoneyItem).filter((item): item is FundQuote => Boolean(item));
+}
+
+function stockFromTencentLine(line: string): FundQuote | undefined {
+  const match = line.match(/^v_([a-z]{2})(\d{6})="([^"]+)";?$/);
+  if (!match) return undefined;
+  const [, marketPrefix, code, payload] = match;
+  const parts = payload.split('~');
+  const name = parts[1];
+  const price = toNumber(parts[3]);
+  if (!name || price === undefined || price <= 0) return undefined;
+  const date = parts[30];
+  const quoteDate = date && date.length >= 8 ? `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}` : new Date().toISOString().slice(0, 10);
+  const quoteTime = date && date.length >= 14 ? `${date.slice(8, 10)}:${date.slice(10, 12)}:${date.slice(12, 14)}` : undefined;
+  return {
+    code,
+    name,
+    assetType: 'stock',
+    market: marketPrefix === 'sh' ? 'SH' : 'SZ',
+    netValue: price,
+    dailyChangePercent: toNumber(parts[32]),
+    change: toNumber(parts[31]) === undefined ? toNumber(parts[4]) : toNumber(parts[31]),
+    open: toNumber(parts[5]),
+    previousClose: toNumber(parts[4]),
+    high: toNumber(parts[33]),
+    low: toNumber(parts[34]),
+    volume: toNumber(parts[36]),
+    turnover: toNumber(parts[37]),
+    quoteDate,
+    estimateTime: quoteTime,
+    quoteType: 'official',
+    source: TENCENT_STOCK_SOURCE,
   };
 }
 
@@ -169,6 +268,7 @@ function quoteFromEastmoneyDetail(data: unknown, code: string): FundQuote | unde
   return {
     code: String(record.FCODE ?? code),
     name: String(record.SHORTNAME ?? record.NAME ?? code),
+    assetType: 'fund',
     netValue,
     officialNetValue: netValue,
     dailyChangePercent: toNumber(record.NAVCHGRT ?? record.GSZZL),
@@ -188,6 +288,7 @@ function quoteFromTiantianEstimate(text: string, code: string): FundQuote | unde
   return {
     code: String(record.fundcode ?? code),
     name: String(record.name ?? code),
+    assetType: 'fund',
     netValue: estimate,
     officialNetValue: official,
     dailyChangePercent: toNumber(record.gszzl),
@@ -245,7 +346,7 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
   }
 
   async function getEastmoneyIndices(): Promise<IndexQuote[]> {
-    const url = 'http://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids=1.000001,0.399001,0.399006,1.000300&fields=f12,f14,f2,f3,f4,f124';
+    const url = 'https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids=1.000001,0.399001,0.399006,1.000300,1.000688,0.899050,100.HSI,100.IXIC&fields=f12,f14,f2,f3,f4,f124';
     return indicesFromEastmoneyPush2(JSON.parse(await fetchText(url)));
   }
 
@@ -275,6 +376,25 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     return list
       .filter((fund): fund is FundQuote => Boolean(fund))
       .filter((fund) => fund.code.includes(query) || normalize(fund.name).includes(normalize(query)));
+  }
+
+  async function searchEastmoneyStocks(query: string): Promise<FundQuote[]> {
+    const fields = 'f12,f13,f14,f2,f3,f4,f5,f6,f15,f16,f17,f18,f124';
+    const fs = 'm:1+t:2,m:1+t:23,m:0+t:6,m:0+t:80,m:0+t:81,m:0+t:83,m:2+t:81';
+    const url = `https://push2.eastmoney.com/api/qt/clist/get?pn=1&pz=120&po=1&np=1&fltt=2&invt=2&fid=f3&fs=${encodeURIComponent(fs)}&fields=${fields}`;
+    const stocks = stocksFromEastmoneyClist(await fetchJson(url));
+    return stocks.filter((stock) => stock.code.includes(query) || normalize(stock.name).includes(normalize(query))).slice(0, 12);
+  }
+
+  async function getEastmoneyStock(code: string): Promise<FundQuote | undefined> {
+    const fields = 'f12,f13,f14,f2,f3,f4,f5,f6,f15,f16,f17,f18,f124';
+    const url = `https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids=${eastmoneySecidForStock(code)}&fields=${fields}`;
+    return stocksFromEastmoneyClist(await fetchJson(url))[0];
+  }
+
+  async function getTencentStock(code: string): Promise<FundQuote | undefined> {
+    const prefix = code.startsWith('6') ? 'sh' : 'sz';
+    return stockFromTencentLine(await fetchText(`https://qt.gtimg.cn/q=${prefix}${encodeURIComponent(code)}`));
   }
 
   async function getTiantianEstimate(code: string): Promise<FundQuote | undefined> {
@@ -308,12 +428,16 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
       return cached(`fund-search:${keyword}`, 300_000, async () => {
         try {
           const realFunds = await searchEastmoneyFunds(keyword);
-          if (realFunds.length > 0) return realFunds;
+          const realStocks = await searchEastmoneyStocks(keyword).catch(() => []);
+          const merged = [...realFunds, ...realStocks]
+            .filter((item, index, list) => list.findIndex((candidate) => candidate.code === item.code && candidate.assetType === item.assetType) === index)
+            .slice(0, 15);
+          if (merged.length > 0) return merged;
         } catch {
           // fall through to local fallback
         }
         return fallbackFunds.filter(
-          (fund) => fund.code.includes(keyword) || fund.name.toLowerCase().includes(keyword),
+          (fund) => fund.code.includes(keyword) || normalize(fund.name).includes(keyword),
         );
       });
     },
@@ -328,6 +452,18 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
         try {
           const quote = await getEastmoneyFund(code);
           if (quote) return quote;
+        } catch {
+          // fall through to stock quote
+        }
+        try {
+          const stock = await getEastmoneyStock(code);
+          if (stock) return stock;
+        } catch {
+          // fall through to Tencent stock quote
+        }
+        try {
+          const stock = await getTencentStock(code);
+          if (stock) return stock;
         } catch {
           // fall through to local fallback
         }

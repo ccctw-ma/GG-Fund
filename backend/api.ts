@@ -64,6 +64,13 @@ type AuthContext = {
   session: AuthSession;
 };
 
+class EmailOtpDeliveryError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'EmailOtpDeliveryError';
+  }
+}
+
 const isOtpProvider = (value: unknown): value is OtpProvider => typeof value === 'string' && OTP_PROVIDERS.includes(value as OtpProvider);
 const isOAuthProvider = (value: unknown): value is OAuthProvider => typeof value === 'string' && OAUTH_PROVIDERS.includes(value as OAuthProvider);
 
@@ -279,7 +286,13 @@ async function sendEmailOtp(env: CloudflareEnv, emailFetch: typeof fetch, to: st
       text: `你的 GG Fund 登录验证码是 ${code}，10 分钟内有效。若不是你本人操作，请忽略此邮件。`,
     }),
   });
-  if (!response.ok) throw new Error('email_otp_delivery_failed');
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    const summary = detail.trim().slice(0, 240);
+    throw new EmailOtpDeliveryError(
+      `邮件发送失败：Resend 返回 ${response.status}${summary ? `，${summary}` : ''}。请检查 Resend API Key、发件域名验证和 AUTH_EMAIL_FROM 配置。`,
+    );
+  }
   return true;
 }
 
@@ -500,7 +513,10 @@ export function createCloudflareApi(options: Options = {}) {
 
         if (!['GET', 'POST'].includes(request.method)) return error(405, 'METHOD_NOT_ALLOWED', '仅支持 GET 和 POST 请求');
         return error(404, 'NOT_FOUND', '接口不存在');
-      } catch {
+      } catch (event) {
+        if (event instanceof EmailOtpDeliveryError) {
+          return error(502, 'EMAIL_OTP_DELIVERY_FAILED', event.message);
+        }
         return error(502, 'UPSTREAM_ERROR', 'Cloudflare 后端服务暂不可用，请稍后重试');
       }
     },

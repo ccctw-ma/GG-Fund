@@ -7,16 +7,32 @@ import { Badge } from './ui/badge';
 import { Card, CardDescription, CardHeader, CardTitle } from './ui/card';
 
 export function MarketOverview({ indices, loading, error }: { indices: IndexQuote[]; loading: boolean; error?: string }) {
+  const leadIndex = indices[0];
   return (
     <Card id="markets" className="overflow-hidden">
       <CardHeader>
         <div>
           <Badge tone="blue" className="mb-2"><Activity className="h-3 w-3" /> Market</Badge>
-          <CardTitle>今日大盘</CardTitle>
-          <CardDescription>实时指数概览，使用 Recharts 绘制涨跌幅分布。</CardDescription>
+          <CardTitle>全球市场雷达</CardTitle>
+          <CardDescription>A股、港股、美股核心指数多源聚合，展示涨跌幅分布。</CardDescription>
         </div>
-        <Badge tone="slate">公开数据</Badge>
+        <Badge tone="slate">{indices.length > 4 ? '多市场数据' : '公开数据'}</Badge>
       </CardHeader>
+      {leadIndex && (
+        <div className="mb-4 rounded-[1.5rem] border border-[#10251f]/10 bg-[#081611] p-4 text-white">
+          <small className="text-xs font-black uppercase tracking-[0.2em] text-white/45">Market Pulse</small>
+          <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <strong className="block text-2xl font-black">{leadIndex.name}</strong>
+              <span className="text-sm font-bold text-white/60">{leadIndex.quoteTime}</span>
+            </div>
+            <div className={leadIndex.changePercent >= 0 ? 'text-right text-[var(--bull)]' : 'text-right text-[var(--bear)]'}>
+              <strong className="block text-3xl font-black tabular-nums">{leadIndex.value.toFixed(2)}</strong>
+              <span className="font-black">{leadIndex.changePercent >= 0 ? '+' : ''}{leadIndex.change.toFixed(2)} / {leadIndex.changePercent >= 0 ? '+' : ''}{leadIndex.changePercent.toFixed(2)}%</span>
+            </div>
+          </div>
+        </div>
+      )}
       {loading && <p className="text-sm font-semibold text-ink/50">正在加载市场数据…</p>}
       {error && <p className="rounded-3xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
       <div className="rounded-[1.6rem] bg-[#10251f]/[0.04] p-3">

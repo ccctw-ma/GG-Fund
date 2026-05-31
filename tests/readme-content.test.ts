@@ -13,7 +13,9 @@ describe('README content reconstruction', () => {
     expect(readme).toContain('根路径 `/` 会直接跳转到 `/app` 工作台');
     expect(readme).toContain('`/settings` 目前提供基础说明入口');
     expect(readme).toContain('`/app/portfolio`');
-    expect(readme).toContain('基金发现、基金诊断、本地持仓、自选观察为已接入；基金横向对比、ETF / LOF 专题、定投/分批行动路径明确标注为可接入。');
+    expect(readme).toContain('基金与股票研究工具');
+    expect(readme).toContain('全球市场雷达');
+    expect(readme).toContain('金融资产搜索');
     expect(readme).toContain('Resend 邮箱登录');
     expect(readme).toContain('Qlib 回测和组合优化');
     expect(readme).not.toContain('保留基金详情路由');
@@ -28,7 +30,9 @@ describe('README content reconstruction', () => {
     expect(readmeEn).toContain('the root path `/` redirects directly to the `/app` workspace');
     expect(readmeEn).toContain('`/settings` currently provides a basic information entry');
     expect(readmeEn).toContain('`/app/portfolio`');
-    expect(readmeEn).toContain('fund discovery, diagnostics, local holdings, and watchlist are live today; fund comparison, ETF / LOF topics, and recurring investment paths are explicitly marked as connectable.');
+    expect(readmeEn).toContain('Fund and stock research tools');
+    expect(readmeEn).toContain('Global market radar');
+    expect(readmeEn).toContain('Financial asset search');
     expect(readmeEn).toContain('Resend email login');
     expect(readmeEn).toContain('Qlib backtesting');
     expect(readmeEn).not.toContain('fund detail, portfolio, and settings pages kept available');
