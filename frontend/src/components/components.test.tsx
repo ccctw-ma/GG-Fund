@@ -2,6 +2,7 @@ import { act } from 'react';
 import type { ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
+import { researchCatalog, getLiveCatalogItems, getRoadmapCatalogItems } from '../researchCatalog';
 import { BeginnerGuide } from './BeginnerGuide';
 import { FundSearch } from './FundSearch';
 import { MarketOverview } from './MarketOverview';
@@ -124,5 +125,22 @@ describe('dashboard components', () => {
     expect(guide.container.textContent).toContain('基金小白决策地图');
     expect(guide.container.textContent).toContain('华夏成长混合');
     expect(guide.container.textContent).toContain('确认资金期限');
+  });
+
+  it('exposes a complete typed research catalog with live and roadmap capabilities', () => {
+    expect(researchCatalog.assetNavigation.map((item) => item.title)).toEqual([
+      'A 股指数',
+      '基金净值',
+      'ETF / LOF',
+      'REITs',
+      '债券与可转债',
+      '新债 / 新发基金',
+      '港美与全球观察',
+    ]);
+    expect(researchCatalog.toolGroups.map((group) => group.title)).toContain('基金筛选、对比与诊断');
+    expect(researchCatalog.sourceGroups.map((group) => group.title)).toContain('官方公告与高信任披露');
+    expect(researchCatalog.openSourceStack.map((item) => item.name)).toEqual(['AKShare / AKTools', 'Qlib', 'Tushare', 'Backtrader', 'Pyfolio', 'Streamlit']);
+    expect(getLiveCatalogItems().some((item) => item.title === '基金净值')).toBe(true);
+    expect(getRoadmapCatalogItems().some((item) => item.title === '港美与全球观察')).toBe(true);
   });
 });
