@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const PLAYWRIGHT_SUPABASE_URL = 'https://example.supabase.co';
+const PLAYWRIGHT_SUPABASE_ANON_KEY = 'test-anon-key';
+
 export default defineConfig({
   testDir: './tests',
   timeout: 30_000,
@@ -15,8 +18,8 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       ...process.env,
-      NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://example.supabase.co',
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'test-anon-key',
+      NEXT_PUBLIC_SUPABASE_URL: PLAYWRIGHT_SUPABASE_URL,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: PLAYWRIGHT_SUPABASE_ANON_KEY,
     },
   },
   projects: [

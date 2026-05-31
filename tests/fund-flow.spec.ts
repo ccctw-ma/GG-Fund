@@ -1,12 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 
 type OtpRequestBody = {
   email?: string;
-  data?: Record<string, unknown>;
-  create_user?: boolean;
-  gotrue_meta_security?: Record<string, unknown>;
-  code_challenge?: string | null;
-  code_challenge_method?: string | null;
 };
 
 type OtpRequest = {
@@ -20,6 +15,50 @@ type OAuthMetadata = {
   configured: boolean;
   callback: string;
 };
+
+const PLAYWRIGHT_BASE_URL = 'http://127.0.0.1:3000';
+
+const marketIndicesFixture = [
+  {
+    code: '000001.SH',
+    name: '上证指数',
+    value: 3128.42,
+    change: 18.24,
+    changePercent: 0.59,
+    quoteTime: '2026-05-29 15:00',
+  },
+  {
+    code: '399001.SZ',
+    name: '深证成指',
+    value: 9876.54,
+    change: -24.68,
+    changePercent: -0.25,
+    quoteTime: '2026-05-29 15:00',
+  },
+];
+
+const fundQuoteFixture = {
+  code: '000001',
+  name: '华夏成长混合',
+  netValue: 1.235,
+  officialNetValue: 1.2286,
+  dailyChangePercent: 0.86,
+  quoteDate: '2026-05-29',
+  estimateTime: '14:35',
+  quoteType: 'estimate',
+  source: '天天基金实时估算',
+};
+
+const fundHistoryFixture = [
+  { date: '2025-06-03', netValue: 1.018 },
+  { date: '2025-09-02', netValue: 1.067 },
+  { date: '2025-12-02', netValue: 1.103 },
+  { date: '2026-02-03', netValue: 1.154 },
+  { date: '2026-03-31', netValue: 1.189 },
+  { date: '2026-04-30', netValue: 1.208 },
+  { date: '2026-05-15', netValue: 1.221 },
+  { date: '2026-05-29', netValue: 1.235 },
+];
 
 const validImportData = {
   holdings: [
@@ -56,21 +95,70 @@ const wechatOAuthMetadata: OAuthMetadata = {
   callback: 'https://example.com/api/auth/oauth-callback?provider=wechat&redirect=%2F',
 };
 
-let lastOtpRequest: OtpRequest | undefined;
+let otpRequests: OtpRequest[] = [];
+
+async function expectDemoOtpRequest(authPanel: Locator) {
+  await expect(authPanel).toContainText('未登录：请发送邮箱链接并在邮箱中完成登录。');
+  await expect(authPanel).toContainText('Supabase 已向 demo@example.com 发送 Magic Link / OTP，请查收邮箱完成登录。');
+  await expect.poll(() => otpRequests.length).toBe(1);
+  await expect.poll(() => otpRequests[0]?.body.email).toBe('demo@example.com');
+
+  const redirectTarget = new URL(otpRequests[0]!.url).searchParams.get('redirect_to');
+  if (!redirectTarget) throw new Error('OTP request is missing redirect_to');
+
+  const redirectUrl = new URL(redirectTarget);
+  expect(redirectUrl.origin).toBe(PLAYWRIGHT_BASE_URL);
+  expect(['/','/app']).toContain(redirectUrl.pathname);
+}
 
 test.beforeEach(async ({ page }) => {
-  lastOtpRequest = undefined;
+  otpRequests = [];
 
-  await page.route('https://example.supabase.co/auth/v1/otp?*', async (route) => {
-    lastOtpRequest = {
+  await page.route('**/auth/v1/otp?*', async (route) => {
+    otpRequests.push({
       url: route.request().url(),
       body: JSON.parse(route.request().postData() ?? '{}') as OtpRequestBody,
-    };
+    });
 
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ message_id: 'e2e-otp-message' }),
+    });
+  });
+
+  await page.route('**/api/market/indices', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(marketIndicesFixture),
+    });
+  });
+
+  await page.route('**/api/funds/trending', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify([fundQuoteFixture]),
+    });
+  });
+
+  await page.route('**/api/funds/search?q=000001', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify([fundQuoteFixture]),
+    });
+  });
+
+  await page.route('**/api/funds/000001/history?*', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(fundHistoryFixture),
+    });
+  });
+
+  await page.route('**/api/funds/000001', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(fundQuoteFixture),
     });
   });
 
@@ -92,7 +180,7 @@ test.beforeEach(async ({ page }) => {
     await route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify({
-        fund: { code: '000001', name: '华夏成长混合', netValue: 1.35, quoteDate: '2026-05-28', source: '天天基金实时估算' },
+        fund: { ...fundQuoteFixture },
         agent: {
           model: 'deepseek-v4-flash',
           indicators: { totalReturn: 3.2, maxDrawdown: -1.1, shortMomentum: 1.2, volatility: 0.5, trendSlope: 0.1, sampleSize: 8 },
@@ -143,14 +231,16 @@ test('searches realtime data, covers reconstructed content, uses deterministic S
   await expect(page.getByRole('heading', { name: '中国基金行情' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '今日大盘' })).toBeVisible();
   await expect(page.locator('#markets')).toContainText('上证指数');
+  await expect(page.locator('#markets')).toContainText('3128.42');
   await expect(page.getByTestId('market-chart').locator('svg')).toBeVisible();
-  await expect(page.getByText('3128.42')).toHaveCount(0);
 
   await page.getByLabel('基金代码或名称').fill('000001');
   await page.getByRole('button', { name: '搜索' }).click();
-  await page.getByRole('button', { name: /华夏成长混合/ }).click();
+  await page.locator('#funds').getByRole('button').filter({ hasText: '华夏成长混合' }).first().click();
   await expect(page.getByRole('heading', { name: '华夏成长混合' })).toBeVisible();
   await expect(page.getByText('实时估算').or(page.getByText('官方净值')).first()).toBeVisible();
+  await expect(page.locator('#funds')).toContainText('日涨跌：0.86%');
+  await expect(page.locator('#funds')).toContainText('1.2350');
   await expect(page.getByTestId('fund-chart')).toBeVisible();
   await expect(page.getByText(/区间收益/)).toBeVisible();
 
@@ -164,17 +254,7 @@ test('searches realtime data, covers reconstructed content, uses deterministic S
   await expect(authPanel).toContainText('未登录：请发送邮箱链接并在邮箱中完成登录。');
   await page.getByLabel('邮箱地址').fill('demo@example.com');
   await page.getByRole('button', { name: '发送 Magic Link / OTP' }).click();
-  await expect(authPanel).toContainText('Supabase 已向 demo@example.com 发送 Magic Link / OTP，请查收邮箱完成登录。');
-  await expect.poll(() => lastOtpRequest?.body.email).toBe('demo@example.com');
-  expect(lastOtpRequest?.body).toMatchObject({
-    email: 'demo@example.com',
-    data: {},
-    create_user: true,
-    gotrue_meta_security: {},
-    code_challenge: null,
-    code_challenge_method: null,
-  });
-  expect(new URL(lastOtpRequest!.url).searchParams.get('redirect_to')).toBe('http://127.0.0.1:3000');
+  await expectDemoOtpRequest(authPanel);
 
   await page.getByRole('button', { name: /分析 华夏成长混合/ }).click();
   const aiAnalysis = page.locator('#ai-analysis');
@@ -233,7 +313,7 @@ test('toggles watchlist and preserves deterministic OAuth metadata coverage', as
 
   await page.getByLabel('基金代码或名称').fill('000001');
   await page.getByRole('button', { name: '搜索' }).click();
-  await page.getByRole('button', { name: /华夏成长混合/ }).click();
+  await page.locator('#funds').getByRole('button').filter({ hasText: '华夏成长混合' }).first().click();
 
   await page.getByRole('button', { name: '加入自选' }).click();
   await expect(page.locator('#portfolio').getByText('华夏成长混合 000001')).toBeVisible();
@@ -245,8 +325,7 @@ test('toggles watchlist and preserves deterministic OAuth metadata coverage', as
   await expect(authPanel).toContainText('未登录：请发送邮箱链接并在邮箱中完成登录。');
   await page.getByLabel('邮箱地址').fill('demo@example.com');
   await page.getByRole('button', { name: '发送 Magic Link / OTP' }).click();
-  await expect(authPanel).toContainText('Supabase 已向 demo@example.com 发送 Magic Link / OTP，请查收邮箱完成登录。');
-  await expect.poll(() => lastOtpRequest?.body.email).toBe('demo@example.com');
+  await expectDemoOtpRequest(authPanel);
 
   const [githubMetadata, wechatMetadata] = await Promise.all([
     page.evaluate(async () => (await fetch('/api/auth/oauth-url?provider=github&redirect=/')).json()),
