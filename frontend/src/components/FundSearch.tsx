@@ -49,14 +49,14 @@ export function FundSearch({ query, setQuery, results, selectedFund, history, lo
       {error && <p className="mt-3 rounded-3xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
       <div className="mt-4 grid gap-2">
         {results.map((fund) => (
-          <button className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-[1.35rem] border border-[#10251f]/10 bg-white/58 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#047857]/40 hover:bg-white" key={`${fund.assetType ?? 'fund'}-${fund.code}`} onClick={() => onSelect(fund.code)}>
+          <button className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-[1.35rem] border border-white/10 bg-slate-950/42 p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_14px_36px_rgba(0,0,0,.16)] backdrop-blur transition hover:-translate-y-0.5 hover:border-[var(--mint)]/45 hover:bg-slate-950/58" key={`${fund.assetType ?? 'fund'}-${fund.code}`} onClick={() => onSelect(fund.code)}>
             <span>
-              <strong className="block text-ink">{fund.name}</strong>
-              <small className="text-ink/55">{fund.assetType === 'stock' ? '股票' : '基金'} · {fund.market ? `${fund.market} · ` : ''}{fund.code} · {fund.source}{fund.quoteDate ? ` · ${fund.quoteDate}` : ''}</small>
+              <strong className="block text-[rgba(248,250,252,.96)]">{fund.name}</strong>
+              <small className="text-[rgba(226,232,240,.68)]">{fund.assetType === 'stock' ? '股票' : '基金'} · {fund.market ? `${fund.market} · ` : ''}{fund.code} · {fund.source}{fund.quoteDate ? ` · ${fund.quoteDate}` : ''}</small>
             </span>
             <span className="text-right">
-              <strong className="block text-lg tabular-nums text-ink">{formatAssetValue(fund)}</strong>
-              {fund.dailyChangePercent !== undefined && <small className={fund.dailyChangePercent >= 0 ? 'font-black text-[var(--bull)]' : 'font-black text-[var(--bear)]'}>{fund.dailyChangePercent >= 0 ? '+' : ''}{fund.dailyChangePercent.toFixed(2)}%</small>}
+              <strong className="block text-lg tabular-nums text-[rgba(248,250,252,.98)]">{formatAssetValue(fund)}</strong>
+              {fund.dailyChangePercent !== undefined && <small className={fund.dailyChangePercent >= 0 ? 'font-black text-[#7de2b8]' : 'font-black text-[#ff8f8f]'}>{fund.dailyChangePercent >= 0 ? '+' : ''}{fund.dailyChangePercent.toFixed(2)}%</small>}
             </span>
           </button>
         ))}
