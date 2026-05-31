@@ -276,9 +276,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .beginner-guide-card span { display: grid; height: 38px; width: 38px; place-items: center; border-radius: 14px; background: rgba(244,183,64,.15); color: var(--gold-soft); }
 .beginner-guide-card h3 { margin: 14px 0 8px; color: var(--text-strong); font-size: 1rem; font-weight: 950; }
 .beginner-guide-card p { margin: 0; color: var(--text-muted); font-size: .9rem; font-weight: 700; line-height: 1.72; }
-.decision-ladder { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--text-main); font-size: .88rem; font-weight: 900; }
+.decision-ladder { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; color: var(--text-main); font-size: .88rem; font-weight: 900; }
 .decision-ladder strong { color: var(--gold-soft); }
-.decision-ladder span { border: 1px solid rgba(255,255,255,.13); border-radius: 999px; background: rgba(255,255,255,.08); padding: 8px 11px; }
+.decision-ladder-step { display: grid; gap: 4px; min-width: min(240px, 100%); border: 1px solid rgba(255,255,255,.13); border-radius: 18px; background: rgba(255,255,255,.08); padding: 10px 12px; }
+.decision-ladder-step-title { color: var(--text-strong); }
+.decision-ladder-step small { color: var(--text-muted); font-size: .78rem; font-weight: 700; line-height: 1.5; }
 
 
 .tool-universe { display: grid; gap: 18px; }
