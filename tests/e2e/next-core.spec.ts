@@ -5,6 +5,7 @@ test('root redirects directly into the Next workspace', async ({ page }) => {
 
   await expect(page).toHaveURL(/\/app$/);
   await expect(page.getByText('基金研究操作系统').first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: '中国基金行情' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '全景工具宇宙' })).toBeVisible();
   await expect(page.getByText('ETF / LOF').first()).toBeVisible();
 });

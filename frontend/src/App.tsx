@@ -186,10 +186,10 @@ export default function App() {
       <div className="fund-page">
         <Header session={session} onLogout={logout} logoutPending={authPending === 'logout'} />
         <main className="landing-flow">
-          <section className="landing-hero" aria-label="智能基金账户">
+          <section className="landing-hero" aria-labelledby="hero-title">
             <div className="hero-copy">
               <div className="trust-pill"><ShieldCheck className="h-4 w-4" /> Cloudflare-first · Local-first · AI-ready</div>
-              <h2 className="hero-title">基金研究操作系统，把行情、工具、公告、组合与 AI 装进一张专业工作台。</h2>
+              <h2 className="hero-title" id="hero-title">基金研究操作系统，把行情、工具、公告、组合与 AI 装进一张专业工作台。</h2>
               <p className="hero-subtitle">
                 GG Fund 重构为面向中国基金投资者的全景工具站：实时基金净值、ETF/LOF/REITs/转债路线图、官方披露、资讯社区、开源量化底座和本地组合分析在同一个可信界面里串起来。
               </p>
@@ -211,11 +211,11 @@ export default function App() {
               <div className="phone-frame" aria-label="账户卡片预览">
                 <div className="phone-speaker" />
                 <div className="phone-topline">
-                  <span>GG Fund</span>
+                  <span>GG Fund · 研究工作台</span>
                   <BadgeCheck className="h-4 w-4 text-[var(--mint)]" />
                 </div>
                 <div className="balance-card">
-                  <span>智能基金账户</span>
+                  <span>智能基金账户 · 研究工作台</span>
                   <strong>{money.format(summary.totalMarketValue)}</strong>
                   <small className={positive ? 'profit-up' : 'profit-down'}>{positive ? '+' : ''}{summary.totalReturnRate.toFixed(2)}% · {money.format(summary.totalProfit)}</small>
                 </div>

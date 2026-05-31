@@ -61,6 +61,7 @@ describe('App', () => {
     });
 
     expect(container.textContent).toContain('基金研究操作系统');
+    expect(container.textContent).toContain('智能基金账户');
     expect(container.textContent).toContain('账户总览');
     expect(container.textContent).toContain('全景工具宇宙');
     expect(container.textContent).toContain('ETF / LOF');
@@ -76,6 +77,12 @@ describe('App', () => {
     expect(container.textContent).toContain('发送 Magic Link / OTP');
     expect(container.textContent).toContain('中国基金行情');
     expect(container.textContent).not.toContain('OTP / OAuth 登录');
+
+    const heroSection = container.querySelector('.landing-hero');
+    const heroTitle = container.querySelector('#hero-title');
+    expect(heroSection?.getAttribute('aria-labelledby')).toBe('hero-title');
+    expect(heroSection?.getAttribute('aria-label')).toBeNull();
+    expect(heroTitle?.textContent).toContain('基金研究操作系统');
   });
 
   it('hydrates without mismatching locally cached holdings', async () => {
