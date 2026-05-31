@@ -18,6 +18,14 @@ const navItems = [
   { id: 'portfolio', label: '组合账户', icon: UserRound },
 ] satisfies Array<{ id: WorkspacePage; label: string; icon: typeof Compass }>;
 
+function shortAccountLabel(session?: AuthSessionResponse) {
+  const label = session?.user.displayName || session?.user.identifier;
+  if (!label) return '未登录';
+  const [name, domain] = label.split('@');
+  if (!domain) return label;
+  return `${name.slice(0, 8)}@${domain}`;
+}
+
 export function Header({ session, onLogout, logoutPending = false, activePage, onPageChange }: HeaderProps) {
   return (
     <header className="banking-header">
@@ -44,12 +52,13 @@ export function Header({ session, onLogout, logoutPending = false, activePage, o
       <section className="profile-card" aria-label="账户状态">
         <div className="profile-avatar"><UserRound className="h-4 w-4" /></div>
         <div className="profile-copy">
-          <strong>{session ? session.user.displayName || session.user.identifier : '未登录'}</strong>
-          {session && <small>Resend · {session.user.identifier}</small>}
+          <strong>{shortAccountLabel(session)}</strong>
+          {session && <small>Resend OTP</small>}
         </div>
         {session ? (
           <button className="profile-action" onClick={onLogout} disabled={logoutPending} aria-label="退出登录">
-            <LogOut className="h-4 w-4" /> {logoutPending ? '退出中' : '退出'}
+            <LogOut className="h-4 w-4" />
+            <span>{logoutPending ? '退出中' : '退出'}</span>
           </button>
         ) : (
           <button type="button" className="profile-action" onClick={() => { window.location.href = '/login'; }}>

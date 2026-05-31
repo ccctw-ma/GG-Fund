@@ -4,6 +4,14 @@ import { ArrowLeft, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api, type AuthChallengeResponse, type AuthSessionResponse } from '../api';
 
+const DEFAULT_LOGIN_REDIRECT = '/app#portfolio';
+
+function readLoginRedirect() {
+  if (typeof window === 'undefined') return DEFAULT_LOGIN_REDIRECT;
+  const next = new URLSearchParams(window.location.search).get('next')?.trim();
+  return next?.startsWith('/') ? next : DEFAULT_LOGIN_REDIRECT;
+}
+
 export function LoginPage() {
   const [identifier, setIdentifier] = useState('');
   const [code, setCode] = useState('');
@@ -62,7 +70,8 @@ export function LoginPage() {
       setSession(nextSession);
       setChallenge(undefined);
       setCode('');
-      setMessage('登录成功，已保存当前浏览器会话。');
+      setMessage('登录成功，正在进入工作台。');
+      window.location.assign(readLoginRedirect());
     } catch (event) {
       setError(event instanceof Error ? event.message : '验证码验证失败');
     } finally {
@@ -109,7 +118,6 @@ export function LoginPage() {
               {pending === 'verifying' ? '登录中...' : '登录'}
             </button>
 
-            {session && <a className="login-secondary-link" href="/app#portfolio">进入组合账户</a>}
             {message && <p className="login-message"><CheckCircle2 className="h-4 w-4" />{message}</p>}
             {error && <p className="login-error">{error}</p>}
           </form>

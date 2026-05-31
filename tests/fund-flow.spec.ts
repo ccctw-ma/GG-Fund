@@ -80,7 +80,6 @@ async function expectDemoOtpRequest(loginCard: Locator) {
   await expect.poll(() => otpRequests[0]?.body.identifier).toBe('demo@example.com');
   await loginCard.getByLabel('邮箱验证码').fill('123456');
   await loginCard.getByRole('button', { name: '登录' }).click();
-  await expect(loginCard).toContainText('已登录 demo@example.com');
 }
 
 test.beforeEach(async ({ page }) => {
@@ -103,6 +102,17 @@ test.beforeEach(async ({ page }) => {
       status: 201,
       contentType: 'application/json',
       body: JSON.stringify({ user: { id: 'user-demo', provider: 'email', identifier: 'demo@example.com', displayName: 'demo@example.com' }, session: { token: 'session-e2e', expiresAt: '2026-06-07T00:00:00.000Z' } }),
+    });
+  });
+
+  await page.route('**/api/auth/me', async (route) => {
+    const isSignedIn = route.request().headers().authorization === 'Bearer session-e2e';
+    await route.fulfill({
+      status: isSignedIn ? 200 : 401,
+      contentType: 'application/json',
+      body: JSON.stringify(isSignedIn
+        ? { user: { id: 'user-demo', provider: 'email', identifier: 'demo@example.com', displayName: 'demo@example.com' }, session: { token: 'session-e2e', expiresAt: '2026-06-07T00:00:00.000Z' } }
+        : { error: { code: 'AUTH_REQUIRED', message: '请先登录' } }),
     });
   });
 
@@ -296,5 +306,6 @@ test('signs in from the standalone login page with Resend email OTP', async ({ p
   await page.getByLabel('邮箱地址').fill('demo@example.com');
   await page.getByRole('button', { name: '发送验证码' }).click();
   await expectDemoOtpRequest(loginCard);
-  await expect(loginCard.getByRole('link', { name: '进入组合账户' })).toHaveAttribute('href', '/app#portfolio');
+  await page.waitForURL('**/app#portfolio');
+  await expect(page.locator('.profile-card')).toContainText('demo@');
 });

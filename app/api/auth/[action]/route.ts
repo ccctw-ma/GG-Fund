@@ -158,8 +158,9 @@ function localLogout(request: Request) {
 
 async function dispatch(request: Request, action: string) {
   const env = await readRuntimeEnv();
+  const useLocalAuth = process.env.NODE_ENV === 'development' && process.env.GG_FUND_AUTH_USE_D1 !== '1';
   try {
-    if (env.GG_FUND_DB) return routeApi.fetch(request, env as CloudflareEnv);
+    if (env.GG_FUND_DB && !useLocalAuth) return routeApi.fetch(request, env as CloudflareEnv);
     if (request.method === 'POST' && action === 'challenge') return localChallenge(request, env);
     if (request.method === 'POST' && action === 'verify') return localVerify(request);
     if (request.method === 'POST' && action === 'logout') return localLogout(request);

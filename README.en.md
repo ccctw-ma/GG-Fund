@@ -20,7 +20,7 @@ GG Fund now uses a Cloudflare-first Next.js App Router architecture as its main 
 - Beginner decision map: explains fund type, NAV, market temperature, holding status, risk level, single-fund concentration, and monthly review paths.
 - Local portfolio: calculates market value, cost, profit/loss, return rate, and weights after adding funds.
 - Watchlist: follows funds without counting them as holdings.
-- Resend email login: `/login` uses a standalone minimal sign-in page, `/api/auth/challenge` sends a 6-digit email OTP and returns Resend delivery failure details to the frontend, and `/api/auth/verify` creates a GG Fund-owned session; `/api/portfolio/default` prefers the signed-in user's portfolio.
+- Resend email login: `/login` uses a standalone minimal sign-in page, redirects back to `/app#portfolio` after OTP sign-in succeeds, `/api/auth/challenge` sends a 6-digit email OTP and returns Resend delivery failure details to the frontend, and `/api/auth/verify` creates a GG Fund-owned session; `/api/portfolio/default` prefers the signed-in user's portfolio.
 - Cloudflare Worker deployment: Next Route Handlers are built by OpenNext into the Worker runtime with `GG_FUND_DB` and `GG_FUND_CACHE` bindings.
 
 ## Project Structure
@@ -62,6 +62,8 @@ Server values:
 RESEND_API_KEY=re_your_key
 AUTH_EMAIL_FROM="GG Fund <onboarding@resend.dev>"
 ```
+
+Local `bun run dev` uses in-memory auth state by default, even when OpenNext discovers the D1 binding from `wrangler.jsonc`; set `GG_FUND_AUTH_USE_D1=1` only when you intentionally want to debug the D1 auth path locally. With `onboarding@resend.dev`, Resend only sends to the account owner's test email. Clear `RESEND_API_KEY` and `AUTH_EMAIL_FROM` to return to the local `devCode` OTP mode.
 
 ## Testing
 

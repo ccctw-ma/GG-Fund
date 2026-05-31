@@ -20,7 +20,7 @@ GG Fund 现已以 Cloudflare-first 的 Next.js App Router 架构为主：`app/` 
 - 基金小白决策地图：把基金类型、净值理解、大盘温度、持仓状态、风险等级、单只基金权重和每月复盘路径放在同一视图，帮助普通投资者避免只看单日涨跌。
 - 本地持仓：添加基金后计算市值、成本、盈亏、收益率和组合占比。
 - 自选基金：关注基金但不计入持仓。
-- Resend 邮箱登录：`/login` 使用独立极简登录页，`/api/auth/challenge` 发送 6 位邮箱验证码并把 Resend 发信失败原因直接返回给前端，`/api/auth/verify` 创建 GG Fund 自有会话；`/api/portfolio/default` 会优先读取登录用户组合。
+- Resend 邮箱登录：`/login` 使用独立极简登录页，验证码登录成功后自动返回 `/app#portfolio`，`/api/auth/challenge` 发送 6 位邮箱验证码并把 Resend 发信失败原因直接返回给前端，`/api/auth/verify` 创建 GG Fund 自有会话；`/api/portfolio/default` 会优先读取登录用户组合。
 - Cloudflare Worker 部署：Next Route Handlers 由 OpenNext 输出到 Worker 默认运行时，`wrangler.jsonc` 提供 `GG_FUND_DB`、`GG_FUND_CACHE` 等 binding。
 
 ## 项目结构
@@ -62,6 +62,8 @@ bun run dev
 RESEND_API_KEY=re_your_key
 AUTH_EMAIL_FROM="GG Fund <onboarding@resend.dev>"
 ```
+
+本地 `bun run dev` 默认使用内存登录状态，即使 OpenNext 读取到 `wrangler.jsonc` 的 D1 绑定也不会走远端 D1；如果需要在本地调试 D1 登录链路，可额外设置 `GG_FUND_AUTH_USE_D1=1`。使用 `onboarding@resend.dev` 时，Resend 只允许发送到账号自己的测试邮箱；清空 `RESEND_API_KEY` 和 `AUTH_EMAIL_FROM` 可回到页面显示 `devCode` 的开发验证码模式。
 
 ## 测试
 
