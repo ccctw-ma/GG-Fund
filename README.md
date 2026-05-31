@@ -6,20 +6,21 @@ GG Fund 现已以 Cloudflare-first 的 Next.js App Router 架构为主：`app/` 
 
 ## 功能
 
-- Next.js App Router 页面：根路径 `/` 会直接跳转到 `/app` 工作台，`/settings` 目前提供基础说明入口，`/app/portfolio` 当前作为组合落地页；本地持仓与自选能力继续在工作台内使用。
+- Next.js App Router 页面：根路径 `/` 会直接跳转到 `/app` 工作台，`/login` 提供独立邮箱验证码登录页，`/settings` 目前提供基础说明入口，`/app/portfolio` 当前作为组合落地页；本地持仓与自选能力继续在工作台内使用。
+- 顶部导航工作台：`/app` 内通过固定顶部导航在“总览、工具宇宙、行情工作台、组合账户”之间切换，右上角展示紧凑账户状态卡片；未登录时点击右上角“登录”进入 `/login`。
 - 全景工具宇宙：参考公开基金/股票工具网站能力，把行情、筛选、对比、诊断、账户、资讯、公告、开源量化能力组织成一张可浏览的能力地图。
 - 多资产导航：当前已接入 A 股指数与基金净值；ETF / LOF、REITs、债券与可转债、新债 / 新发基金、港美与全球观察作为可接入或路线图能力明确标注。
-- 基金研究工具：基金发现、基金诊断、本地持仓、自选观察、AI 研究摘要为已接入；基金横向对比、ETF / LOF 专题、定投/分批行动路径明确标注为可接入。
+- 基金研究工具：基金发现、基金诊断、本地持仓、自选观察为已接入；基金横向对比、ETF / LOF 专题、定投/分批行动路径明确标注为可接入。
 - 研究来源与披露中心：把东方财富/同花顺/天天基金式行情数据、好买式基金筛选诊断、雪球式社区观点、交易所官方公告与高信任披露拆成独立内容层。
 - 开源研究底座路线图：展示 AKShare / AKTools、Qlib、Tushare、Backtrader、Pyfolio、Streamlit 可启发的数据接入、量化研究、回测、组合归因和仪表盘能力。
 - 大盘概览：通过东方财富 push2 / 腾讯行情备用源读取上证指数、深证成指、创业板指、沪深 300。
 - 真实基金搜索：按代码或名称查询公开基金数据，接口失败时自动回退内置示例行情。
 - 基金详情：优先展示天天基金盘中估算净值、估算涨跌和估算时间，同时保留上一交易日官方净值。
+- 基金分析走势图：基金详情页使用暗色数据雷达风格的 ECharts 图表，同屏展示单位净值、区间收益、回撤、净值区间和时间范围切换。
 - 基金小白决策地图：把基金类型、净值理解、大盘温度、持仓状态、风险等级、单只基金权重和每月复盘路径放在同一视图，帮助普通投资者避免只看单日涨跌。
 - 本地持仓：添加基金后计算市值、成本、盈亏、收益率和组合占比。
 - 自选基金：关注基金但不计入持仓。
-- Supabase 基础：浏览器端/服务端 helper、请求会话归一化、Next middleware，以及 `supabase/migrations/202605300001_core_schema.sql` 基础 schema 迁移；`/api/portfolio/default` 会优先读取登录用户组合。
-- DeepSeek 分析：服务端先计算收益、回撤、动量和波动等确定性指标，再调用 `deepseek-v4-flash` 输出小白解释、风险等级、继续持有/观察/分批加减仓路径；当 `DEEPSEEK_API_KEY` 缺失时自动回退为本地确定性报告。
+- Resend 邮箱登录：`/login` 使用独立极简登录页，`/api/auth/challenge` 发送 6 位邮箱验证码，`/api/auth/verify` 创建 GG Fund 自有会话；`/api/portfolio/default` 会优先读取登录用户组合。
 - Cloudflare Worker 部署：Next Route Handlers 由 OpenNext 输出到 Worker 默认运行时，`wrangler.jsonc` 提供 `GG_FUND_DB`、`GG_FUND_CACHE` 等 binding。
 
 ## 项目结构
@@ -27,22 +28,19 @@ GG Fund 现已以 Cloudflare-first 的 Next.js App Router 架构为主：`app/` 
 - `app/`：Next.js App Router 页面与 `app/api/*` Route Handlers。
 - `components/workspace/FundWorkspace.tsx`：Next 工作区入口。
 - `features/market`、`features/portfolio`、`features/auth`、`features/ai`、`features/email`：服务层模块。
-- `lib/`：环境、HTTP、Supabase runtime helper。
+- `lib/`：环境与 HTTP runtime helper。
 - `frontend/src/`：仍被 Next 复用的 React 组件、样式和浏览器端逻辑；不再作为独立 Vite 应用入口。
 - `shared/`：前后端共享类型、行情数据适配器和对应测试。
 - `migrations/`：Cloudflare D1 migrations。
-- `supabase/migrations/`：Supabase Postgres schema 迁移。
 - `scripts/`：CI 测试、Cloudflare 部署和线上验证脚本。
 
 ## 技术栈
 
 - Next.js App Router + TypeScript
 - Tailwind CSS v4 + Radix UI + shadcn/ui 风格组件
-- Supabase Auth + Supabase Postgres + RLS
-- Resend 产品邮件
+- Resend 邮箱验证码登录
 - OpenNext Cloudflare Workers 部署
 - 东方财富/腾讯/天天基金公开接口 + fallback 示例行情
-- DeepSeek v4 Flash 服务端分析
 - ESLint + TypeScript 严格检查
 - Vitest + Playwright E2E
 
@@ -58,20 +56,11 @@ bun run dev
 
 ## 环境变量
 
-浏览器公开变量：
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-```
-
 服务端变量：
 
 ```bash
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 RESEND_API_KEY=re_your_key
 AUTH_EMAIL_FROM="GG Fund <onboarding@resend.dev>"
-DEEPSEEK_API_KEY=your-deepseek-api-key
 ```
 
 ## 测试
@@ -113,11 +102,6 @@ bun run verify:cloudflare
 - `CF_D1_DATABASE=gg-fund-db`
 - `CF_VERIFY_BASE_URL` 未设置时回退为 `https://$CF_WORKER_NAME.workers.dev`
 
-GitHub Actions 部署需要在仓库 Variables 中提供以下公开构建变量，确保 OpenNext 构建期注入浏览器端配置：
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-
 CI 依赖安装通过 `scripts/ci-install.sh` 执行 `npm ci --include=optional --ignore-scripts`，并在根级 `optionalDependencies` 锁定 Linux `workerd`、esbuild、Lightning CSS、Tailwind Oxide 与 ast-grep 平台包，确保 Linux runner 安装 OpenNext / Wrangler / CSS 构建所需的二进制文件。
 
 默认验证接口：
@@ -134,8 +118,11 @@ CI 依赖安装通过 `scripts/ci-install.sh` 执行 `npm ci --include=optional 
 - `GET /api/funds/:code`
 - `GET /api/funds/:code/history?range=1m|3m|6m|1y|all`
 - `GET /api/funds/trending`
+- `GET /api/auth/me`
+- `POST /api/auth/challenge`
+- `POST /api/auth/verify`
+- `POST /api/auth/logout`
 - `GET /api/portfolio/default`
-- `POST /api/ai/analyze-fund`
 
 ## 数据来源
 
@@ -145,7 +132,7 @@ CI 依赖安装通过 `scripts/ci-install.sh` 执行 `npm ci --include=optional 
 
 GG Fund 明确区分三种状态：
 
-- `已接入`：当前页面已调用真实接口或本地能力，例如 A 股指数、基金净值、基金发现/搜索、基金诊断、历史净值、本地持仓、自选、AI 分析、导入导出。
+- `已接入`：当前页面已调用真实接口或本地能力，例如 A 股指数、基金净值、基金发现/搜索、基金诊断、历史净值、本地持仓、自选、Resend 邮箱登录、导入导出。
 - `可接入`：产品形态已在工具宇宙中定义，可在后续接入真实数据或增强算法，例如 ETF / LOF 专题、基金横向对比、定投/分批行动路径、AKShare / AKTools 数据底座。
 - `路线图`：作为内容重构后的方向展示，不声称已提供实时生产能力，例如 REITs、可转债、新发产品日历、官方公告聚合、社区观点、Qlib 回测和组合优化。
 
@@ -155,4 +142,4 @@ GG Fund 明确区分三种状态：
 
 ## 免责声明
 
-本项目展示的数据和 AI 分析仅用于学习和参考，不构成投资建议、收益承诺或交易依据。
+本项目展示的数据仅用于学习和参考，不构成投资建议、收益承诺或交易依据。

@@ -9,6 +9,6 @@ export async function GET() {
     market: 'ready',
     portfolio: 'ready',
     ai: 'ready',
-    auth: 'supabase-foundation',
+    auth: 'resend-email-otp',
   });
 }

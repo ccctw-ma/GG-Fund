@@ -14,8 +14,6 @@ env:
   CF_WORKER_NAME: ${{ vars.CF_WORKER_NAME || 'gg-fund' }}
   CF_D1_DATABASE: ${{ vars.CF_D1_DATABASE || 'gg-fund-db' }}
   CF_VERIFY_BASE_URL: ${{ vars.CF_VERIFY_BASE_URL || format('https://{0}.workers.dev', vars.CF_WORKER_NAME || 'gg-fund') }}
-  NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
 jobs:
   deploy:

@@ -3,9 +3,6 @@ import { HttpError } from '../lib/http';
 
 const {
   marketService,
-  createSupabaseServerClientMock,
-  getRequestSessionMock,
-  cookiesMock,
   getCloudflareContextMock,
 } = vi.hoisted(() => ({
   marketService: {
@@ -15,26 +12,11 @@ const {
     getFundHistory: vi.fn(),
     getTrendingFunds: vi.fn(),
   },
-  createSupabaseServerClientMock: vi.fn(),
-  getRequestSessionMock: vi.fn(),
-  cookiesMock: vi.fn(),
   getCloudflareContextMock: vi.fn(),
 }));
 
 vi.mock('../features/market/service', () => ({
   getDefaultMarketService: vi.fn(() => marketService),
-}));
-
-vi.mock('../lib/supabase/server', () => ({
-  createSupabaseServerClient: createSupabaseServerClientMock,
-}));
-
-vi.mock('../features/auth/session', () => ({
-  getRequestSession: getRequestSessionMock,
-}));
-
-vi.mock('next/headers', () => ({
-  cookies: cookiesMock,
 }));
 
 vi.mock('@opennextjs/cloudflare', () => ({
@@ -50,6 +32,7 @@ vi.mock('../features/ai/service', async (importOriginal) => {
 });
 
 import { buildAnalyzeFundResponse } from '../features/ai/service';
+import { GET as getAuth, POST as postAuth } from '../app/api/auth/[action]/route';
 import { POST as analyzeFund } from '../app/api/ai/analyze-fund/route';
 import { GET as getFund } from '../app/api/funds/[code]/route';
 import { GET as getFundHistory } from '../app/api/funds/[code]/history/route';
@@ -87,6 +70,7 @@ class FakeD1 {
   portfolios: Array<Record<string, unknown>> = [];
   holdings: Array<Record<string, unknown>> = [];
   watchlist: Array<Record<string, unknown>> = [];
+  authSessions: Array<Record<string, unknown>> = [];
 
   prepare(sql: string) {
     return new FakePrepared(this, sql);
@@ -118,6 +102,13 @@ class FakeD1 {
         name: portfolio.name,
         createdAt: portfolio.createdAt,
         updatedAt: portfolio.updatedAt,
+      } as T) : null;
+    }
+    if (sql.includes('from auth_sessions where token = ?')) {
+      const session = this.authSessions.find((item) => item.token === params[0]);
+      return session ? ({
+        userId: session.userId,
+        expiresAt: session.expiresAt,
       } as T) : null;
     }
     return null;
@@ -180,13 +171,6 @@ describe('app api routes', () => {
 
     resetMarketServiceMocks();
     buildAnalyzeFundResponseMock.mockReset();
-    createSupabaseServerClientMock.mockReset().mockReturnValue(undefined);
-    getRequestSessionMock.mockReset().mockResolvedValue(undefined);
-    cookiesMock.mockReset().mockResolvedValue({
-      get: vi.fn(() => undefined),
-      set: vi.fn(),
-      remove: vi.fn(),
-    });
     getCloudflareContextMock.mockReset().mockRejectedValue(new Error('Cloudflare context not available'));
     delete (globalThis as { GG_FUND_DB?: unknown }).GG_FUND_DB;
     process.env.DEEPSEEK_API_KEY = 'test-deepseek-key';
@@ -217,8 +201,38 @@ describe('app api routes', () => {
       market: 'ready',
       portfolio: 'ready',
       ai: 'ready',
-      auth: 'supabase-foundation',
+      auth: 'resend-email-otp',
     });
+  });
+
+  it('creates and verifies a local Resend OTP session when D1 is unavailable', async () => {
+    const previousResendKey = process.env.RESEND_API_KEY;
+    const previousEmailFrom = process.env.AUTH_EMAIL_FROM;
+    delete process.env.RESEND_API_KEY;
+    delete process.env.AUTH_EMAIL_FROM;
+    const challengeResponse = await postAuth(new Request('https://example.com/api/auth/challenge', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'email', identifier: 'demo@example.com' }),
+    }), { params: Promise.resolve({ action: 'challenge' }) });
+    const challenge = await challengeResponse.json() as { challengeId: string; devCode: string };
+
+    const verifyResponse = await postAuth(new Request('https://example.com/api/auth/verify', {
+      method: 'POST',
+      body: JSON.stringify({ challengeId: challenge.challengeId, code: challenge.devCode }),
+    }), { params: Promise.resolve({ action: 'verify' }) });
+    const payload = await verifyResponse.json() as { session: { token: string }; user: { identifier: string } };
+
+    expect(challengeResponse.status).toBe(201);
+    expect(verifyResponse.status).toBe(201);
+    expect(payload.user.identifier).toBe('demo@example.com');
+
+    const meResponse = await getAuth(new Request('https://example.com/api/auth/me', {
+      headers: { Authorization: `Bearer ${payload.session.token}` },
+    }), { params: Promise.resolve({ action: 'me' }) });
+    expect(meResponse.status).toBe(200);
+
+    if (previousResendKey) process.env.RESEND_API_KEY = previousResendKey;
+    if (previousEmailFrom) process.env.AUTH_EMAIL_FROM = previousEmailFrom;
   });
 
   it('returns market indices', async () => {
@@ -396,7 +410,7 @@ describe('app api routes', () => {
     });
     (globalThis as { GG_FUND_DB?: FakeD1 }).GG_FUND_DB = db;
 
-    const response = await getDefaultPortfolio();
+    const response = await getDefaultPortfolio(new Request('https://example.com/api/portfolio/default'));
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
@@ -429,9 +443,8 @@ describe('app api routes', () => {
     });
   });
 
-  it('returns the signed-in user portfolio instead of the anonymous default when a Supabase session is available', async () => {
+  it('returns the signed-in user portfolio instead of the anonymous default when a Resend session is available', async () => {
     const db = new FakeD1();
-    const supabaseClient = { auth: { getUser: vi.fn() } };
     db.portfolios.push({
       id: 'portfolio-anon',
       userId: null,
@@ -464,20 +477,17 @@ describe('app api routes', () => {
       fundName: '银河创新成长混合',
       createdAt: '2026-05-30T01:00:00.000Z',
     });
-    (globalThis as { GG_FUND_DB?: FakeD1 }).GG_FUND_DB = db;
-    createSupabaseServerClientMock.mockReturnValueOnce(supabaseClient);
-    getRequestSessionMock.mockResolvedValueOnce({
-      user: {
-        id: 'user-1',
-        email: 'demo@example.com',
-        displayName: 'Demo User',
-      },
+    db.authSessions.push({
+      token: 'session-user-1',
+      userId: 'user-1',
+      expiresAt: '2999-05-30T01:00:00.000Z',
     });
+    (globalThis as { GG_FUND_DB?: FakeD1 }).GG_FUND_DB = db;
 
-    const response = await getDefaultPortfolio();
+    const response = await getDefaultPortfolio(new Request('https://example.com/api/portfolio/default', {
+      headers: { Authorization: 'Bearer session-user-1' },
+    }));
 
-    expect(createSupabaseServerClientMock).toHaveBeenCalledTimes(1);
-    expect(getRequestSessionMock).toHaveBeenCalledWith(supabaseClient);
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       portfolio: {
@@ -509,16 +519,13 @@ describe('app api routes', () => {
     });
   });
 
-  it('creates an anonymous default portfolio deliberately when Supabase request auth is unavailable', async () => {
+  it('creates an anonymous default portfolio deliberately when request auth is unavailable', async () => {
     const db = new FakeD1();
     (globalThis as { GG_FUND_DB?: FakeD1 }).GG_FUND_DB = db;
-    createSupabaseServerClientMock.mockReturnValueOnce(undefined);
 
-    const response = await getDefaultPortfolio();
+    const response = await getDefaultPortfolio(new Request('https://example.com/api/portfolio/default'));
     const snapshot = await response.json();
 
-    expect(createSupabaseServerClientMock).toHaveBeenCalledTimes(1);
-    expect(getRequestSessionMock).not.toHaveBeenCalled();
     expect(response.status).toBe(200);
     expect(snapshot).toEqual({
       portfolio: expect.objectContaining({ name: '默认组合' }),
@@ -544,7 +551,7 @@ describe('app api routes', () => {
       ctx: {},
     });
 
-    const response = await getDefaultPortfolio();
+    const response = await getDefaultPortfolio(new Request('https://example.com/api/portfolio/default'));
 
     expect(getCloudflareContextMock).toHaveBeenCalledWith({ async: true });
     expect(response.status).toBe(200);
@@ -561,7 +568,7 @@ describe('app api routes', () => {
   });
 
   it('returns a structured 500 when the D1 binding is missing', async () => {
-    const response = await getDefaultPortfolio();
+    const response = await getDefaultPortfolio(new Request('https://example.com/api/portfolio/default'));
 
     expect(response.status).toBe(500);
     await expect(response.json()).resolves.toEqual({

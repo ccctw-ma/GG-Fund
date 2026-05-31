@@ -14,34 +14,27 @@ vi.mock('./api', () => ({
     getFund: vi.fn(async () => fund),
     getFundHistory: vi.fn(async () => [{ date: '2026-05-29', netValue: 1.35 }]),
     hasSessionToken: vi.fn(() => false),
-    getCurrentUser: vi.fn(),
+    getCurrentUser: vi.fn(async () => undefined),
     logout: vi.fn(),
     saveSessionToken: vi.fn(),
     clearSessionToken: vi.fn(),
-    analyzeFund: vi.fn(async () => ({
-      fund,
-      agent: { model: 'deepseek-v4-flash', indicators: { totalReturn: 3.2, maxDrawdown: -1.1, shortMomentum: 1.2, volatility: 0.5, trendSlope: 0.1, sampleSize: 8 }, steps: [{ name: 'compute_indicators', status: 'done', summary: '计算指标' }] },
-      report: { summary: '趋势偏强', trend: '趋势判断：震荡向上', risk: '风险提示：注意回撤', scenarios: [{ name: '中性情景', probability: 'medium', description: '维持震荡' }], watchPoints: ['最大回撤'], disclaimer: '不构成投资建议' },
-      chartAnnotations: [],
-      analysis: '趋势偏强',
-    })),
     startAuthChallenge: vi.fn(),
     verifyAuthChallenge: vi.fn(),
     getOAuthUrl: vi.fn(),
   },
 }));
 
-vi.mock('./supabaseAuth', () => ({
-  getInitialAuthSession: vi.fn(async () => undefined),
-  onAuthSessionChange: vi.fn(() => () => undefined),
-  signInWithEmailOtp: vi.fn(async () => undefined),
-  signOutSupabase: vi.fn(async () => undefined),
-  isSupabaseConfigured: vi.fn(() => false),
-}));
-
 describe('App', () => {
   let root: Root | undefined;
   let container: HTMLDivElement | undefined;
+
+  function clickButton(label: string) {
+    const button = Array.from(container?.querySelectorAll('button') ?? []).find((item) => item.textContent?.includes(label));
+    expect(button).toBeDefined();
+    act(() => {
+      button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+  }
 
   afterEach(() => {
     act(() => root?.unmount());
@@ -63,21 +56,36 @@ describe('App', () => {
     expect(container.textContent).toContain('基金研究操作系统');
     expect(container.textContent).toContain('智能基金账户');
     expect(container.textContent).toContain('账户总览');
+    expect(container.textContent).toContain('交易与基金工具');
+    expect(container.textContent).toContain('工具宇宙');
+    expect(container.querySelector('[aria-current="page"]')?.textContent).toContain('总览');
+
+    clickButton('工具宇宙');
     expect(container.textContent).toContain('全景工具宇宙');
     expect(container.textContent).toContain('ETF / LOF');
     expect(container.textContent).toContain('官方公告与高信任披露');
     expect(container.textContent).toContain('开源研究底座');
-    expect(container.textContent).toContain('交易与基金工具');
+
+    clickButton('行情工作台');
+    expect(container.textContent).toContain('中国基金行情');
+    expect(container.textContent).toContain('基金小白决策地图');
+
+    expect(container.textContent).not.toContain('登录设置');
+    expect(container.textContent).not.toContain('个人信息');
+    expect(container.textContent).not.toContain('右侧登录状态');
+    expect(container.textContent).not.toContain('智能投研');
+    clickButton('组合账户');
     expect(container.textContent).not.toContain('安全与隐私');
     expect(container.textContent).not.toContain('下载移动端');
     expect(container.textContent).not.toContain('移动端');
-    expect(container.textContent).toContain('个人信息');
     expect(container.textContent).toContain('未登录');
-    expect(container.textContent).toContain('Supabase 邮箱登录');
-    expect(container.textContent).toContain('发送 Magic Link / OTP');
-    expect(container.textContent).toContain('中国基金行情');
+    expect(container.textContent).not.toContain('Resend 邮箱验证码登录');
+    expect(container.textContent).not.toContain('发送验证码');
     expect(container.textContent).not.toContain('OTP / OAuth 登录');
+    expect(container.textContent).toContain('组合账户');
+    expect(container.textContent).toContain('自选列表');
 
+    clickButton('总览');
     const heroSection = container.querySelector('.landing-hero');
     const heroTitle = container.querySelector('#hero-title');
     expect(heroSection?.getAttribute('aria-labelledby')).toBe('hero-title');

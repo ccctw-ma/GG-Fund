@@ -1,10 +1,5 @@
 export type EnvSource = Record<string, string | undefined>;
 
-export type PublicEnv = {
-  supabaseUrl: string;
-  supabaseAnonKey: string;
-};
-
 function normalizeEnvValue(value: string | undefined) {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
@@ -32,13 +27,6 @@ export function readRequiredEnv(name: string, source: EnvSource = process.env) {
 
 export function hasEnv(name: string, source: EnvSource = process.env) {
   return Boolean(getOptionalEnv(name, source));
-}
-
-export function getPublicEnv(source: EnvSource = process.env): PublicEnv {
-  return {
-    supabaseUrl: getOptionalEnv('NEXT_PUBLIC_SUPABASE_URL', source) ?? '',
-    supabaseAnonKey: getOptionalEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', source) ?? '',
-  };
 }
 
 export function createEnv(source: EnvSource = process.env) {

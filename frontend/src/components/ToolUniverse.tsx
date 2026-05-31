@@ -7,7 +7,11 @@ function CatalogStatusPill({ status }: { status: CatalogStatus }) {
   return <span className={`catalog-status catalog-status-${status}`}>{statusLabels[status]}</span>;
 }
 
-export function ToolUniverse() {
+type ToolUniverseProps = {
+  onOpenWorkspace?: () => void;
+};
+
+export function ToolUniverse({ onOpenWorkspace }: ToolUniverseProps) {
   return (
     <section className="glass-section tool-universe" id="tool-universe" aria-labelledby="tool-universe-title">
       <div className="section-heading">
@@ -100,9 +104,9 @@ export function ToolUniverse() {
             </article>
           ))}
         </div>
-        <a className="tool-universe-cta" href="#workspace">
+        <button type="button" className="tool-universe-cta" onClick={onOpenWorkspace}>
           进入工作台核验接入优先级 <ArrowUpRight className="h-4 w-4" />
-        </a>
+        </button>
       </div>
     </section>
   );

@@ -57,6 +57,8 @@ describe('dashboard components', () => {
     expect(market.container.textContent).toContain('今日大盘');
     expect(search.container.textContent).toContain('华夏成长混合');
     expect(search.container.textContent).toContain('实时估算');
+    expect(search.container.textContent).toContain('基金分析走势图');
+    expect(search.container.textContent).toContain('Fund Signal Matrix');
   });
 
   it('renders portfolio and settings empty states', () => {
@@ -74,7 +76,7 @@ describe('dashboard components', () => {
 
     expect(portfolio.container.textContent).toContain('还没有持仓');
     expect(settings.container.textContent).toContain('Cloudflare Worker / OpenNext');
-    expect(settings.container.textContent).toContain('Supabase');
+    expect(settings.container.textContent).toContain('Resend');
     expect(settings.container.textContent).toContain('D1');
     expect(settings.container.textContent).toContain('KV 行情缓存为部署路线图能力');
   });

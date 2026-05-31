@@ -87,17 +87,4 @@ describe('frontend api client', () => {
     expect(localStorage.getItem('gg_fund_session_token')).toBeNull();
   });
 
-  it('posts selected fund code for AI analysis', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ fund: { code: '000001', name: '华夏成长混合', netValue: 1.35, quoteDate: '2026-05-29', source: 'test' }, analysis: '风险：注意波动。' }), { status: 200, headers: { 'content-type': 'application/json' } }),
-    );
-
-    await api.analyzeFund('000001');
-
-    expect(fetchMock).toHaveBeenCalledWith('/api/ai/analyze-fund', {
-      method: 'POST',
-      headers: expect.objectContaining({ 'content-type': 'application/json' }),
-      body: JSON.stringify({ code: '000001' }),
-    });
-  });
 });

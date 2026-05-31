@@ -4,10 +4,9 @@
 
 - Web/App/API：Next.js App Router，通过 OpenNext 输出 Cloudflare Worker。
 - API：`app/api/**/route.ts`，业务逻辑收敛到 `features/*`。
-- 数据库/Auth：Supabase Auth + Supabase Postgres + RLS。
-- 运行时存储：Cloudflare D1 仍通过 `GG_FUND_DB` 为组合默认快照等 Worker 侧能力提供绑定支持。
+- 数据库/Auth：Cloudflare D1 通过 `GG_FUND_DB` 保存组合、验证码 challenge 和登录 session。
 - 缓存：Cloudflare KV 可作为行情短缓存，访问封装在 market service 中。
-- 邮件：Resend 产品邮件。
+- 邮件：Resend 发送登录验证码。
 - Secret：所有服务端 key 通过 Cloudflare Secret 或本地 `.env.local` 注入，不进入前端 bundle。
 
 ## 本地测试
@@ -39,12 +38,8 @@ bunx wrangler login
 配置本地 `.env.local`：
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 RESEND_API_KEY=re_your_key
 AUTH_EMAIL_FROM="GG Fund <onboarding@resend.dev>"
-DEEPSEEK_API_KEY=your-deepseek-api-key
 ```
 
 如需继续使用现有 Cloudflare D1/KV 资源：
@@ -87,7 +82,7 @@ curl https://gg-fund.workers.dev/api/funds/000001
 
 ## GitHub CI/CD
 
-`.github/workflows/cloudflare-deploy.yml` 使用 `actions/setup-node` + `scripts/ci-install.sh` 执行 `npm ci --include=optional --ignore-scripts`，并通过根级 `optionalDependencies` 锁定 Linux `workerd`、esbuild、Lightning CSS、Tailwind Oxide 与 ast-grep 平台包，确保 Linux runner 安装 OpenNext / Wrangler / CSS 构建依赖的二进制文件，再通过 `setup-bun` 固定 Bun 1.3.10 运行构建和部署命令。仓库 Variables 注入 `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY` 供 OpenNext 构建使用，然后执行 Worker 构建、远程 D1 迁移、部署与验证：
+`.github/workflows/cloudflare-deploy.yml` 使用 `actions/setup-node` + `scripts/ci-install.sh` 执行 `npm ci --include=optional --ignore-scripts`，并通过根级 `optionalDependencies` 锁定 Linux `workerd`、esbuild、Lightning CSS、Tailwind Oxide 与 ast-grep 平台包，确保 Linux runner 安装 OpenNext / Wrangler / CSS 构建依赖的二进制文件，再通过 `setup-bun` 固定 Bun 1.3.10 运行构建和部署命令，然后执行 Worker 构建、远程 D1 迁移、部署与验证：
 
 - `bash scripts/ci-install.sh`
 - `bun run build`
@@ -98,12 +93,8 @@ curl https://gg-fund.workers.dev/api/funds/000001
 
 ## 可配置环境变量
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
 - `RESEND_API_KEY`
 - `AUTH_EMAIL_FROM`
-- `DEEPSEEK_API_KEY`
 - `CF_WORKER_NAME`
 - `CF_D1_DATABASE`
 - `CF_VERIFY_BASE_URL`
@@ -111,5 +102,5 @@ curl https://gg-fund.workers.dev/api/funds/000001
 ## 注意事项
 
 - `app/api/portfolio/default/route.ts` 会优先读取 OpenNext Cloudflare runtime context 中的 `GG_FUND_DB`，并保留对 dev/test 全局 binding 的兼容；部署前需确保 `wrangler.jsonc` 与实际 Worker binding 保持一致。
-- Supabase RLS/表结构迁移需要先在 Supabase 侧执行；持仓和自选策略现在会同时校验 `user_id` 与所属 `portfolio` 的 `user_id`。
+- Resend 登录依赖 `RESEND_API_KEY` 与 `AUTH_EMAIL_FROM`；缺失时本地开发会返回 `devCode`，生产环境应配置 Cloudflare Secret。
 - Secret 泄露后必须立即在提供商控制台吊销并重新配置。

@@ -70,15 +70,13 @@ curl https://gg-fund.1934202608.workers.dev/api/funds/000001
 
 ## Secrets
 
-Never commit API keys, tokens, OAuth secrets, Supabase service role keys, Resend keys, DeepSeek credentials, auth mailer secrets, or provider client secrets. Use Cloudflare secrets for server values and `NEXT_PUBLIC_*` only for browser-safe public keys.
+Never commit API keys, tokens, OAuth secrets, Resend keys, auth mailer secrets, or provider client secrets. Use Cloudflare secrets for server values and `NEXT_PUBLIC_*` only for browser-safe public keys.
 
 Required server secrets for production:
 
 ```bash
-bunx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 bunx wrangler secret put RESEND_API_KEY
 bunx wrangler secret put AUTH_EMAIL_FROM
-bunx wrangler secret put DEEPSEEK_API_KEY
 ```
 
 If a secret appears in chat, logs, screenshots, or git history, treat it as leaked and rotate it before using it in production.

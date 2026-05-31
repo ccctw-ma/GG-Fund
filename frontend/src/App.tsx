@@ -13,10 +13,7 @@ import {
   Wifi,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { api } from './api';
-import { getInitialAuthSession, onAuthSessionChange, signOutSupabase, type UiAuthSession } from './supabaseAuth';
-import { AnalysisPanel } from './components/AnalysisPanel';
-import { AuthPanel } from './components/AuthPanel';
+import { api, type AuthSessionResponse } from './api';
 import { BeginnerGuide } from './components/BeginnerGuide';
 import { Header } from './components/Header';
 import { FundSearch } from './components/FundSearch';
@@ -24,6 +21,7 @@ import { MarketOverview } from './components/MarketOverview';
 import { PortfolioPanel } from './components/PortfolioPanel';
 import { SettingsPanel } from './components/SettingsPanel';
 import { ToolUniverse } from './components/ToolUniverse';
+import type { WorkspacePage } from './components/Header';
 import { calculatePortfolioSummary } from './portfolio';
 import { exportLocalData, loadHoldings, loadWatchlist, parseImportedData, saveHoldings, saveWatchlist } from './storage';
 import type { FundHistoryPoint, FundQuote, Holding, IndexQuote, WatchItem } from './types';
@@ -44,6 +42,24 @@ const transactionFeatures = [
   { title: '公告、资讯与开源研究', description: '把东方财富、雪球、同花顺、交易所披露和 AKShare/Qlib 能力纳入路线图。', icon: Database },
 ];
 
+const hashPageMap: Record<string, WorkspacePage> = {
+  overview: 'overview',
+  features: 'overview',
+  'tool-universe': 'tools',
+  tools: 'tools',
+  workspace: 'workspace',
+  funds: 'workspace',
+  portfolio: 'portfolio',
+  account: 'portfolio',
+  auth: 'portfolio',
+  settings: 'portfolio',
+};
+
+function pageFromHash(hash: string): WorkspacePage {
+  const key = hash.replace(/^#/, '');
+  return hashPageMap[key] ?? 'overview';
+}
+
 export default function App() {
   const [indices, setIndices] = useState<IndexQuote[]>([]);
   const [marketLoading, setMarketLoading] = useState(true);
@@ -58,9 +74,10 @@ export default function App() {
   const [watchlist, setWatchlist] = useState<WatchItem[]>([]);
   const [quotes, setQuotes] = useState<Record<string, FundQuote>>({});
   const [importError, setImportError] = useState<string>();
-  const [session, setSession] = useState<UiAuthSession>();
+  const [session, setSession] = useState<AuthSessionResponse>();
   const [authPending, setAuthPending] = useState<'idle' | 'logout'>('idle');
   const [storageReady, setStorageReady] = useState(false);
+  const [activePage, setActivePage] = useState<WorkspacePage>('overview');
 
   useEffect(() => {
     api.getIndices()
@@ -68,7 +85,7 @@ export default function App() {
       .catch((error: Error) => setMarketError(error.message))
       .finally(() => setMarketLoading(false));
     api.getTrendingFunds().then(setResults).catch(() => undefined);
-    getInitialAuthSession().then(setSession).catch(() => setSession(undefined));
+    api.getCurrentUser().then(setSession).catch(() => setSession(undefined));
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
@@ -76,11 +93,16 @@ export default function App() {
       setWatchlist(loadWatchlist());
       setStorageReady(true);
     });
-    const unsubscribe = onAuthSessionChange(setSession);
     return () => {
       cancelled = true;
-      unsubscribe();
     };
+  }, []);
+
+  useEffect(() => {
+    const syncPageFromHash = () => setActivePage(pageFromHash(window.location.hash));
+    syncPageFromHash();
+    window.addEventListener('hashchange', syncPageFromHash);
+    return () => window.removeEventListener('hashchange', syncPageFromHash);
   }, []);
 
   useEffect(() => {
@@ -165,18 +187,20 @@ export default function App() {
     setWatchlist(result.data.watchlist);
   }
 
-  function handleAuthChange(nextSession?: UiAuthSession) {
-    setSession(nextSession);
-  }
-
   async function logout() {
     setAuthPending('logout');
     try {
-      await signOutSupabase();
-    } finally {
+      await api.logout();
+      api.clearSessionToken();
       setSession(undefined);
+    } finally {
       setAuthPending('idle');
     }
+  }
+
+  function changePage(page: WorkspacePage) {
+    setActivePage(page);
+    window.history.replaceState(null, '', `#${page}`);
   }
 
   return (
@@ -184,127 +208,152 @@ export default function App() {
       <div className="fund-orb fund-orb-gold" />
       <div className="fund-orb fund-orb-mint" />
       <div className="fund-page">
-        <Header session={session} onLogout={logout} logoutPending={authPending === 'logout'} />
+        <Header
+          session={session}
+          onLogout={logout}
+          logoutPending={authPending === 'logout'}
+          activePage={activePage}
+          onPageChange={changePage}
+        />
         <main className="landing-flow">
-          <section className="landing-hero" aria-labelledby="hero-title">
-            <div className="hero-copy">
-              <div className="trust-pill"><ShieldCheck className="h-4 w-4" /> Cloudflare-first · Local-first · AI-ready</div>
-              <h2 className="hero-title" id="hero-title">基金研究操作系统，把行情、工具、公告、组合与 AI 装进一张专业工作台。</h2>
-              <p className="hero-subtitle">
-                GG Fund 重构为面向中国基金投资者的全景工具站：实时基金净值、ETF/LOF/REITs/转债路线图、官方披露、资讯社区、开源量化底座和本地组合分析在同一个可信界面里串起来。
-              </p>
-              <div className="hero-actions">
-                <a className="gold-cta" href="#workspace">立即体验 <ArrowUpRight className="h-4 w-4" /></a>
-              </div>
-              <div className="hero-stat-grid">
-                {heroStats.map((item) => (
-                  <article className="hero-stat" key={item.label}>
-                    <span>{item.label}</span>
-                    <strong>{item.value}</strong>
-                    <small>{item.detail}</small>
+          {activePage === 'overview' && (
+            <>
+              <section className="landing-hero" aria-labelledby="hero-title">
+                <div className="hero-copy">
+                  <div className="trust-pill"><ShieldCheck className="h-4 w-4" /> Cloudflare-first · Local-first · AI-ready</div>
+                  <h2 className="hero-title" id="hero-title">基金研究操作系统，把行情、工具、公告、组合与 AI 装进一张专业工作台。</h2>
+                  <p className="hero-subtitle">
+                    GG Fund 重构为面向中国基金投资者的全景工具站：实时基金净值、ETF/LOF/REITs/转债路线图、官方披露、资讯社区、开源量化底座和本地组合分析在同一个可信界面里串起来。
+                  </p>
+                  <div className="hero-actions">
+                    <button type="button" className="gold-cta" onClick={() => changePage('workspace')}>立即体验 <ArrowUpRight className="h-4 w-4" /></button>
+                  </div>
+                  <div className="hero-stat-grid">
+                    {heroStats.map((item) => (
+                      <article className="hero-stat" key={item.label}>
+                        <span>{item.label}</span>
+                        <strong>{item.value}</strong>
+                        <small>{item.detail}</small>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="hero-device" data-testid="banking-hero-card">
+                  <div className="phone-frame" aria-label="账户卡片预览">
+                    <div className="phone-speaker" />
+                    <div className="phone-topline">
+                      <span>GG Fund · 研究工作台</span>
+                      <BadgeCheck className="h-4 w-4 text-[var(--mint)]" />
+                    </div>
+                    <div className="balance-card">
+                      <span>智能基金账户 · 研究工作台</span>
+                      <strong>{money.format(summary.totalMarketValue)}</strong>
+                      <small className={positive ? 'profit-up' : 'profit-down'}>{positive ? '+' : ''}{summary.totalReturnRate.toFixed(2)}% · {money.format(summary.totalProfit)}</small>
+                    </div>
+                    <div className="phone-list">
+                      <div><span>持仓基金</span><strong>{summary.items.length}</strong></div>
+                      <div><span>自选观察</span><strong>{watchlist.length}</strong></div>
+                      <div><span>市场脉冲</span><strong>{leadingIndex ? leadingIndex.value.toFixed(0) : '--'}</strong></div>
+                    </div>
+                  </div>
+                  <article className="floating-ticket">
+                    <Wifi className="h-5 w-5 text-[var(--mint)]" />
+                    <div><strong>Market Pulse</strong><span>{leadingIndex?.name ?? '上证指数'} · {leadingIndex ? `${leadingIndex.changePercent.toFixed(2)}%` : '同步中'}</span></div>
                   </article>
-                ))}
-              </div>
-            </div>
-
-            <div className="hero-device" data-testid="banking-hero-card">
-              <div className="phone-frame" aria-label="账户卡片预览">
-                <div className="phone-speaker" />
-                <div className="phone-topline">
-                  <span>GG Fund · 研究工作台</span>
-                  <BadgeCheck className="h-4 w-4 text-[var(--mint)]" />
                 </div>
-                <div className="balance-card">
-                  <span>智能基金账户 · 研究工作台</span>
-                  <strong>{money.format(summary.totalMarketValue)}</strong>
-                  <small className={positive ? 'profit-up' : 'profit-down'}>{positive ? '+' : ''}{summary.totalReturnRate.toFixed(2)}% · {money.format(summary.totalProfit)}</small>
-                </div>
-                <div className="phone-list">
-                  <div><span>持仓基金</span><strong>{summary.items.length}</strong></div>
-                  <div><span>自选观察</span><strong>{watchlist.length}</strong></div>
-                  <div><span>市场脉冲</span><strong>{leadingIndex ? leadingIndex.value.toFixed(0) : '--'}</strong></div>
-                </div>
-              </div>
-              <article className="floating-ticket">
-                <Wifi className="h-5 w-5 text-[var(--mint)]" />
-                <div><strong>Market Pulse</strong><span>{leadingIndex?.name ?? '上证指数'} · {leadingIndex ? `${leadingIndex.changePercent.toFixed(2)}%` : '同步中'}</span></div>
-              </article>
-            </div>
-          </section>
+              </section>
 
-          <section className="glass-section" id="overview" aria-labelledby="overview-title">
-            <div className="section-heading">
-              <span className="section-kicker">Account Overview</span>
-              <h2 id="overview-title">账户总览</h2>
-              <p>用真实组合数据驱动的账户预览，帮助用户第一眼确认资产、收益、风险和下一步动作。</p>
-            </div>
-            <div className="overview-grid">
-              <article className="overview-primary-card">
-                <span>总资产估值</span>
-                <strong>{money.format(summary.totalMarketValue)}</strong>
-                <p className={positive ? 'profit-up' : 'profit-down'}>{positive ? '累计收益为正' : '组合处于回撤'} · {money.format(summary.totalProfit)} / {summary.totalReturnRate.toFixed(2)}%</p>
-              </article>
-              <article><span>投入成本</span><strong>{money.format(summary.totalCost)}</strong><small>由本地持仓计算</small></article>
-              <article><span>基金持仓</span><strong>{summary.items.length}</strong><small>默认样例可一键添加</small></article>
-              <article><span>自选列表</span><strong>{watchlist.length}</strong><small>关注净值与估算变化</small></article>
-            </div>
-          </section>
-
-          <section className="glass-section" id="features" aria-labelledby="features-title">
-            <div className="section-heading">
-              <span className="section-kicker">Transaction Features</span>
-              <h2 id="features-title">交易与基金工具</h2>
-              <p>把“查、看、管、研、备份”的核心路径拆成可理解的功能卡片，降低首次使用成本。</p>
-            </div>
-            <div className="feature-grid">
-              {transactionFeatures.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <article className="feature-card" key={item.title}>
-                    <span className="feature-icon"><Icon className="h-5 w-5" /></span>
-                    <h3>{item.title}</h3>
-                    <p>{item.description}</p>
-                    <a href="#workspace">进入功能 <ChevronRight className="h-4 w-4" /></a>
+              <section className="glass-section" id="overview" aria-labelledby="overview-title">
+                <div className="section-heading">
+                  <span className="section-kicker">Account Overview</span>
+                  <h2 id="overview-title">账户总览</h2>
+                  <p>用真实组合数据驱动的账户预览，帮助用户第一眼确认资产、收益、风险和下一步动作。</p>
+                </div>
+                <div className="overview-grid">
+                  <article className="overview-primary-card">
+                    <span>总资产估值</span>
+                    <strong>{money.format(summary.totalMarketValue)}</strong>
+                    <p className={positive ? 'profit-up' : 'profit-down'}>{positive ? '累计收益为正' : '组合处于回撤'} · {money.format(summary.totalProfit)} / {summary.totalReturnRate.toFixed(2)}%</p>
                   </article>
-                );
-              })}
-            </div>
-          </section>
+                  <article><span>投入成本</span><strong>{money.format(summary.totalCost)}</strong><small>由本地持仓计算</small></article>
+                  <article><span>基金持仓</span><strong>{summary.items.length}</strong><small>默认样例可一键添加</small></article>
+                  <article><span>自选列表</span><strong>{watchlist.length}</strong><small>关注净值与估算变化</small></article>
+                </div>
+              </section>
 
-          <ToolUniverse />
+              <section className="glass-section" id="features" aria-labelledby="features-title">
+                <div className="section-heading">
+                  <span className="section-kicker">Transaction Features</span>
+                  <h2 id="features-title">交易与基金工具</h2>
+                  <p>把“查、看、管、研、备份”的核心路径拆成可理解的功能卡片，降低首次使用成本。</p>
+                </div>
+                <div className="feature-grid">
+                  {transactionFeatures.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <article className="feature-card" key={item.title}>
+                        <span className="feature-icon"><Icon className="h-5 w-5" /></span>
+                        <h3>{item.title}</h3>
+                        <p>{item.description}</p>
+                        <button type="button" onClick={() => changePage('workspace')}>进入功能 <ChevronRight className="h-4 w-4" /></button>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            </>
+          )}
 
-          <section className="workspace-section" id="workspace" aria-labelledby="workspace-title">
-            <div className="workspace-heading">
-              <div>
-                <span className="section-kicker">Live Workspace</span>
-                <h2 id="workspace-title">中国基金行情</h2>
-                <p>保留现有实时数据、基金搜索、AI 分析、账户登录和本地备份能力，并接入全新的工具宇宙、研究来源和开源能力路线图。</p>
+          {activePage === 'tools' && <ToolUniverse onOpenWorkspace={() => changePage('workspace')} />}
+
+          {activePage === 'workspace' && (
+            <section className="workspace-section" id="workspace" aria-labelledby="workspace-title">
+              <div className="workspace-heading">
+                <div>
+                  <span className="section-kicker">Live Workspace</span>
+                  <h2 id="workspace-title">中国基金行情</h2>
+                  <p>实时查看大盘、搜索基金、添加自选或持仓，并用新手决策地图快速判断下一步动作。</p>
+                </div>
+                <button type="button" className="ghost-cta" onClick={() => changePage('portfolio')}><BarChart3 className="h-4 w-4" /> 查看组合</button>
               </div>
-              <a className="ghost-cta" href="#funds"><BarChart3 className="h-4 w-4" /> 查看基金工具</a>
-            </div>
-            <div className="banking-grid">
-              <MarketOverview indices={indices} loading={marketLoading} error={marketError} />
-              <FundSearch
-                query={query}
-                setQuery={setQuery}
-                results={results}
-                selectedFund={selectedFund}
-                history={history}
-                loading={fundLoading}
-                error={fundError}
-                onSearch={searchFunds}
-                onSelect={selectFund}
-                onAddHolding={addHolding}
-                onToggleWatch={toggleWatch}
-                watchlist={watchlist}
-              />
-              <BeginnerGuide selectedFund={selectedFund} leadingIndex={leadingIndex} summary={summary} />
-              <AuthPanel session={session} onSessionChange={handleAuthChange} />
-              <AnalysisPanel selectedFund={selectedFund} />
-              <PortfolioPanel summary={summary} watchlist={watchlist} onRemoveHolding={(id) => setHoldings((current) => current.filter((holding) => holding.id !== id))} />
-              <SettingsPanel exportText={exportText} importError={importError} onImport={importData} />
-            </div>
-          </section>
+              <div className="banking-grid">
+                <MarketOverview indices={indices} loading={marketLoading} error={marketError} />
+                <FundSearch
+                  query={query}
+                  setQuery={setQuery}
+                  results={results}
+                  selectedFund={selectedFund}
+                  history={history}
+                  loading={fundLoading}
+                  error={fundError}
+                  onSearch={searchFunds}
+                  onSelect={selectFund}
+                  onAddHolding={addHolding}
+                  onToggleWatch={toggleWatch}
+                  watchlist={watchlist}
+                />
+                <BeginnerGuide selectedFund={selectedFund} leadingIndex={leadingIndex} summary={summary} />
+              </div>
+            </section>
+          )}
+
+          {activePage === 'portfolio' && (
+            <section className="workspace-section" id="portfolio-page" aria-labelledby="portfolio-page-title">
+              <div className="workspace-heading">
+                <div>
+                  <span className="section-kicker">Portfolio</span>
+                  <h2 id="portfolio-page-title">组合账户</h2>
+                  <p>把持仓、市值、盈亏和自选列表集中到独立页面，避免在长页面里来回查找。</p>
+                </div>
+                <button type="button" className="ghost-cta" onClick={() => changePage('workspace')}><BarChart3 className="h-4 w-4" /> 返回行情</button>
+              </div>
+              <div className="banking-grid single-page-grid">
+                <PortfolioPanel summary={summary} watchlist={watchlist} onRemoveHolding={(id) => setHoldings((current) => current.filter((holding) => holding.id !== id))} />
+                <SettingsPanel exportText={exportText} importError={importError} onImport={importData} />
+              </div>
+            </section>
+          )}
 
           <section className="disclaimer-card" aria-label="投资风险提示">
             <BellRing className="h-5 w-5" />

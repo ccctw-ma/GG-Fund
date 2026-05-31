@@ -1,51 +1,62 @@
-import { BarChart3, LineChart, LogOut, Sparkles, UserRound, WalletCards } from 'lucide-react';
-import type { UiAuthSession } from '../supabaseAuth';
+import { BarChart3, Compass, LogOut, UserRound, WalletCards } from 'lucide-react';
+import type { AuthSessionResponse } from '../api';
+
+export type WorkspacePage = 'overview' | 'tools' | 'workspace' | 'portfolio';
 
 type HeaderProps = {
-  session?: UiAuthSession;
+  session?: AuthSessionResponse;
   onLogout: () => void;
   logoutPending?: boolean;
+  activePage: WorkspacePage;
+  onPageChange: (page: WorkspacePage) => void;
 };
 
-export function Header({ session, onLogout, logoutPending = false }: HeaderProps) {
+const navItems = [
+  { id: 'overview', label: '总览', icon: Compass },
+  { id: 'tools', label: '工具宇宙', icon: BarChart3 },
+  { id: 'workspace', label: '行情工作台', icon: WalletCards },
+  { id: 'portfolio', label: '组合账户', icon: UserRound },
+] satisfies Array<{ id: WorkspacePage; label: string; icon: typeof Compass }>;
+
+export function Header({ session, onLogout, logoutPending = false, activePage, onPageChange }: HeaderProps) {
   return (
     <header className="banking-header">
-      <a href="#top" className="brand-lockup" aria-label="GG Fund 首页">
+      <button type="button" className="brand-lockup" aria-label="GG Fund 首页" onClick={() => onPageChange('overview')}>
         <span className="brand-mark">GG</span>
         <span>
           <span className="block text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">Trusted Fund OS</span>
           <h1 className="font-display text-xl tracking-[-0.04em] text-[var(--text-strong)]">GG Fund</h1>
         </span>
-      </a>
-      <nav className="bank-nav" aria-label="主要功能">
-        {[
-          ['#overview', '账户总览', WalletCards],
-          ['#features', '交易工具', LineChart],
-          ['#workspace', '行情工作台', BarChart3],
-        ].map(([href, label, Icon]) => (
-          <a key={String(href)} href={String(href)}>
-            <Icon className="h-4 w-4" /> {String(label)}
-          </a>
+      </button>
+      <nav className="bank-nav" aria-label="主要页面">
+        {navItems.map(({ id, label, icon: Icon }) => (
+          <button
+            type="button"
+            key={id}
+            className={activePage === id ? 'bank-nav-active' : undefined}
+            aria-current={activePage === id ? 'page' : undefined}
+            onClick={() => onPageChange(id)}
+          >
+            <Icon className="h-4 w-4" /> {label}
+          </button>
         ))}
       </nav>
-      <section className="profile-card" aria-label="个人信息">
+      <section className="profile-card" aria-label="账户状态">
         <div className="profile-avatar"><UserRound className="h-4 w-4" /></div>
         <div className="profile-copy">
-          <span>个人信息</span>
           <strong>{session ? session.user.displayName || session.user.identifier : '未登录'}</strong>
-          <small>{session ? `${session.user.provider} · ${session.user.identifier}` : '查看登录情况'}</small>
+          {session && <small>Resend · {session.user.identifier}</small>}
         </div>
         {session ? (
           <button className="profile-action" onClick={onLogout} disabled={logoutPending} aria-label="退出登录">
             <LogOut className="h-4 w-4" /> {logoutPending ? '退出中' : '退出'}
           </button>
         ) : (
-          <a className="profile-action" href="#auth"><UserRound className="h-4 w-4" /> 登录</a>
+          <button type="button" className="profile-action" onClick={() => { window.location.href = '/login'; }}>
+            登录
+          </button>
         )}
       </section>
-      <a className="header-action header-action-secondary" href="#ai-analysis">
-        <Sparkles className="h-4 w-4" /> 智能投研
-      </a>
     </header>
   );
 }

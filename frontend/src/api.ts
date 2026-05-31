@@ -1,4 +1,4 @@
-import type { FundAnalysisResponse, FundHistoryPoint, FundQuote, IndexQuote } from './types';
+import type { FundHistoryPoint, FundQuote, IndexQuote } from './types';
 
 const SESSION_TOKEN_KEY = 'gg_fund_session_token';
 let memorySessionToken = '';
@@ -74,5 +74,4 @@ export const api = {
   startAuthChallenge: (provider: AuthProvider, identifier: string) => postJson<AuthChallengeResponse>('/api/auth/challenge', { provider, identifier }),
   verifyAuthChallenge: (challengeId: string, code: string) => postJson<AuthSessionResponse>('/api/auth/verify', { challengeId, code }),
   getOAuthUrl: (provider: OAuthProvider) => getJson<OAuthUrlResponse>(`/api/auth/oauth-url?provider=${provider}&redirect=/`),
-  analyzeFund: (code: string) => postJson<FundAnalysisResponse>('/api/ai/analyze-fund', { code }),
 };

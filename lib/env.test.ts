@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createEnv, getOptionalEnv, getPublicEnv, getRequiredEnv, hasEnv, readOptionalEnv, readRequiredEnv } from './env';
+import { createEnv, getOptionalEnv, getRequiredEnv, hasEnv, readOptionalEnv, readRequiredEnv } from './env';
 
 describe('env helpers', () => {
   it('reads optional values and treats blank strings as missing', () => {
@@ -13,24 +13,12 @@ describe('env helpers', () => {
   });
 
   it('throws for required missing values', () => {
-    expect(() => getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY', {})).toThrow(
-      'Missing required environment variable: SUPABASE_SERVICE_ROLE_KEY',
+    expect(() => getRequiredEnv('RESEND_API_KEY', {})).toThrow(
+      'Missing required environment variable: RESEND_API_KEY',
     );
-    expect(() => readRequiredEnv('DEEPSEEK_API_KEY', {})).toThrow(
-      'Missing required environment variable: DEEPSEEK_API_KEY',
+    expect(() => readRequiredEnv('AUTH_EMAIL_FROM', {})).toThrow(
+      'Missing required environment variable: AUTH_EMAIL_FROM',
     );
-  });
-
-  it('returns browser-safe public env values', () => {
-    expect(
-      getPublicEnv({
-        NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon',
-      }),
-    ).toEqual({
-      supabaseUrl: 'https://example.supabase.co',
-      supabaseAnonKey: 'anon',
-    });
   });
 
   it('creates a reusable env reader', () => {

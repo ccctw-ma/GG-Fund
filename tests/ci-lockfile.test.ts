@@ -107,8 +107,8 @@ describe('Cloudflare deploy verification config', () => {
     expect(workflow).toContain('bun-version: 1.3.10');
     expect(workflow).toContain('bash scripts/ci-install.sh');
     expect(workflow).not.toContain('bun install --frozen-lockfile --ignore-scripts');
-    expect(workflow).toContain('NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}');
-    expect(workflow).toContain('NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}');
+    expect(workflow).not.toContain('NEXT_PUBLIC_SUPABASE_URL');
+    expect(workflow).not.toContain('NEXT_PUBLIC_SUPABASE_ANON_KEY');
     expect(workflow).not.toContain('NEXT_PUBLIC_POSTHOG');
     expect(workflow).toContain('Build OpenNext worker');
     expect(workflow).toContain('bun run build');

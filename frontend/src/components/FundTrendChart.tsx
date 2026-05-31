@@ -7,11 +7,21 @@ import type { FundHistoryPoint } from '../types';
 import { Button } from './ui/button';
 
 const ranges: FundRange[] = ['1M', '3M', '6M', '1Y', 'ALL'];
+const signalFragments = [
+  { text: 'NAV.core()', className: 'radar-fragment radar-fragment-a' },
+  { text: 'drawdown.guard', className: 'radar-fragment radar-fragment-b' },
+  { text: 'momentum.flow', className: 'radar-fragment radar-fragment-c' },
+  { text: 'risk.signal', className: 'radar-fragment radar-fragment-d' },
+  { text: 'position.trace', className: 'radar-fragment radar-fragment-e' },
+];
 
 export function FundTrendChart({ history }: { history: FundHistoryPoint[] }) {
   const [range, setRange] = useState<FundRange>('1M');
   const visible = useMemo(() => selectHistoryRange(history, range), [history, range]);
   const metrics = useMemo(() => calculateFundMetrics(visible), [visible]);
+  const lastPoint = metrics.points.at(-1);
+  const firstPoint = metrics.points[0];
+  const trendTone = metrics.summary.totalReturn >= 0 ? '趋势增强' : '风险收缩';
 
   if (history.length === 0) {
     return <div className="mt-5 rounded-[1.4rem] bg-[#fffaf0]/70 p-6 text-sm font-semibold text-ink/55">暂无历史净值数据，选择其他基金或稍后重试。</div>;
@@ -19,36 +29,146 @@ export function FundTrendChart({ history }: { history: FundHistoryPoint[] }) {
 
   const option = {
     backgroundColor: 'transparent',
-    color: ['#047857', '#2563eb', '#dc2626'],
-    tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-    legend: { top: 0, data: ['单位净值', '区间收益%', '回撤%'] },
-    grid: { left: 44, right: 20, top: 48, bottom: 54 },
-    dataZoom: [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 18 }],
-    xAxis: { type: 'category', data: metrics.points.map((point) => point.date), axisLabel: { color: '#68746b' } },
+    color: ['#f7c96b', '#7de2b8', '#ff8a80'],
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(4, 17, 31, 0.92)',
+      borderColor: 'rgba(244, 183, 64, 0.36)',
+      textStyle: { color: '#f8fbff', fontWeight: 700 },
+      axisPointer: {
+        type: 'cross',
+        crossStyle: { color: '#f4b740', opacity: 0.72 },
+        lineStyle: { color: '#f4b740', opacity: 0.52 },
+      },
+    },
+    legend: {
+      top: 10,
+      right: 18,
+      data: ['单位净值', '区间收益%', '回撤%'],
+      textStyle: { color: '#9eb1c7', fontWeight: 800 },
+      itemWidth: 18,
+      itemHeight: 8,
+    },
+    grid: { left: 46, right: 30, top: 62, bottom: 58 },
+    dataZoom: [
+      { type: 'inside' },
+      {
+        type: 'slider',
+        height: 18,
+        bottom: 18,
+        borderColor: 'rgba(255,255,255,.1)',
+        fillerColor: 'rgba(244,183,64,.18)',
+        backgroundColor: 'rgba(255,255,255,.05)',
+        handleStyle: { color: '#f4b740' },
+        textStyle: { color: '#9eb1c7' },
+      },
+    ],
+    xAxis: {
+      type: 'category',
+      data: metrics.points.map((point) => point.date),
+      axisLabel: { color: '#6f8095', fontWeight: 700 },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,.12)' } },
+      axisTick: { show: false },
+    },
     yAxis: [
-      { type: 'value', name: '净值', scale: true, axisLabel: { color: '#68746b' } },
-      { type: 'value', name: '%', axisLabel: { color: '#68746b', formatter: '{value}%' } },
+      {
+        type: 'value',
+        name: '净值',
+        scale: true,
+        nameTextStyle: { color: '#9eb1c7', fontWeight: 800 },
+        axisLabel: { color: '#6f8095', fontWeight: 700 },
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,.07)' } },
+      },
+      {
+        type: 'value',
+        name: '%',
+        nameTextStyle: { color: '#9eb1c7', fontWeight: 800 },
+        axisLabel: { color: '#6f8095', formatter: '{value}%', fontWeight: 700 },
+        splitLine: { show: false },
+      },
     ],
     series: [
-      { name: '单位净值', type: 'line', smooth: true, symbol: 'none', lineStyle: { width: 3 }, data: metrics.points.map((point) => point.netValue) },
-      { name: '区间收益%', type: 'line', smooth: true, symbol: 'none', yAxisIndex: 1, lineStyle: { width: 2, type: 'dashed' }, data: metrics.points.map((point) => point.cumulativeReturn) },
-      { name: '回撤%', type: 'line', smooth: true, symbol: 'none', yAxisIndex: 1, areaStyle: { opacity: 0.08 }, data: metrics.points.map((point) => point.drawdown) },
+      {
+        name: '单位净值',
+        type: 'line',
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 5,
+        showSymbol: false,
+        lineStyle: { width: 4, shadowBlur: 18, shadowColor: 'rgba(244,183,64,.58)' },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(244,183,64,.28)' },
+              { offset: 1, color: 'rgba(244,183,64,0)' },
+            ],
+          },
+        },
+        data: metrics.points.map((point) => point.netValue),
+      },
+      {
+        name: '区间收益%',
+        type: 'line',
+        smooth: true,
+        symbol: 'none',
+        yAxisIndex: 1,
+        lineStyle: { width: 2, type: 'dashed', shadowBlur: 14, shadowColor: 'rgba(125,226,184,.42)' },
+        data: metrics.points.map((point) => point.cumulativeReturn),
+      },
+      {
+        name: '回撤%',
+        type: 'line',
+        smooth: true,
+        symbol: 'none',
+        yAxisIndex: 1,
+        lineStyle: { width: 2, shadowBlur: 12, shadowColor: 'rgba(255,138,128,.38)' },
+        areaStyle: { opacity: 0.12 },
+        data: metrics.points.map((point) => point.drawdown),
+      },
     ],
   };
 
   return (
-    <div className="mt-5 rounded-[1.4rem] bg-[#fffaf0]/70 p-3" data-testid="fund-chart" aria-label="历史净值研究图">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="grid grid-cols-3 gap-2 text-xs font-bold text-ink/70">
-          <span>区间收益 <strong className={metrics.summary.totalReturn >= 0 ? 'text-[var(--bull)]' : 'text-[var(--bear)]'}>{metrics.summary.totalReturn.toFixed(2)}%</strong></span>
-          <span>最大回撤 <strong className="text-[var(--bear)]">{metrics.summary.maxDrawdown.toFixed(2)}%</strong></span>
-          <span>最新净值 <strong>{metrics.summary.latestNetValue.toFixed(4)}</strong></span>
+    <div className="fund-analysis-radar mt-5" data-testid="fund-chart" aria-label="历史净值研究图">
+      <div className="radar-grid" aria-hidden="true" />
+      <div className="radar-scanline" aria-hidden="true" />
+      {signalFragments.map((item) => <span key={item.text} className={item.className} aria-hidden="true">{item.text}</span>)}
+      <div className="radar-header">
+        <div>
+          <span className="section-kicker">Fund Signal Matrix</span>
+          <h4>基金分析走势图</h4>
+          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · 净值 / 收益 / 回撤同屏监控</p>
         </div>
-        <div className="flex flex-wrap gap-1">
+        <div className="radar-range-tabs" aria-label="走势图时间范围">
           {ranges.map((item) => <Button key={item} size="sm" variant={item === range ? 'default' : 'secondary'} onClick={() => setRange(item)}>{item}</Button>)}
         </div>
       </div>
-      <ReactECharts option={option} style={{ height: 320, width: '100%' }} notMerge lazyUpdate />
+      <div className="radar-metrics">
+        <div>
+          <span>区间收益</span>
+          <strong className={metrics.summary.totalReturn >= 0 ? 'profit-up' : 'profit-down'}>{metrics.summary.totalReturn.toFixed(2)}%</strong>
+        </div>
+        <div>
+          <span>最大回撤</span>
+          <strong className="profit-down">{metrics.summary.maxDrawdown.toFixed(2)}%</strong>
+        </div>
+        <div>
+          <span>最新净值</span>
+          <strong>{metrics.summary.latestNetValue.toFixed(4)}</strong>
+        </div>
+        <div>
+          <span>净值区间</span>
+          <strong>{metrics.summary.lowNetValue.toFixed(4)} / {metrics.summary.highNetValue.toFixed(4)}</strong>
+        </div>
+      </div>
+      <div className="radar-chart-frame">
+        <ReactECharts option={option} style={{ height: 360, width: '100%' }} notMerge lazyUpdate />
+      </div>
     </div>
   );
 }

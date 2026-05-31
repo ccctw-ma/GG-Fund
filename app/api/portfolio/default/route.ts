@@ -1,9 +1,6 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
-import { cookies } from 'next/headers';
-import { getRequestSession } from '../../../../features/auth/session';
 import { createPortfolioRepository } from '../../../../features/portfolio/repository';
 import { jsonError } from '../../../../lib/http';
-import { createSupabaseServerClient } from '../../../../lib/supabase/server';
 
 
 type PortfolioDatabase = Parameters<typeof createPortfolioRepository>[0];
@@ -29,23 +26,27 @@ async function getRuntimeDatabase(): Promise<PortfolioDatabase | undefined> {
   }
 }
 
-async function getRequestUserId(): Promise<string | undefined> {
-  const cookieStore = await cookies();
-  const client = createSupabaseServerClient(process.env, {
-    get: (name) => cookieStore.get(name)?.value,
-    set: () => undefined,
-    remove: () => undefined,
-  });
-
-  if (!client) {
-    return undefined;
-  }
-
-  const session = await getRequestSession(client);
-  return session?.user.id;
+function readSessionToken(request: Request) {
+  const header = request.headers.get('Authorization') ?? '';
+  if (header.startsWith('Bearer ')) return header.slice('Bearer '.length).trim();
+  const cookie = request.headers.get('Cookie') ?? '';
+  const match = cookie.match(/(?:^|;\s*)gg_fund_session=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
 }
 
-export async function GET() {
+async function getRequestUserId(db: PortfolioDatabase, request: Request): Promise<string | undefined> {
+  const token = readSessionToken(request);
+  if (!token) return undefined;
+  const row = await db
+    .prepare('select user_id as userId, expires_at as expiresAt from auth_sessions where token = ?')
+    .bind(token)
+    .first<{ userId: string; expiresAt: string }>();
+
+  if (!row || Date.parse(row.expiresAt) <= Date.now()) return undefined;
+  return row.userId;
+}
+
+export async function GET(request: Request) {
   try {
     const db = await getRuntimeDatabase();
     if (!db) {
@@ -53,7 +54,7 @@ export async function GET() {
     }
 
     const repository = createPortfolioRepository(db);
-    const userId = await getRequestUserId();
+    const userId = await getRequestUserId(db, request);
     const portfolio = await repository.ensureDefaultPortfolio(userId);
     return Response.json(await repository.getSnapshot(portfolio.id));
   } catch (error) {
