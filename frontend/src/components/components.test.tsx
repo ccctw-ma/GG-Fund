@@ -126,6 +126,9 @@ describe('dashboard components', () => {
     expect(guide.container.textContent).toContain('基金小白决策地图');
     expect(guide.container.textContent).toContain('华夏成长混合');
     expect(guide.container.textContent).toContain('确认资金期限');
+    expect(guide.container.textContent).toContain('风险等级不是收益承诺');
+    expect(guide.container.textContent).toContain('每月复盘');
+    expect(guide.container.textContent).toContain('单只基金权重');
   });
 
   it('renders the investment tool universe catalog', () => {

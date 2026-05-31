@@ -1,6 +1,7 @@
 'use client';
 
 import { BookOpen, Compass, ShieldAlert, TrendingUp } from 'lucide-react';
+import { researchCatalog } from '../researchCatalog';
 import type { FundQuote, IndexQuote, PortfolioSummary } from '../types';
 
 type BeginnerGuideProps = {
@@ -41,12 +42,12 @@ export function BeginnerGuide({ selectedFund, leadingIndex, summary }: BeginnerG
     {
       title: '3. 看自己的持仓状态',
       icon: ShieldAlert,
-      text: explainPortfolio(summary),
+      text: `${explainPortfolio(summary)} 单只基金权重过高时，先降低集中度，再考虑加仓或止盈。`,
     },
     {
       title: '4. 最后走行动路径',
       icon: Compass,
-      text: '一年内要用的钱优先保守；三年以上闲钱可考虑定投或分批持有；遇到大涨大跌都先拆成小步骤执行。',
+      text: '风险等级不是收益承诺。一年内要用的钱优先保守；三年以上闲钱可考虑定投或分批持有；遇到大涨大跌都先拆成小步骤执行，并坚持每月复盘。',
     },
   ];
 
@@ -71,11 +72,11 @@ export function BeginnerGuide({ selectedFund, leadingIndex, summary }: BeginnerG
       </div>
       <div className="decision-ladder" aria-label="基金操作路径">
         <strong>默认路径：</strong>
-        <span>确认资金期限</span>
-        <span>匹配风险等级</span>
-        <span>观察收益与回撤</span>
-        <span>分批执行</span>
-        <span>每月复盘</span>
+        {researchCatalog.decisionSteps.map((step) => (
+          <span title={step.detail} key={step.title}>
+            {step.title}
+          </span>
+        ))}
       </div>
     </section>
   );
