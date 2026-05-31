@@ -74,7 +74,9 @@ describe('dashboard components', () => {
 
     expect(portfolio.container.textContent).toContain('还没有持仓');
     expect(settings.container.textContent).toContain('Cloudflare Worker / OpenNext');
-    expect(settings.container.textContent).toContain('Cloudflare D1/KV');
+    expect(settings.container.textContent).toContain('Supabase');
+    expect(settings.container.textContent).toContain('D1');
+    expect(settings.container.textContent).toContain('KV 行情缓存为部署路线图能力');
   });
 
   it('renders error and populated portfolio branches', () => {

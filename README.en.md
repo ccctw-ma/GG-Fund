@@ -6,7 +6,7 @@ GG Fund now uses a Cloudflare-first Next.js App Router architecture as its main 
 
 ## Features
 
-- Next.js App Router workspace: the root path `/` redirects directly to the `/app` workspace, `/settings` is available today, and `/app/portfolio` currently serves as a landing page while local-first holdings and watchlist stay in the main workspace.
+- Next.js App Router workspace: the root path `/` redirects directly to the `/app` workspace, `/settings` currently provides a basic information entry, and `/app/portfolio` currently serves as a landing page while local-first holdings and watchlist stay in the main workspace.
 - Tool Universe: reorganizes common stock/fund website capabilities into a browsable map for quotes, screening, comparison, diagnostics, accounts, news, disclosures, and open-source quant research.
 - Multi-asset navigation: A-share indices and fund NAVs are live; ETF / LOF, REITs, bonds and convertible bonds, new bonds / newly issued funds, and global market watch are labeled as connectable or roadmap capabilities.
 - Fund research tools: fund discovery, diagnostics, local holdings, watchlist, and AI research summaries are live today; fund comparison, ETF / LOF topics, and recurring investment paths are explicitly marked as connectable.

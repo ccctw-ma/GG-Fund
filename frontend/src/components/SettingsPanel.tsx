@@ -22,7 +22,7 @@ export function SettingsPanel({
         <div>
           <Badge tone="blue" className="mb-2"><ServerCog className="h-3 w-3" /> Settings</Badge>
           <CardTitle>数据与部署说明</CardTitle>
-          <CardDescription>浏览器本地数据、Cloudflare D1/KV 和免费部署方案。</CardDescription>
+          <CardDescription>浏览器本地数据、Supabase 登录、Cloudflare D1 与 Worker 部署方案。</CardDescription>
         </div>
       </CardHeader>
       <div className="grid gap-5 md:grid-cols-2">
@@ -47,7 +47,7 @@ export function SettingsPanel({
           {importError && <p className="mt-3 rounded-3xl bg-red-50 p-3 text-sm font-semibold text-red-700">{importError}</p>}
           <div className="mt-4 grid gap-3 text-sm font-semibold text-ink/58">
             <p>持仓和自选默认只保存在当前浏览器，不上传服务端。</p>
-            <p>线上 API 统一运行在 Cloudflare Worker / OpenNext，D1/KV 用于组合、登录数据和行情缓存。</p>
+            <p>线上 API 统一运行在 Cloudflare Worker / OpenNext；云端组合接口使用 D1，登录会话使用 Supabase，KV 行情缓存为部署路线图能力。</p>
           </div>
         </div>
       </div>
