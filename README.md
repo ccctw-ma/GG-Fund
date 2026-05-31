@@ -79,6 +79,8 @@ bun run build
 bun run test:e2e
 ```
 
+`bun run test:e2e` 会运行 Next 核心 smoke spec 和 `tests/fund-flow.spec.ts` 的基金工作台 E2E。
+
 如需运行 Midscene：
 
 ```bash

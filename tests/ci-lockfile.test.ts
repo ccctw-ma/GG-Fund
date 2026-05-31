@@ -57,7 +57,7 @@ describe('Playwright Next.js smoke config', () => {
     };
     const playwrightConfig = readFileSync(join(process.cwd(), 'playwright.config.ts'), 'utf8');
 
-    expect(packageJson.scripts?.['test:e2e']).toBe('playwright test tests/e2e/next-core.spec.ts');
+    expect(packageJson.scripts?.['test:e2e']).toBe('playwright test tests/e2e/next-core.spec.ts tests/fund-flow.spec.ts');
     expect(playwrightConfig).toContain("baseURL: 'http://127.0.0.1:3000'");
     expect(playwrightConfig).toContain("command: 'bun run dev'");
     expect(playwrightConfig).toContain("url: 'http://127.0.0.1:3000'");

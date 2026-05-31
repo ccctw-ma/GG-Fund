@@ -79,6 +79,8 @@ bun run build
 bun run test:e2e
 ```
 
+`bun run test:e2e` runs both the Next core smoke spec and the fund workspace flow in `tests/fund-flow.spec.ts`.
+
 For Midscene:
 
 ```bash

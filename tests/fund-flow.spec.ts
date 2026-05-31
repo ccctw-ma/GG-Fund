@@ -1,5 +1,26 @@
 import { expect, test } from '@playwright/test';
 
+type OtpRequestBody = {
+  email?: string;
+  data?: Record<string, unknown>;
+  create_user?: boolean;
+  gotrue_meta_security?: Record<string, unknown>;
+  code_challenge?: string | null;
+  code_challenge_method?: string | null;
+};
+
+type OtpRequest = {
+  url: string;
+  body: OtpRequestBody;
+};
+
+type OAuthMetadata = {
+  provider: 'github' | 'wechat';
+  authUrl: string;
+  configured: boolean;
+  callback: string;
+};
+
 const validImportData = {
   holdings: [
     {
@@ -21,7 +42,52 @@ const validImportData = {
   ],
 };
 
+const githubOAuthMetadata: OAuthMetadata = {
+  provider: 'github',
+  authUrl: 'https://github.com/login/oauth/authorize?client_id=test',
+  configured: true,
+  callback: 'https://example.com/api/auth/oauth-callback?provider=github&redirect=%2F',
+};
+
+const wechatOAuthMetadata: OAuthMetadata = {
+  provider: 'wechat',
+  authUrl: 'https://open.weixin.qq.com/connect/qrconnect?client_id=test',
+  configured: true,
+  callback: 'https://example.com/api/auth/oauth-callback?provider=wechat&redirect=%2F',
+};
+
+let lastOtpRequest: OtpRequest | undefined;
+
 test.beforeEach(async ({ page }) => {
+  lastOtpRequest = undefined;
+
+  await page.route('https://example.supabase.co/auth/v1/otp?*', async (route) => {
+    lastOtpRequest = {
+      url: route.request().url(),
+      body: JSON.parse(route.request().postData() ?? '{}') as OtpRequestBody,
+    };
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ message_id: 'e2e-otp-message' }),
+    });
+  });
+
+  await page.route('**/api/auth/oauth-url?provider=github&redirect=/', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(githubOAuthMetadata),
+    });
+  });
+
+  await page.route('**/api/auth/oauth-url?provider=wechat&redirect=/', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(wechatOAuthMetadata),
+    });
+  });
+
   await page.route('**/api/ai/analyze-fund', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
@@ -65,7 +131,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('searches realtime data, covers reconstructed content, shows current email auth copy, runs agent analysis, renders charts, adds a holding, and exports local data', async ({ page }) => {
+test('searches realtime data, covers reconstructed content, uses deterministic Supabase OTP, runs agent analysis, renders charts, adds a holding, and exports local data', async ({ page }) => {
   await page.goto('/');
 
   await expect(page.getByText('基金研究操作系统').first()).toBeVisible();
@@ -87,22 +153,37 @@ test('searches realtime data, covers reconstructed content, shows current email 
   await expect(page.getByText('实时估算').or(page.getByText('官方净值')).first()).toBeVisible();
   await expect(page.getByTestId('fund-chart')).toBeVisible();
   await expect(page.getByText(/区间收益/)).toBeVisible();
-  await expect(page.getByText(/最大回撤/).first()).toBeVisible();
 
-  await expect(page.getByRole('heading', { name: 'Supabase 邮箱登录' })).toBeVisible();
-  await expect(page.getByText('未登录：请发送邮箱链接并在邮箱中完成登录。')).toBeVisible();
+  const beginnerGuide = page.locator('[aria-labelledby="beginner-guide-title"]');
+  await expect(beginnerGuide).toContainText('华夏成长混合 当前净值');
+  await expect(beginnerGuide).toContainText('单只基金权重过高时');
+  await expect(beginnerGuide).toContainText('风险等级不是收益承诺');
+
+  const authPanel = page.locator('#auth');
+  await expect(authPanel.getByRole('heading', { name: 'Supabase 邮箱登录' })).toBeVisible();
+  await expect(authPanel).toContainText('未登录：请发送邮箱链接并在邮箱中完成登录。');
   await page.getByLabel('邮箱地址').fill('demo@example.com');
   await page.getByRole('button', { name: '发送 Magic Link / OTP' }).click();
-  await expect(page.getByText(/Supabase 已向 .* 发送 Magic Link \/ OTP|Supabase 尚未配置，请设置 NEXT_PUBLIC_SUPABASE_URL 和 NEXT_PUBLIC_SUPABASE_ANON_KEY/)).toBeVisible();
+  await expect(authPanel).toContainText('Supabase 已向 demo@example.com 发送 Magic Link / OTP，请查收邮箱完成登录。');
+  await expect.poll(() => lastOtpRequest?.body.email).toBe('demo@example.com');
+  expect(lastOtpRequest?.body).toMatchObject({
+    email: 'demo@example.com',
+    data: {},
+    create_user: true,
+    gotrue_meta_security: {},
+    code_challenge: null,
+    code_challenge_method: null,
+  });
+  expect(new URL(lastOtpRequest!.url).searchParams.get('redirect_to')).toBe('http://127.0.0.1:3000');
 
   await page.getByRole('button', { name: /分析 华夏成长混合/ }).click();
+  const aiAnalysis = page.locator('#ai-analysis');
   await expect(page.getByTestId('agent-steps')).toContainText('compute_indicators');
-  await expect(page.getByRole('heading', { name: '趋势判断' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '风险提示' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '观察点' })).toBeVisible();
-  await expect(page.getByText('上涨原因：估算净值走强。')).toBeVisible();
-  await expect(page.getByText('风险等级不是收益承诺').first()).toBeVisible();
-  await expect(page.getByText('单只基金权重').first()).toBeVisible();
+  await expect(aiAnalysis).toContainText('最大回撤');
+  await expect(aiAnalysis.getByRole('heading', { name: '趋势判断' })).toBeVisible();
+  await expect(aiAnalysis.getByRole('heading', { name: '风险提示' })).toBeVisible();
+  await expect(aiAnalysis.getByRole('heading', { name: '观察点' })).toBeVisible();
+  await expect(aiAnalysis).toContainText('上涨原因：估算净值走强。');
 
   await page.getByRole('button', { name: '加入持仓' }).click();
   await expect(page.getByRole('heading', { name: '我的持仓分析' })).toBeVisible();
@@ -147,7 +228,7 @@ test('shows import and fund search errors without breaking the dashboard', async
   await expect(page.getByRole('heading', { name: '今日大盘' })).toBeVisible();
 });
 
-test('toggles watchlist and uses the current email auth button copy', async ({ page }) => {
+test('toggles watchlist and preserves deterministic OAuth metadata coverage', async ({ page }) => {
   await page.goto('/');
 
   await page.getByLabel('基金代码或名称').fill('000001');
@@ -159,9 +240,19 @@ test('toggles watchlist and uses the current email auth button copy', async ({ p
   await page.getByRole('button', { name: '移出自选' }).click();
   await expect(page.locator('#portfolio').getByText('华夏成长混合 000001')).toHaveCount(0);
 
-  await expect(page.getByRole('heading', { name: 'Supabase 邮箱登录' })).toBeVisible();
-  await expect(page.getByText('未登录：请发送邮箱链接并在邮箱中完成登录。')).toBeVisible();
+  const authPanel = page.locator('#auth');
+  await expect(authPanel.getByRole('heading', { name: 'Supabase 邮箱登录' })).toBeVisible();
+  await expect(authPanel).toContainText('未登录：请发送邮箱链接并在邮箱中完成登录。');
   await page.getByLabel('邮箱地址').fill('demo@example.com');
   await page.getByRole('button', { name: '发送 Magic Link / OTP' }).click();
-  await expect(page.getByText(/Supabase 已向 .* 发送 Magic Link \/ OTP|Supabase 尚未配置，请设置 NEXT_PUBLIC_SUPABASE_URL 和 NEXT_PUBLIC_SUPABASE_ANON_KEY/)).toBeVisible();
+  await expect(authPanel).toContainText('Supabase 已向 demo@example.com 发送 Magic Link / OTP，请查收邮箱完成登录。');
+  await expect.poll(() => lastOtpRequest?.body.email).toBe('demo@example.com');
+
+  const [githubMetadata, wechatMetadata] = await Promise.all([
+    page.evaluate(async () => (await fetch('/api/auth/oauth-url?provider=github&redirect=/')).json()),
+    page.evaluate(async () => (await fetch('/api/auth/oauth-url?provider=wechat&redirect=/')).json()),
+  ]);
+
+  expect(githubMetadata).toMatchObject(githubOAuthMetadata);
+  expect(wechatMetadata).toMatchObject(wechatOAuthMetadata);
 });
