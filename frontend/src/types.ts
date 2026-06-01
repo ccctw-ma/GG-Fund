@@ -4,6 +4,10 @@ export type Holding = {
   fundName: string;
   shares: number;
   costAmount: number;
+  accountName?: string;
+  platform?: 'manual' | 'alipay' | 'wechat' | 'tiantian' | 'xueqiu' | 'other';
+  targetWeight?: number;
+  alertPercent?: number;
   purchaseDate?: string;
   note?: string;
   createdAt: string;
@@ -97,7 +101,31 @@ export type PortfolioItem = Holding & {
   profit: number;
   returnRate: number;
   weight: number;
+  estimatedDailyProfit: number;
+  holdingDays?: number;
   quoteStatus: 'ok' | 'missing';
+};
+
+export type PortfolioLedger = {
+  accountName: string;
+  platform: string;
+  marketValue: number;
+  costAmount: number;
+  profit: number;
+  holdingCount: number;
+};
+
+export type PortfolioSignal = {
+  title: string;
+  detail: string;
+  tone: 'positive' | 'warning' | 'danger' | 'neutral';
+};
+
+export type PortfolioPlan = {
+  title: string;
+  amount: number;
+  cadence: string;
+  detail: string;
 };
 
 export type PortfolioSummary = {
@@ -105,6 +133,13 @@ export type PortfolioSummary = {
   totalMarketValue: number;
   totalProfit: number;
   totalReturnRate: number;
+  estimatedDailyProfit: number;
+  liveQuoteRatio: number;
+  ledgers: PortfolioLedger[];
+  riskSignals: PortfolioSignal[];
+  reportSignals: PortfolioSignal[];
+  actionSignals: PortfolioSignal[];
+  plan: PortfolioPlan;
   items: PortfolioItem[];
 };
 

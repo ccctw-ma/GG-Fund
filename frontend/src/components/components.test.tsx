@@ -2,6 +2,7 @@ import { act } from 'react';
 import type { ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
+import { calculatePortfolioSummary } from '../portfolio';
 import { researchCatalog, getLiveCatalogItems } from '../researchCatalog';
 import { BeginnerGuide } from './BeginnerGuide';
 import { FundSearch } from './FundSearch';
@@ -11,6 +12,7 @@ import { SettingsPanel } from './SettingsPanel';
 import { ToolUniverse } from './ToolUniverse';
 
 const fund = { code: '000001', name: '华夏成长混合', netValue: 1.35, quoteDate: '2026-05-29', quoteType: 'estimate' as const, source: 'test' };
+const emptySummary = calculatePortfolioSummary([], {});
 
 function render(element: ReactNode) {
   const container = document.createElement('div');
@@ -105,7 +107,7 @@ describe('dashboard components', () => {
   it('renders portfolio and settings empty states', () => {
     const portfolio = render(
       <PortfolioPanel
-        summary={{ totalCost: 0, totalMarketValue: 0, totalProfit: 0, totalReturnRate: 0, items: [] }}
+        summary={emptySummary}
         watchlist={[]}
         onRemoveHolding={() => undefined}
       />,
@@ -116,6 +118,9 @@ describe('dashboard components', () => {
     roots.push(settings.root);
 
     expect(portfolio.container.textContent).toContain('还没有持仓');
+    expect(portfolio.container.textContent).toContain('多平台账本');
+    expect(portfolio.container.textContent).toContain('智能定投 / 目标止盈');
+    expect(settings.container.textContent).toContain('多平台导入助手');
     expect(settings.container.textContent).toContain('Cloudflare Worker / OpenNext');
     expect(settings.container.textContent).toContain('Resend');
     expect(settings.container.textContent).toContain('D1');
@@ -125,29 +130,25 @@ describe('dashboard components', () => {
   it('renders error and populated portfolio branches', () => {
     const market = render(<MarketOverview indices={[]} loading={false} error="行情暂不可用" />);
     roots.push(market.root);
+    const populatedSummary = calculatePortfolioSummary(
+      [{
+        id: 'holding-1',
+        fundCode: '000001',
+        fundName: '华夏成长混合',
+        shares: 100,
+        costAmount: 100,
+        accountName: '支付宝账本',
+        platform: 'alipay',
+        purchaseDate: '2026-05-29',
+        createdAt: '2026-05-29T00:00:00.000Z',
+        updatedAt: '2026-05-29T00:00:00.000Z',
+      }],
+      {},
+    );
 
     const portfolio = render(
       <PortfolioPanel
-        summary={{
-          totalCost: 100,
-          totalMarketValue: 88,
-          totalProfit: -12,
-          totalReturnRate: -12,
-          items: [{
-            id: 'holding-1',
-            fundCode: '000001',
-            fundName: '华夏成长混合',
-            shares: 100,
-            costAmount: 100,
-            createdAt: '2026-05-29T00:00:00.000Z',
-            updatedAt: '2026-05-29T00:00:00.000Z',
-            marketValue: 88,
-            profit: -12,
-            returnRate: -12,
-            weight: 100,
-            quoteStatus: 'missing',
-          }],
-        }}
+        summary={populatedSummary}
         watchlist={[{ fundCode: '110022', fundName: '易方达消费行业股票', createdAt: '2026-05-29T00:00:00.000Z' }]}
         onRemoveHolding={() => undefined}
       />,
@@ -156,6 +157,8 @@ describe('dashboard components', () => {
 
     expect(market.container.textContent).toContain('行情暂不可用');
     expect(portfolio.container.textContent).toContain('净值未知');
+    expect(portfolio.container.textContent).toContain('净值缺失');
+    expect(portfolio.container.textContent).toContain('支付宝账本');
     expect(portfolio.container.textContent).toContain('易方达消费行业股票');
   });
 
@@ -164,7 +167,7 @@ describe('dashboard components', () => {
       <BeginnerGuide
         selectedFund={fund}
         leadingIndex={{ code: '000001.SH', name: '上证指数', value: 4098.64, change: -12, changePercent: -0.29, quoteTime: '2026-05-29 15:00:00' }}
-        summary={{ totalCost: 1000, totalMarketValue: 1080, totalProfit: 80, totalReturnRate: 8, items: [] }}
+        summary={calculatePortfolioSummary([], {})}
       />,
     );
     roots.push(guide.root);
@@ -198,6 +201,7 @@ describe('dashboard components', () => {
     expect(researchCatalog.assetNavigation.map((item) => item.title)).toEqual([
       '全球核心指数',
       '基金与 A 股行情',
+      '养基账本',
       'ETF / LOF',
       'REITs',
       '债券与可转债',
@@ -205,6 +209,7 @@ describe('dashboard components', () => {
       '港美与全球观察',
     ]);
     expect(researchCatalog.toolGroups.map((group) => group.title)).toContain('基金筛选、对比与诊断');
+    expect(researchCatalog.toolGroups.flatMap((group) => group.capabilities.map((capability) => capability.title))).toContain('盈亏周报/月报');
     expect(researchCatalog.sourceGroups.map((group) => group.title)).toContain('官方公告与高信任披露');
     expect(researchCatalog.openSourceStack.map((item) => item.name)).toEqual(['AKShare / AKTools', 'Qlib', 'Tushare', 'Backtrader', 'Pyfolio', 'Streamlit']);
     expect(getLiveCatalogItems().some((item) => item.title === '基金与 A 股行情')).toBe(true);

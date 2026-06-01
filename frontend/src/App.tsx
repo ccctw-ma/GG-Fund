@@ -31,14 +31,14 @@ const money = new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY
 
 const heroStats = [
   { label: '实时行情', value: '指数 + 基金 + 股票', detail: '东方财富 / 腾讯 / 天天基金' },
-  { label: '研究工具', value: '8 类能力', detail: '筛选 / 对比 / 诊断 / 公告' },
-  { label: '开源底座', value: 'AKShare · Qlib', detail: '数据与量化路线图' },
+  { label: '养基账本', value: '报告 + 提醒', detail: '盈亏 / 风险 / 定投 / 止盈' },
+  { label: '多平台导入', value: '文字识别', detail: '支付宝 / 理财通 / 天天 / 雪球' },
 ];
 
 const transactionFeatures = [
   { title: '多源行情搜索', description: '输入基金、股票代码或名称，自动聚合基金净值、A股实时价格和公开数据备用源。', icon: LineChart },
+  { title: '养基宝式账本', description: '多平台持仓汇总、今日估算收益、周/月报摘要、7 天赎回提醒和组合风险诊断。', icon: WalletCards },
   { title: '筛选、对比与诊断', description: '把好买式筛选、对比、诊断抽象为 GG Fund 的基金研究工具层。', icon: BarChart3 },
-  { title: '持仓与分批行动', description: '用本地持仓、收益、权重和新手路径承接定投、止盈、减仓等教育决策。', icon: WalletCards },
   { title: '公告、资讯与开源研究', description: '把东方财富、雪球、同花顺、交易所披露和 AKShare/Qlib 能力纳入路线图。', icon: Database },
 ];
 
@@ -163,6 +163,10 @@ export default function App() {
         fundName: fund.name,
         shares: 1000,
         costAmount: Number((fund.netValue * 1000).toFixed(2)),
+        accountName: '默认账本',
+        platform: 'manual',
+        targetWeight: 25,
+        alertPercent: 12,
         createdAt,
         updatedAt: createdAt,
       },

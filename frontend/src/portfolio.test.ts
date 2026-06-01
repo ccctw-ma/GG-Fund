@@ -10,6 +10,9 @@ const holdings: Holding[] = [
     shares: 1000,
     costAmount: 1200,
     purchaseDate: '2024-01-01',
+    accountName: '家庭账本',
+    platform: 'alipay',
+    targetWeight: 45,
     createdAt: '2026-05-28T00:00:00.000Z',
     updatedAt: '2026-05-28T00:00:00.000Z',
   },
@@ -19,6 +22,8 @@ const holdings: Holding[] = [
     fundName: '易方达消费行业股票',
     shares: 500,
     costAmount: 900,
+    accountName: '长期定投',
+    platform: 'tiantian',
     createdAt: '2026-05-28T00:00:00.000Z',
     updatedAt: '2026-05-28T00:00:00.000Z',
   },
@@ -60,6 +65,13 @@ describe('calculatePortfolioSummary', () => {
     });
     expect(summary.items[0].weight).toBeCloseTo(62.7907, 4);
     expect(summary.items[1].weight).toBeCloseTo(37.2093, 4);
+    expect(summary.estimatedDailyProfit).toBeCloseTo(9.1111, 4);
+    expect(summary.liveQuoteRatio).toBe(100);
+    expect(summary.ledgers.map((ledger) => ledger.platform)).toEqual(['支付宝', '天天基金']);
+    expect(summary.riskSignals.map((signal) => signal.title)).toContain('单只集中度偏高');
+    expect(summary.reportSignals.map((signal) => signal.title)).toContain('今日估算收益');
+    expect(summary.actionSignals.map((signal) => signal.title)).toContain('加减仓观察');
+    expect(summary.plan.amount).toBe(100);
   });
 
   it('keeps holdings with missing quotes visible and marks their quote status', () => {
@@ -72,5 +84,7 @@ describe('calculatePortfolioSummary', () => {
       profit: -900,
       quoteStatus: 'missing',
     });
+    expect(summary.liveQuoteRatio).toBe(50);
+    expect(summary.riskSignals.map((signal) => signal.title)).toContain('净值缺失');
   });
 });

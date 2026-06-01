@@ -10,7 +10,9 @@ GG Fund now uses a Cloudflare-first Next.js App Router architecture as its main 
 - Top navigation workspace: `/app` switches between Overview, Tool Universe, Live Workspace, and Portfolio through a sticky top nav, with a compact account status card in the top-right corner; clicking the top-right Login button opens `/login`.
 - Tool Universe: reorganizes common stock/fund website capabilities into a browsable map for quotes, screening, comparison, diagnostics, accounts, news, disclosures, and open-source quant research.
 - Multi-asset navigation: A-share/HK/US core indices, A-share live stock quotes, and fund NAVs are live; ETF / LOF, REITs, bonds and convertible bonds, new bonds / newly issued funds, and global market watch are labeled as connectable or roadmap capabilities.
-- Fund and stock research tools: fund discovery, A-share search, diagnostics, local holdings, and watchlist are live today; fund comparison, ETF / LOF topics, and recurring investment paths are explicitly marked as connectable.
+- Fund and stock research tools: fund discovery, A-share search, diagnostics, local holdings, and watchlist are live today; fund comparison and ETF / LOF topics are explicitly marked as connectable.
+- Yangjibao-style portfolio ledger: the Portfolio page now provides estimated daily profit, multi-platform ledgers, weekly/monthly P/L summaries, contribution breakdowns, concentration checks, missing NAV warnings, 7-day redemption reminders, target-weight drift, educational recurring-investment plans, and target take-profit prompts.
+- Multi-platform import assistant: users can paste holding text from Alipay, WeChat Wealth, Tiantian Fund, Snowball, or manual exports for local text recognition. Real screenshot OCR, platform authorization sync, live trading, and whole-network user buy/sell rankings remain roadmap items and are not faked.
 - Research sources and disclosures: separates Eastmoney/10jqka/Tiantian-style market data, Howbuy-style fund screening and diagnostics, Snowball-style community opinions, and exchange official disclosures into explicit content layers.
 - Open research stack roadmap: AKShare / AKTools, Qlib, Tushare, Backtrader, Pyfolio, and Streamlit are documented as inspiration for data ingestion, quant research, backtesting, portfolio attribution, and dashboards.
 - Global market radar: reads SSE Composite, SZSE Component, ChiNext, CSI 300, STAR 50, BSE 50, Hang Seng, and Nasdaq from Eastmoney push2 with Tencent quote fallback.
@@ -18,7 +20,7 @@ GG Fund now uses a Cloudflare-first Next.js App Router architecture as its main 
 - Fund details: prefers Tiantian intraday estimated NAV, estimated change, and estimate time while keeping the previous official NAV.
 - Fund analysis trend chart: fund details use a dark data-radar ECharts visualization that combines NAV, range return, drawdown, value range, and time-range switching.
 - Beginner decision map: explains fund type, NAV, market temperature, holding status, risk level, single-fund concentration, and monthly review paths.
-- Local portfolio: calculates market value, cost, profit/loss, return rate, and weights after adding funds.
+- Local portfolio: calculates market value, cost, profit/loss, return rate, weights, estimated daily profit, ledger source, and local risk reminders after adding funds.
 - Watchlist: follows funds without counting them as holdings.
 - Resend email login: `/login` uses a standalone minimal sign-in page, redirects back to `/app#portfolio` after OTP sign-in succeeds, `/api/auth/challenge` sends a 6-digit email OTP and returns Resend delivery failure details to the frontend, and `/api/auth/verify` creates a GG Fund-owned session; `/api/portfolio/default` prefers the signed-in user's portfolio.
 - Cloudflare Worker deployment: Next Route Handlers are built by OpenNext into the Worker runtime with `GG_FUND_DB` and `GG_FUND_CACHE` bindings.
@@ -134,9 +136,9 @@ Financial asset search reads Eastmoney fund search, Eastmoney A-share quote list
 
 GG Fund uses three explicit status labels:
 
-- `Live`: real API or local product capability is available today, such as global core indices, A-share live stock quotes, fund NAVs, fund discovery/search, diagnostics, history, local holdings, watchlist, Resend email login, import, and export.
-- `Connectable`: the product shape is defined and can be wired to real data or stronger algorithms later, such as ETF / LOF topics, fund comparison, recurring investment plans, and AKShare / AKTools data infrastructure.
-- `Roadmap`: shown as the reconstructed product direction, not as a live production claim, such as REITs, convertible bonds, issuance calendars, official disclosure aggregation, community opinions, Qlib backtesting, and portfolio optimization.
+- `Live`: real API or local product capability is available today, such as global core indices, A-share live stock quotes, fund NAVs, fund discovery/search, diagnostics, history, local holdings, watchlist, Yangjibao-style ledgers, P/L reports, risk reminders, text import, Resend email login, import, and export.
+- `Connectable`: the product shape is defined and can be wired to real data or stronger algorithms later, such as ETF / LOF topics, fund comparison, and AKShare / AKTools data infrastructure.
+- `Roadmap`: shown as the reconstructed product direction, not as a live production claim, such as REITs, convertible bonds, issuance calendars, official disclosure aggregation, community opinions, real screenshot OCR, platform authorization sync, whole-network user buy/sell rankings, live trading, Qlib backtesting, and portfolio optimization.
 
 All displayed data is for learning and reference only and is not investment advice.
 

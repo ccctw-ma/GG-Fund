@@ -13,6 +13,7 @@ const isPositiveNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
 const isNonNegativeNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0;
+const platforms = new Set(['manual', 'alipay', 'wechat', 'tiantian', 'xueqiu', 'other']);
 
 function validateHolding(value: unknown, index: number): Holding | string {
   if (!isRecord(value)) return `第 ${index + 1} 条持仓格式不正确`;
@@ -30,6 +31,10 @@ function validateHolding(value: unknown, index: number): Holding | string {
     fundName: value.fundName,
     shares: value.shares,
     costAmount: value.costAmount,
+    accountName: typeof value.accountName === 'string' ? value.accountName : undefined,
+    platform: typeof value.platform === 'string' && platforms.has(value.platform) ? value.platform as Holding['platform'] : undefined,
+    targetWeight: isNonNegativeNumber(value.targetWeight) ? value.targetWeight : undefined,
+    alertPercent: isNonNegativeNumber(value.alertPercent) ? value.alertPercent : undefined,
     purchaseDate: typeof value.purchaseDate === 'string' ? value.purchaseDate : undefined,
     note: typeof value.note === 'string' ? value.note : undefined,
     createdAt: value.createdAt,

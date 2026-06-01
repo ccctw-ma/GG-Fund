@@ -59,6 +59,8 @@ const validImportData = {
       fundName: '易方达消费行业股票',
       shares: 200,
       costAmount: 300,
+      accountName: '支付宝账本',
+      platform: 'alipay',
       createdAt: '2026-05-29T00:00:00.000Z',
       updatedAt: '2026-05-29T00:00:00.000Z',
     },
@@ -234,6 +236,8 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
   await expect(page.getByLabel('导出的本地数据')).toContainText('000001');
   await expect(page.getByRole('heading', { name: '我的持仓分析' })).toBeVisible();
   await expect(page.getByText('当前市值')).toBeVisible();
+  await expect(page.locator('#portfolio')).toContainText('今日估算收益');
+  await expect(page.locator('#portfolio')).toContainText('风险诊断');
   await expect(page.locator('.profile-card')).toContainText('未登录');
 });
 
@@ -248,7 +252,8 @@ test('imports, exports, and deletes local portfolio data', async ({ page }) => {
   });
 
   await expect(page.getByLabel('导出的本地数据')).toContainText('110022');
-  await expect(page.locator('#portfolio').getByText('易方达消费行业股票')).toBeVisible();
+  await expect(page.locator('.yb-holding-row').filter({ hasText: '易方达消费行业股票' })).toBeVisible();
+  await expect(page.locator('#portfolio')).toContainText('支付宝账本');
   await expect(page.getByText('华夏成长混合 000001')).toBeVisible();
 
   await page.getByRole('button', { name: '删除' }).click();

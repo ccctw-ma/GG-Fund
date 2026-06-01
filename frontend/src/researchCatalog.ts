@@ -54,6 +54,7 @@ export const researchCatalog = {
   assetNavigation: [
     { title: '全球核心指数', description: 'A 股、港股、美股核心指数构成实时市场雷达。', status: 'live', sourceHint: '东方财富 push2 / 腾讯行情备用源', icon: BarChart3 },
     { title: '基金与 A 股行情', description: '基金搜索、盘中估算、A 股实时价格、历史净值曲线与自选。', status: 'live', sourceHint: '天天基金 / 东方财富 / 腾讯证券', icon: LineChart },
+    { title: '养基账本', description: '多平台持仓、今日估算收益、盈亏报告、风险诊断、定投和止盈提醒。', status: 'live', sourceHint: '浏览器本地账本 + 实时行情计算', icon: WalletCards },
     { title: 'ETF / LOF', description: '借鉴集思录与基金门户的 ETF、LOF、指数基金专题入口。', status: 'connectable', sourceHint: 'ETF/LOF 专题数据源待产品化', icon: PieChart },
     { title: 'REITs', description: '面向基础设施公募 REITs 的价格、折溢价和公告观察。', status: 'roadmap', sourceHint: '交易所与集思录式专题', icon: Landmark },
     { title: '债券与可转债', description: '转债、新债、债券基金与低波动资产的候选池。', status: 'roadmap', sourceHint: '集思录 / 交易所公开数据', icon: Scale },
@@ -77,8 +78,12 @@ export const researchCatalog = {
       icon: WalletCards,
       capabilities: [
         { title: '本地持仓', description: '本地保存份额、成本、市值、收益和组合权重。', status: 'live' },
+        { title: '多平台账本', description: '支持支付宝、理财通、天天基金、雪球等来源的文本识别式导入。', status: 'live' },
+        { title: '盈亏周报/月报', description: '基于当前持仓自动生成今日估算收益、累计盈亏和贡献拆解。', status: 'live' },
+        { title: '风险与止盈提醒', description: '检查集中度、净值缺失、7 天赎回、目标权重偏离和教育型止盈线。', status: 'live' },
         { title: '自选观察', description: '关注基金但不计入持仓，适合买前跟踪。', status: 'live' },
-        { title: '定投计划', description: '按资金期限和风险等级生成教育型分批行动路线。', status: 'connectable' },
+        { title: '定投计划', description: '按当前投入成本和盈亏状态生成教育型分批行动路线。', status: 'live' },
+        { title: '截图 OCR 同步', description: '真实图片 OCR 和平台授权同步仍需后续接入，不伪造识别结果。', status: 'roadmap' },
       ],
     },
     {
