@@ -407,12 +407,26 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     return quoteFromEastmoneyDetail(await fetchJson(url), code);
   }
 
-  async function getEastmoneyHistory(code: string, pageSize = 30): Promise<FundHistoryPoint[]> {
-    const url = `https://api.fund.eastmoney.com/f10/lsjz?fundCode=${encodeURIComponent(code)}&pageIndex=1&pageSize=${pageSize}`;
-    return historyFromEastmoneyData(await fetchJson(url, {
+  async function getEastmoneyHistory(code: string, targetCount = 30): Promise<FundHistoryPoint[]> {
+    const headers = {
       'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
       referer: `https://fundf10.eastmoney.com/jjjz_${code}.html`,
-    }));
+    };
+    // 东方财富 lsjz 单页最多返回 20 条，需翻页累积才能覆盖更长区间。
+    const perPage = 20;
+    const pageCount = Math.min(Math.ceil(targetCount / perPage), 50);
+    const fetchPage = async (pageIndex: number) => {
+      const url = `https://api.fund.eastmoney.com/f10/lsjz?fundCode=${encodeURIComponent(code)}&pageIndex=${pageIndex}&pageSize=${perPage}`;
+      return historyFromEastmoneyData(await fetchJson(url, headers));
+    };
+    const pages = await Promise.all(
+      Array.from({ length: pageCount }, (_, index) => fetchPage(index + 1).catch(() => [])),
+    );
+    const byDate = new Map<string, FundHistoryPoint>();
+    for (const page of pages) {
+      for (const point of page) byDate.set(point.date, point);
+    }
+    return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
   }
 
   return {
