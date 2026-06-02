@@ -454,8 +454,13 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
   }
 
   async function getEastmoneyIndexHistory(code: string, limit = 120): Promise<FundHistoryPoint[]> {
-    const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${eastmoneySecidForIndex(code)}&fields1=f1&fields2=f51,f53&klt=101&fqt=0&end=20500101&lmt=${limit}`;
-    return historyFromEastmoneyKline(await fetchJson(url));
+    const secid = eastmoneySecidForIndex(code);
+    const headers = {
+      'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+      referer: 'https://quote.eastmoney.com/',
+    };
+    const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f53&klt=101&fqt=1&beg=0&end=20500101&rtntype=6&lmt=${limit}`;
+    return historyFromEastmoneyKline(await fetchJson(url, headers));
   }
 
   return {
