@@ -108,7 +108,8 @@ export default function App() {
   useEffect(() => {
     if (!storageReady) return;
     saveHoldings(holdings);
-    const codes = Array.from(new Set(holdings.map((holding) => holding.fundCode)));
+    // 仅对真实的 6 位基金代码请求行情；截图导入的占位代码（如 ALIPAY001）按持有金额估值，无需拉行情。
+    const codes = Array.from(new Set(holdings.map((holding) => holding.fundCode))).filter((code) => /^\d{6}$/.test(code));
     codes.forEach((code) => {
       api.getFund(code).then((quote) => setQuotes((current) => ({ ...current, [code]: quote }))).catch(() => undefined);
     });
