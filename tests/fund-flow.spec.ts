@@ -245,6 +245,18 @@ test('imports, exports, and deletes local portfolio data', async ({ page }) => {
   await page.goto('/');
 
   await page.getByRole('button', { name: /组合账户/ }).click();
+  await page.getByLabel('上传支付宝持仓文件').setInputFiles({
+    name: 'alipay-holdings.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('支付宝 000001 华夏成长混合 1000 1235 默认账本\n支付宝 110022 易方达消费行业股票 200 300 家庭账本'),
+  });
+
+  await expect(page.getByLabel('导出的本地数据')).toContainText('alipay');
+  await expect(page.getByLabel('导出的本地数据')).toContainText('000001');
+  await expect(page.locator('#settings')).toContainText('已读取 alipay-holdings.csv');
+  await expect(page.locator('#portfolio')).toContainText('支付宝');
+  await expect(page.locator('#portfolio')).toContainText('家庭账本');
+
   await page.getByLabel('导入 JSON 备份').setInputFiles({
     name: 'portfolio.json',
     mimeType: 'application/json',

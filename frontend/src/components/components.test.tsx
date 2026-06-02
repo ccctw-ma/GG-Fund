@@ -8,7 +8,7 @@ import { BeginnerGuide } from './BeginnerGuide';
 import { FundSearch } from './FundSearch';
 import { MarketOverview } from './MarketOverview';
 import { PortfolioPanel } from './PortfolioPanel';
-import { SettingsPanel } from './SettingsPanel';
+import { SettingsPanel, buildRecognizedImport } from './SettingsPanel';
 import { ToolUniverse } from './ToolUniverse';
 
 const fund = { code: '000001', name: '华夏成长混合', netValue: 1.35, quoteDate: '2026-05-29', quoteType: 'estimate' as const, source: 'test' };
@@ -121,6 +121,8 @@ describe('dashboard components', () => {
     expect(portfolio.container.textContent).toContain('多平台账本');
     expect(portfolio.container.textContent).toContain('智能定投 / 目标止盈');
     expect(settings.container.textContent).toContain('多平台导入助手');
+    expect(settings.container.textContent).toContain('上传支付宝持仓文件或截图');
+    expect(settings.container.textContent).toContain('浏览器本地 OCR');
     expect(settings.container.textContent).toContain('Cloudflare Worker / OpenNext');
     expect(settings.container.textContent).toContain('Resend');
     expect(settings.container.textContent).toContain('D1');
@@ -195,6 +197,52 @@ describe('dashboard components', () => {
       '可接入',
       '路线图',
     ].forEach((text) => expect(universe.container.textContent).toContain(text));
+  });
+
+  it('recognizes Alipay holding text into importable local portfolio JSON', () => {
+    const importText = buildRecognizedImport([
+      '支付宝 000001 华夏成长混合 1,000.00 1,235.50 默认账本',
+      '支付宝 110022 易方达消费行业股票 200 300 家庭账本',
+    ].join('\n'), 'alipay');
+    const parsed = JSON.parse(importText) as { holdings: Array<{ fundCode: string; fundName: string; shares: number; costAmount: number; platform: string; accountName: string }> };
+
+    expect(parsed.holdings).toHaveLength(2);
+    expect(parsed.holdings[0]).toMatchObject({
+      fundCode: '000001',
+      fundName: '华夏成长混合',
+      shares: 1000,
+      costAmount: 1235.5,
+      platform: 'alipay',
+      accountName: '默认账本',
+    });
+    expect(parsed.holdings[1]).toMatchObject({ fundCode: '110022', accountName: '家庭账本' });
+  });
+
+  it('recognizes an uploaded Alipay screenshot through the OCR reader', async () => {
+    let imported = '';
+    const ocrText = '支付宝 161725 招商中证白酒指数 500 420 默认账本';
+    const settings = render(
+      <SettingsPanel
+        exportText="{}"
+        onImport={(text) => { imported = text; }}
+        ocrReader={async () => ocrText}
+      />,
+    );
+    roots.push(settings.root);
+
+    const input = settings.container.querySelector('input[aria-label="上传支付宝持仓文件"]') as HTMLInputElement;
+    const file = new File([new Uint8Array([1, 2, 3])], 'alipay.png', { type: 'image/png' });
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+
+    await act(async () => {
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const parsed = JSON.parse(imported) as { holdings: Array<{ fundCode: string; platform: string }> };
+    expect(parsed.holdings[0]).toMatchObject({ fundCode: '161725', platform: 'alipay' });
+    expect(settings.container.textContent).toContain('已识别截图');
   });
 
   it('exposes a complete typed research catalog with live and roadmap capabilities', () => {

@@ -429,6 +429,42 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   font-weight: 800;
   line-height: 1.65;
 }
+.settings-upload-strip {
+  display: grid;
+  gap: 8px;
+  border: 1px dashed rgba(125,226,184,.32);
+  border-radius: 1.35rem;
+  background: rgba(2,12,22,.72);
+  padding: 14px;
+}
+.settings-upload-strip label {
+  display: grid;
+  gap: 10px;
+  color: var(--text-strong);
+  font-size: .92rem;
+  font-weight: 950;
+}
+.settings-upload-strip input {
+  width: 100%;
+  color: var(--text-main);
+  font-size: .82rem;
+  font-weight: 850;
+}
+.settings-upload-strip input::file-selector-button {
+  margin-right: 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(125,226,184,.9);
+  color: #062018;
+  padding: 8px 12px;
+  font-weight: 950;
+}
+.settings-upload-strip small {
+  color: var(--text-muted);
+  font-size: .78rem;
+  font-weight: 800;
+  line-height: 1.5;
+}
 .settings-import-button {
   justify-self: start;
   border: 0;
@@ -439,6 +475,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   font-size: .86rem;
   font-weight: 950;
   box-shadow: 0 14px 32px rgba(244,183,64,.18);
+}
+.settings-import-notice {
+  border: 1px solid rgba(125,226,184,.22);
+  border-radius: 1rem;
+  background: rgba(125,226,184,.1);
+  padding: 10px 12px;
+  color: var(--mint) !important;
+  font-size: .82rem !important;
+  font-weight: 900 !important;
 }
 .settings-disclaimer {
   margin: 20px 0 0;
