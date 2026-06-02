@@ -15,7 +15,25 @@ const signalFragments = [
   { text: 'position.trace', className: 'radar-fragment radar-fragment-e' },
 ];
 
-export function FundTrendChart({ history }: { history: FundHistoryPoint[] }) {
+export function FundTrendChart({
+  history,
+  kicker = 'Fund Signal Matrix',
+  title = '基金分析走势图',
+  valueName = '单位净值',
+  valueAxisName = '净值',
+  emptyHint = '暂无历史净值数据，选择其他基金或稍后重试。',
+  loading = false,
+  testId = 'fund-chart',
+}: {
+  history: FundHistoryPoint[];
+  kicker?: string;
+  title?: string;
+  valueName?: string;
+  valueAxisName?: string;
+  emptyHint?: string;
+  loading?: boolean;
+  testId?: string;
+}) {
   const [range, setRange] = useState<FundRange>('1M');
   const visible = useMemo(() => selectHistoryRange(history, range), [history, range]);
   const metrics = useMemo(() => calculateFundMetrics(visible), [visible]);
@@ -24,7 +42,7 @@ export function FundTrendChart({ history }: { history: FundHistoryPoint[] }) {
   const trendTone = metrics.summary.totalReturn >= 0 ? '趋势增强' : '风险收缩';
 
   if (history.length === 0) {
-    return <div className="mt-5 rounded-[1.4rem] bg-[#fffaf0]/70 p-6 text-sm font-semibold text-ink/55">暂无历史净值数据，选择其他基金或稍后重试。</div>;
+    return <div className="mt-5 rounded-[1.4rem] bg-[#fffaf0]/70 p-6 text-sm font-semibold text-ink/55">{loading ? '正在加载历史数据…' : emptyHint}</div>;
   }
 
   const option = {
@@ -44,7 +62,7 @@ export function FundTrendChart({ history }: { history: FundHistoryPoint[] }) {
     legend: {
       top: 10,
       right: 18,
-      data: ['单位净值', '区间收益%', '回撤%'],
+      data: [valueName, '区间收益%', '回撤%'],
       textStyle: { color: '#9eb1c7', fontWeight: 800 },
       itemWidth: 18,
       itemHeight: 8,
@@ -73,7 +91,7 @@ export function FundTrendChart({ history }: { history: FundHistoryPoint[] }) {
     yAxis: [
       {
         type: 'value',
-        name: '净值',
+        name: valueAxisName,
         scale: true,
         nameTextStyle: { color: '#9eb1c7', fontWeight: 800 },
         axisLabel: { color: '#6f8095', fontWeight: 700 },
@@ -89,7 +107,7 @@ export function FundTrendChart({ history }: { history: FundHistoryPoint[] }) {
     ],
     series: [
       {
-        name: '单位净值',
+        name: valueName,
         type: 'line',
         smooth: true,
         symbol: 'circle',
@@ -134,15 +152,15 @@ export function FundTrendChart({ history }: { history: FundHistoryPoint[] }) {
   };
 
   return (
-    <div className="fund-analysis-radar mt-5" data-testid="fund-chart" aria-label="历史净值研究图">
+    <div className="fund-analysis-radar mt-5" data-testid={testId} aria-label="历史净值研究图">
       <div className="radar-grid" aria-hidden="true" />
       <div className="radar-scanline" aria-hidden="true" />
       {signalFragments.map((item) => <span key={item.text} className={item.className} aria-hidden="true">{item.text}</span>)}
       <div className="radar-header">
         <div>
-          <span className="section-kicker">Fund Signal Matrix</span>
-          <h4>基金分析走势图</h4>
-          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · 净值 / 收益 / 回撤同屏监控</p>
+          <span className="section-kicker">{kicker}</span>
+          <h4>{title}</h4>
+          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · {valueAxisName} / 收益 / 回撤同屏监控</p>
         </div>
         <div className="radar-range-tabs" aria-label="走势图时间范围">
           {ranges.map((item) => <Button key={item} size="sm" variant={item === range ? 'default' : 'secondary'} onClick={() => setRange(item)}>{item}</Button>)}

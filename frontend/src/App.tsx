@@ -345,12 +345,8 @@ export default function App() {
 
           {activePage === 'workspace' && (
             <section className="workspace-section" id="workspace" aria-labelledby="workspace-title">
-              <div className="workspace-heading">
-                <div>
-                  <span className="section-kicker">Live Workspace</span>
-                  <h2 id="workspace-title">中国基金行情</h2>
-                  <p>实时查看全球核心指数、搜索基金或A股股票、添加自选或持仓，并用新手决策地图快速判断下一步动作。</p>
-                </div>
+              <div className="workspace-heading workspace-heading-compact">
+                <h2 id="workspace-title" className="sr-only">中国基金行情</h2>
                 <button type="button" className="ghost-cta" onClick={() => changePage('portfolio')}><BarChart3 className="h-4 w-4" /> 查看组合</button>
               </div>
               <div className="banking-grid">

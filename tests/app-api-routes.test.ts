@@ -7,6 +7,7 @@ const {
 } = vi.hoisted(() => ({
   marketService: {
     getIndices: vi.fn(),
+    getIndexHistory: vi.fn(),
     searchFunds: vi.fn(),
     getFund: vi.fn(),
     getFundHistory: vi.fn(),
@@ -40,6 +41,7 @@ import { GET as searchFunds } from '../app/api/funds/search/route';
 import { GET as getTrendingFunds } from '../app/api/funds/trending/route';
 import { GET as getHealth } from '../app/api/health/route';
 import { GET as getIndices } from '../app/api/market/indices/route';
+import { GET as getIndexHistory } from '../app/api/market/indices/[code]/history/route';
 import { GET as getDefaultPortfolio, PUT as syncDefaultPortfolio } from '../app/api/portfolio/default/route';
 
 class FakePrepared {
@@ -180,6 +182,7 @@ const buildAnalyzeFundResponseMock = vi.mocked(buildAnalyzeFundResponse);
 
 function resetMarketServiceMocks() {
   marketService.getIndices.mockReset();
+  marketService.getIndexHistory.mockReset();
   marketService.searchFunds.mockReset();
   marketService.getFund.mockReset();
   marketService.getFundHistory.mockReset();
@@ -283,6 +286,30 @@ describe('app api routes', () => {
     expect(response.status).toBe(502);
     await expect(response.json()).resolves.toEqual({
       error: { code: 'UPSTREAM_ERROR', message: 'Cloudflare 后端服务暂不可用，请稍后重试' },
+    });
+  });
+
+  it('reads code and range params before returning index history', async () => {
+    marketService.getIndexHistory.mockResolvedValueOnce([{ date: '2026-05-29', netValue: 3128.42 }]);
+
+    const response = await getIndexHistory(new Request('https://example.com/api/market/indices/000001.SH/history?range=all'), {
+      params: Promise.resolve({ code: '000001.SH' }),
+    });
+
+    expect(marketService.getIndexHistory).toHaveBeenCalledWith('000001.SH', 'all');
+    await expect(response.json()).resolves.toEqual([{ date: '2026-05-29', netValue: 3128.42 }]);
+  });
+
+  it('maps HttpErrors from index history lookups', async () => {
+    marketService.getIndexHistory.mockRejectedValueOnce(new HttpError(400, 'INDEX_CODE_INVALID', '指数代码格式不正确'));
+
+    const response = await getIndexHistory(new Request('https://example.com/api/market/indices/bad/history'), {
+      params: Promise.resolve({ code: 'bad' }),
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'INDEX_CODE_INVALID', message: '指数代码格式不正确' },
     });
   });
 

@@ -38,6 +38,12 @@ export function createMarketService(options: MarketServiceOptions) {
     async getIndices(): Promise<IndexQuote[]> {
       return marketData.getIndices();
     },
+    async getIndexHistory(code: string, range = '1m'): Promise<FundHistoryPoint[]> {
+      if (!/^[A-Za-z0-9]{1,8}\.[A-Z]{2}$/.test(code)) {
+        throw new HttpError(400, 'INDEX_CODE_INVALID', '指数代码格式不正确');
+      }
+      return marketData.getIndexHistory(code, range);
+    },
     async searchFunds(query: string): Promise<FundQuote[]> {
       return marketData.searchFunds(normalizeQuery(query));
     },

@@ -274,6 +274,24 @@ describe('market data service', () => {
     expect(capturedReferers.every((referer) => referer === 'https://fundf10.eastmoney.com/jjjz_000001.html')).toBe(true);
   });
 
+  it('parses index kline history and maps the secid by market', async () => {
+    let capturedUrl = '';
+    const service = createMarketDataService({
+      fetchJson: async (url) => {
+        capturedUrl = url;
+        return { data: { klines: ['2026-05-27,3100.10', '2026-05-28,3128.42'] } };
+      },
+    });
+
+    const history = await service.getIndexHistory('000001.SH', 'all');
+
+    expect(capturedUrl).toContain('secid=1.000001');
+    expect(history).toEqual([
+      { date: '2026-05-27', netValue: 3100.1 },
+      { date: '2026-05-28', netValue: 3128.42 },
+    ]);
+  });
+
   it('caches index data within the ttl', async () => {
     let calls = 0;
     const service = createMarketDataService({

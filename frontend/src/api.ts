@@ -78,6 +78,7 @@ export const api = {
   },
   hasSessionToken: () => Boolean(getSessionToken()),
   getIndices: () => getJson<IndexQuote[]>('/api/market/indices'),
+  getIndexHistory: (code: string, range = '1y') => getJson<FundHistoryPoint[]>(`/api/market/indices/${encodeURIComponent(code)}/history?range=${encodeURIComponent(range)}`),
   searchFunds: (query: string) => getJson<FundQuote[]>(`/api/funds/search?q=${encodeURIComponent(query)}`),
   getFund: (code: string) => getJson<FundQuote>(`/api/funds/${code}`),
   getFundHistory: (code: string, range = '1y') => getJson<FundHistoryPoint[]>(`/api/funds/${code}/history?range=${encodeURIComponent(range)}`),

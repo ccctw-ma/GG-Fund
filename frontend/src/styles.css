@@ -358,6 +358,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .yb-signal strong, .yb-signal span { display: block; }
 .yb-signal strong { color: var(--text-strong); font-size: .9rem; font-weight: 950; }
 .yb-signal span { margin-top: 4px; color: var(--text-main); font-size: .82rem; font-weight: 760; line-height: 1.55; }
+.yb-holding-wrap {
+  display: grid;
+  gap: 12px;
+}
+.yb-holding-wrap .radar-chart-frame,
+.yb-holding-wrap .fund-analysis-radar {
+  margin-top: 0;
+}
 .yb-holding-row {
   display: grid;
   gap: 14px;

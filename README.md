@@ -118,6 +118,7 @@ CI 依赖安装通过 `scripts/ci-install.sh` 执行 `npm ci --include=optional 
 
 - `GET /api/health`
 - `GET /api/market/indices`
+- `GET /api/market/indices/:code/history?range=1m|3m|6m|1y|all`
 - `GET /api/funds/search?q=消费`
 - `GET /api/funds/:code`
 - `GET /api/funds/:code/history?range=1m|3m|6m|1y|all`

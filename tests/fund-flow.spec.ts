@@ -51,6 +51,14 @@ const fundHistoryFixture = [
   { date: '2026-05-29', netValue: 1.235 },
 ];
 
+const indexHistoryFixture = [
+  { date: '2026-02-03', netValue: 3010.12 },
+  { date: '2026-03-31', netValue: 3055.48 },
+  { date: '2026-04-30', netValue: 3098.21 },
+  { date: '2026-05-15', netValue: 3112.66 },
+  { date: '2026-05-29', netValue: 3128.42 },
+];
+
 const validImportData = {
   holdings: [
     {
@@ -122,6 +130,13 @@ test.beforeEach(async ({ page }) => {
     await route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify(marketIndicesFixture),
+    });
+  });
+
+  await page.route('**/api/market/indices/*/history?*', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(indexHistoryFixture),
     });
   });
 
@@ -209,11 +224,12 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
   await expect(page.getByText('AKShare / AKTools').first()).toBeVisible();
 
   await page.getByRole('button', { name: /行情工作台/ }).click();
-  await expect(page.getByRole('heading', { name: '中国基金行情' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '中国基金行情' })).toBeAttached();
   await expect(page.getByRole('heading', { name: '全球市场雷达' })).toBeVisible();
   await expect(page.locator('#markets')).toContainText('上证指数');
   await expect(page.locator('#markets')).toContainText('3128.42');
   await expect(page.getByTestId('market-chart').locator('svg')).toBeVisible();
+  await expect(page.getByTestId('index-chart')).toBeVisible();
 
   await page.getByLabel('基金、股票代码或名称').fill('000001');
   await page.getByRole('button', { name: '搜索' }).click();
@@ -223,7 +239,7 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
   await expect(page.locator('#funds')).toContainText('日涨跌：0.86%');
   await expect(page.locator('#funds')).toContainText('1.2350');
   await expect(page.getByTestId('fund-chart')).toBeVisible();
-  await expect(page.getByText(/区间收益/)).toBeVisible();
+  await expect(page.getByTestId('fund-chart').getByText(/区间收益/)).toBeVisible();
 
   const beginnerGuide = page.locator('[aria-labelledby="beginner-guide-title"]');
   await expect(beginnerGuide).toContainText('华夏成长混合 当前净值');

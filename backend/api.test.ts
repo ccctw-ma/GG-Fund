@@ -102,6 +102,7 @@ const env = () => ({
 
 const marketData = {
   getIndices: async () => [{ code: '000001.SH', name: '上证指数', value: 4098.64, change: 4.91, changePercent: 0.12, quoteTime: '2026-05-28 15:56:54' }],
+  getIndexHistory: async () => [{ date: '2026-05-27', netValue: 4098.64 }],
   searchFunds: async () => [{ code: '000001', name: '华夏成长混合', netValue: 1.333, officialNetValue: 1.333, quoteDate: '2026-05-27', quoteType: 'official' as const, source: '东方财富搜索接口' }],
   getFundHistory: async () => [{ date: '2026-05-27', netValue: 1.333 }],
   getTrendingFunds: async () => [],

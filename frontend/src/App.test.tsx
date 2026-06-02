@@ -9,6 +9,7 @@ const fund = { code: '000001', name: '华夏成长混合', netValue: 1.35, quote
 vi.mock('./api', () => ({
   api: {
     getIndices: vi.fn(async () => [{ code: '000001.SH', name: '上证指数', value: 4098.64, change: 4.91, changePercent: 0.12, quoteTime: '2026-05-29 15:00:00' }]),
+    getIndexHistory: vi.fn(async () => [{ date: '2026-05-29', netValue: 4098.64 }]),
     getTrendingFunds: vi.fn(async () => [fund]),
     searchFunds: vi.fn(async () => [fund]),
     getFund: vi.fn(async () => fund),

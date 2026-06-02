@@ -1,11 +1,13 @@
 'use client';
 
-import { BellRing, Check, ClipboardList, Pencil, PieChart, Radar, Repeat2, Trash2, WalletCards, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import type { PortfolioItem, PortfolioSignal, PortfolioSummary, WatchItem } from '../types';
+import { BellRing, Check, ChevronDown, ClipboardList, LineChart, Pencil, PieChart, Radar, Repeat2, Trash2, WalletCards, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { api } from '../api';
+import type { FundHistoryPoint, PortfolioItem, PortfolioSignal, PortfolioSummary, WatchItem } from '../types';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { FundTrendChart } from './FundTrendChart';
 
 const money = new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' });
 
@@ -44,7 +46,33 @@ export function PortfolioPanel({
   const [editingId, setEditingId] = useState<string>();
   const [editValue, setEditValue] = useState('');
   const [editCost, setEditCost] = useState('');
+  const [expandedId, setExpandedId] = useState<string>();
+  const [historyMap, setHistoryMap] = useState<Record<string, FundHistoryPoint[]>>({});
   const sortedItems = useMemo(() => sortItems(summary.items, sortKey), [summary.items, sortKey]);
+
+  const expandedItem = useMemo(() => summary.items.find((item) => item.id === expandedId), [summary.items, expandedId]);
+  const expandedCode = expandedItem && /^\d{6}$/.test(expandedItem.fundCode) ? expandedItem.fundCode : undefined;
+  const expandedHistory = expandedCode ? historyMap[expandedCode] ?? [] : [];
+  const expandedLoading = Boolean(expandedCode) && historyMap[expandedCode ?? ''] === undefined;
+
+  useEffect(() => {
+    if (!expandedCode || historyMap[expandedCode] !== undefined) return;
+    let cancelled = false;
+    api.getFundHistory(expandedCode, 'all')
+      .then((points) => {
+        if (!cancelled) setHistoryMap((current) => ({ ...current, [expandedCode]: points }));
+      })
+      .catch(() => {
+        if (!cancelled) setHistoryMap((current) => ({ ...current, [expandedCode]: [] }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [expandedCode, historyMap]);
+
+  function toggleExpand(id: string) {
+    setExpandedId((current) => (current === id ? undefined : id));
+  }
 
   function startEdit(item: PortfolioItem) {
     setEditingId(item.id);
@@ -136,11 +164,15 @@ export function PortfolioPanel({
             </div>
           </div>
           <div className="mt-3 grid gap-3">
-            {sortedItems.map((item) => (
-              <article className="yb-holding-row" key={item.id}>
+            {sortedItems.map((item) => {
+              const hasCode = /^\d{6}$/.test(item.fundCode);
+              const isExpanded = expandedId === item.id;
+              return (
+              <div key={item.id} className="yb-holding-wrap">
+              <article className="yb-holding-row">
                 <div>
                   <strong className="yb-holding-name">{item.fundName}</strong>
-                  <small className="yb-holding-meta">{/^\d{6}$/.test(item.fundCode) ? item.fundCode : '自填持仓'}{item.shares ? ` · 份额 ${item.shares}` : ''}</small>
+                  <small className="yb-holding-meta">{hasCode ? item.fundCode : '自填持仓'}{item.shares ? ` · 份额 ${item.shares}` : ''}</small>
                 </div>
                 {editingId === item.id ? (
                   <div className="yb-holding-edit">
@@ -170,12 +202,29 @@ export function PortfolioPanel({
                   </div>
                 ) : (
                   <div className="yb-holding-actions">
+                    {hasCode && (
+                      <Button variant="ghost" size="sm" aria-expanded={isExpanded} aria-label={`${item.fundName} 走势`} onClick={() => toggleExpand(item.id)}>
+                        <LineChart className="h-4 w-4" />走势<ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                      </Button>
+                    )}
                     <Button variant="ghost" size="sm" onClick={() => startEdit(item)}><Pencil className="h-4 w-4" />编辑</Button>
                     <Button variant="ghost" size="sm" onClick={() => onRemoveHolding(item.id)}><Trash2 className="h-4 w-4" />删除</Button>
                   </div>
                 )}
               </article>
-            ))}
+              {isExpanded && hasCode && (
+                <FundTrendChart
+                  history={expandedHistory}
+                  loading={expandedLoading}
+                  testId="holding-chart"
+                  kicker="Holding Signal Matrix"
+                  title={`${item.fundName} 净值走势`}
+                  emptyHint="暂无该基金的历史净值，稍后重试。"
+                />
+              )}
+              </div>
+              );
+            })}
           </div>
         </>
       )}

@@ -4,6 +4,7 @@ import { createLocalCloudflareEnv } from './local';
 
 const marketData = {
   getIndices: async () => [],
+  getIndexHistory: async () => [],
   searchFunds: async () => [{ code: '000001', name: '华夏成长混合', netValue: 1.333, quoteDate: '2026-05-29', quoteType: 'official' as const, source: 'test' }],
   getFundHistory: async () => [],
   getTrendingFunds: async () => [],

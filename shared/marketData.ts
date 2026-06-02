@@ -318,6 +318,30 @@ function historyFromEastmoneyData(data: unknown): FundHistoryPoint[] {
     .reverse();
 }
 
+function historyFromEastmoneyKline(data: unknown): FundHistoryPoint[] {
+  if (typeof data !== 'object' || data === null) return [];
+  const root = data as { data?: unknown };
+  if (typeof root.data !== 'object' || root.data === null) return [];
+  const klines = (root.data as { klines?: unknown }).klines;
+  if (!Array.isArray(klines)) return [];
+  return klines
+    .map((line) => {
+      if (typeof line !== 'string') return undefined;
+      const [date, close] = line.split(',');
+      const netValue = toNumber(close);
+      if (!date || netValue === undefined) return undefined;
+      return { date, netValue };
+    })
+    .filter((item): item is FundHistoryPoint => Boolean(item));
+}
+
+function eastmoneySecidForIndex(code: string): string {
+  const [rawCode, market] = code.split('.');
+  if (market === 'SH') return `1.${rawCode}`;
+  if (market === 'SZ') return `0.${rawCode}`;
+  return `100.${rawCode}`;
+}
+
 async function defaultFetchText(url: string, headers?: Record<string, string>): Promise<string> {
   const response = await fetch(url, { headers: { 'user-agent': 'GG-Fund/0.1', ...headers } });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -429,6 +453,11 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
   }
 
+  async function getEastmoneyIndexHistory(code: string, limit = 120): Promise<FundHistoryPoint[]> {
+    const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${eastmoneySecidForIndex(code)}&fields1=f1&fields2=f51,f53&klt=101&fqt=0&end=20500101&lmt=${limit}`;
+    return historyFromEastmoneyKline(await fetchJson(url));
+  }
+
   return {
     async getIndices(): Promise<IndexQuote[]> {
       return cached('indices', 60_000, async () => {
@@ -437,6 +466,19 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
         } catch {
           return fallbackIndices;
         }
+      });
+    },
+    async getIndexHistory(code: string, range = '1m'): Promise<FundHistoryPoint[]> {
+      const normalizedRange = String(range).toLowerCase();
+      const limit = normalizedRange === 'all' ? 1200 : normalizedRange === '1y' ? 260 : normalizedRange === '6m' ? 130 : normalizedRange === '3m' ? 70 : 30;
+      return cached(`index-history:${code}:${limit}`, 86_400_000, async () => {
+        try {
+          const history = await getEastmoneyIndexHistory(code, limit);
+          if (history.length > 0) return history;
+        } catch {
+          // fall through to empty history
+        }
+        return [];
       });
     },
     async searchFunds(query: string): Promise<FundQuote[]> {

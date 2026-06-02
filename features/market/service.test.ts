@@ -7,6 +7,7 @@ const buildService = () =>
       getIndices: async () => [
         { code: '000001.SH', name: '上证指数', value: 3200, change: 10, changePercent: 0.31, quoteTime: '2026-05-30 15:00:00' },
       ],
+      getIndexHistory: async (_code: string, range: string) => [{ date: `index-range:${range}`, netValue: 3200 }],
       searchFunds: async (query: string) => [
         { code: '000001', name: `基金-${query}`, netValue: 1.23, quoteDate: '2026-05-30', quoteType: 'official' as const, source: 'test-search' },
       ],
@@ -49,10 +50,20 @@ describe('market service', () => {
     ]);
   });
 
+  it('reads index history and validates index codes', async () => {
+    const service = buildService();
+
+    await expect(service.getIndexHistory('000001.SH', 'all')).resolves.toEqual([
+      { date: 'index-range:all', netValue: 3200 },
+    ]);
+    await expect(service.getIndexHistory('not-a-code')).rejects.toThrow('指数代码格式不正确');
+  });
+
   it('prefers cached non-fallback fund quotes', async () => {
     const service = createMarketService({
       marketData: {
         getIndices: async () => [],
+        getIndexHistory: async () => [],
         searchFunds: async () => [],
         getFund: async () => {
           throw new Error('should not call upstream');

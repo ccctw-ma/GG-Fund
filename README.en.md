@@ -118,6 +118,7 @@ Default smoke endpoints:
 
 - `GET /api/health`
 - `GET /api/market/indices`
+- `GET /api/market/indices/:code/history?range=1m|3m|6m|1y|all`
 - `GET /api/funds/search?q=消费`
 - `GET /api/funds/:code`
 - `GET /api/funds/:code/history?range=1m|3m|6m|1y|all`
