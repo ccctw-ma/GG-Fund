@@ -23,6 +23,7 @@ import { SettingsPanel } from './components/SettingsPanel';
 import { ToolUniverse } from './components/ToolUniverse';
 import type { WorkspacePage } from './components/Header';
 import { calculatePortfolioSummary } from './portfolio';
+import { backfillHoldingCodes } from './holdingCodes';
 import { exportLocalData, loadHoldings, loadWatchlist, parseImportedData, saveHoldings, saveWatchlist } from './storage';
 import type { FundHistoryPoint, FundQuote, Holding, IndexQuote, WatchItem } from './types';
 
@@ -221,6 +222,14 @@ export default function App() {
     setImportError(undefined);
     setHoldings(result.data.holdings);
     setWatchlist(result.data.watchlist);
+    // 截图导入的持仓没有真实基金代码，按名称自动补全 6 位代码，让持仓明细可看走势。
+    backfillHoldingCodes(result.data.holdings, api.searchFunds, nowIso)
+      .then((resolved) => {
+        setHoldings((current) =>
+          current.map((holding) => resolved.find((item) => item.id === holding.id) ?? holding),
+        );
+      })
+      .catch(() => undefined);
   }
 
   async function logout() {
