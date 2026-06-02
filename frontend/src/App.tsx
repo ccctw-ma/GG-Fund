@@ -151,7 +151,7 @@ export default function App() {
     setFundLoading(true);
     setFundError(undefined);
     try {
-      const [fund, nextHistory] = await Promise.all([api.getFund(code), api.getFundHistory(code)]);
+      const [fund, nextHistory] = await Promise.all([api.getFund(code), api.getFundHistory(code, 'all')]);
       setSelectedFund(fund);
       setQuotes((current) => ({ ...current, [fund.code]: fund }));
       setHistory(nextHistory);
