@@ -13,6 +13,7 @@ vi.mock('./api', () => ({
     searchFunds: vi.fn(async () => [fund]),
     getFund: vi.fn(async () => fund),
     getFundHistory: vi.fn(async () => [{ date: '2026-05-29', netValue: 1.35 }]),
+    syncPortfolio: vi.fn(async () => ({})),
     hasSessionToken: vi.fn(() => false),
     getCurrentUser: vi.fn(async () => undefined),
     logout: vi.fn(),
@@ -83,7 +84,7 @@ describe('App', () => {
     expect(container.textContent).not.toContain('发送验证码');
     expect(container.textContent).not.toContain('OTP / OAuth 登录');
     expect(container.textContent).toContain('组合账户');
-    expect(container.textContent).toContain('自选列表');
+    expect(container.textContent).toContain('自选基金');
 
     clickButton('总览');
     const heroSection = container.querySelector('.landing-hero');

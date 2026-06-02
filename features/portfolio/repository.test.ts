@@ -52,9 +52,22 @@ class FakeD1 {
       this.portfolios.push({ id: params[0], userId: params[1], name: params[2], createdAt: params[3], updatedAt: params[4] });
       return;
     }
+    if (sql.includes('update portfolios set updated_at')) {
+      const target = this.portfolios.find((item) => item.id === params[1]);
+      if (target) target.updatedAt = params[0];
+      return;
+    }
+    if (sql.includes('delete from holdings')) {
+      this.holdings = this.holdings.filter((item) => item.portfolioId !== params[0]);
+      return;
+    }
+    if (sql.includes('delete from watchlist')) {
+      this.watchlist = this.watchlist.filter((item) => item.portfolioId !== params[0]);
+      return;
+    }
     if (sql.includes('insert into holdings')) {
       const existing = this.holdings.find((item) => item.portfolioId === params[1] && item.fundCode === params[2]);
-      const next = { id: params[0], portfolioId: params[1], fundCode: params[2], fundName: params[3], shares: params[4], costAmount: params[5], purchaseDate: params[6], note: params[7], createdAt: params[8], updatedAt: params[9] };
+      const next = { id: params[0], portfolioId: params[1], fundCode: params[2], fundName: params[3], shares: params[4], costAmount: params[5], recordedMarketValue: params[6], purchaseDate: params[7], note: params[8], createdAt: params[9], updatedAt: params[10] };
       if (existing) Object.assign(existing, next, { id: existing.id, createdAt: existing.createdAt });
       else this.holdings.push(next);
       return;
@@ -104,5 +117,24 @@ describe('portfolio repository', () => {
       holdings: [expect.objectContaining({ fundCode: '000001', note: '核心持仓' })],
       watchlist: [expect.objectContaining({ fundCode: '110022' })],
     });
+  });
+
+  it('replaces the snapshot with recorded market values', async () => {
+    const db = new FakeD1();
+    const repository = createPortfolioRepository(db as never, () => '2026-05-30T00:00:00.000Z');
+    const portfolio = await repository.ensureDefaultPortfolio();
+
+    await repository.addHolding(portfolio.id, { fundCode: '000001', fundName: '旧持仓', shares: 100, costAmount: 120 });
+
+    await repository.replaceSnapshot(
+      portfolio.id,
+      [{ fundCode: 'ALIPAY001', fundName: '支付宝自填持仓', costAmount: 8000, recordedMarketValue: 8500 }],
+      [{ fundCode: '110022', fundName: '易方达消费行业股票' }],
+    );
+
+    const snapshot = await repository.getSnapshot(portfolio.id);
+    expect(snapshot.holdings).toHaveLength(1);
+    expect(snapshot.holdings[0]).toEqual(expect.objectContaining({ fundCode: 'ALIPAY001', recordedMarketValue: 8500 }));
+    expect(snapshot.watchlist).toEqual([expect.objectContaining({ fundCode: '110022' })]);
   });
 });

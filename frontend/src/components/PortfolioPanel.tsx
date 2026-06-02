@@ -1,7 +1,8 @@
 'use client';
 
-import { BellRing, ClipboardList, PieChart, Radar, Repeat2, Trash2, WalletCards } from 'lucide-react';
-import type { PortfolioSignal, PortfolioSummary, WatchItem } from '../types';
+import { BellRing, Check, ClipboardList, Pencil, PieChart, Radar, Repeat2, Trash2, WalletCards, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import type { PortfolioItem, PortfolioSignal, PortfolioSummary, WatchItem } from '../types';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -12,16 +13,58 @@ function signalClass(signal: PortfolioSignal) {
   return `yb-signal yb-signal-${signal.tone}`;
 }
 
+type SortKey = 'marketValue' | 'returnRate' | 'name';
+
+const sortOptions: Array<{ key: SortKey; label: string }> = [
+  { key: 'marketValue', label: '按市值' },
+  { key: 'returnRate', label: '按收益率' },
+  { key: 'name', label: '按名称' },
+];
+
+function sortItems(items: PortfolioItem[], key: SortKey) {
+  const next = [...items];
+  if (key === 'marketValue') return next.sort((a, b) => b.marketValue - a.marketValue);
+  if (key === 'returnRate') return next.sort((a, b) => b.returnRate - a.returnRate);
+  return next.sort((a, b) => a.fundName.localeCompare(b.fundName, 'zh-Hans-CN'));
+}
+
 export function PortfolioPanel({
   summary,
   watchlist,
   onRemoveHolding,
+  onUpdateHolding,
 }: {
   summary: PortfolioSummary;
   watchlist: WatchItem[];
   onRemoveHolding: (id: string) => void;
+  onUpdateHolding: (id: string, patch: { recordedMarketValue: number; costAmount: number }) => void;
 }) {
   const positive = summary.totalProfit >= 0;
+  const [sortKey, setSortKey] = useState<SortKey>('marketValue');
+  const [editingId, setEditingId] = useState<string>();
+  const [editValue, setEditValue] = useState('');
+  const [editCost, setEditCost] = useState('');
+  const sortedItems = useMemo(() => sortItems(summary.items, sortKey), [summary.items, sortKey]);
+
+  function startEdit(item: PortfolioItem) {
+    setEditingId(item.id);
+    setEditValue(item.marketValue.toFixed(2));
+    setEditCost(item.costAmount.toFixed(2));
+  }
+
+  function cancelEdit() {
+    setEditingId(undefined);
+    setEditValue('');
+    setEditCost('');
+  }
+
+  function commitEdit(id: string) {
+    const recordedMarketValue = Number(editValue);
+    const costAmount = Number(editCost);
+    if (!Number.isFinite(recordedMarketValue) || recordedMarketValue <= 0 || !Number.isFinite(costAmount) || costAmount < 0) return;
+    onUpdateHolding(id, { recordedMarketValue: Number(recordedMarketValue.toFixed(2)), costAmount: Number(costAmount.toFixed(2)) });
+    cancelEdit();
+  }
 
   return (
     <Card id="portfolio" className="lg:col-span-2">
@@ -75,25 +118,66 @@ export function PortfolioPanel({
       {summary.items.length === 0 ? (
         <div className="mt-5 rounded-[1.7rem] border border-dashed border-[#10251f]/18 p-8 text-center font-semibold text-ink/50">还没有持仓。搜索基金后点击“加入持仓”即可开始分析。</div>
       ) : (
-        <div className="mt-5 grid gap-3">
-          {summary.items.map((item) => (
-            <article className="yb-holding-row" key={item.id}>
-              <div>
-                <strong className="text-ink">{item.fundName}</strong>
-                <small>{item.fundCode.startsWith('ALIPAY') ? '截图导入' : item.fundCode}{item.shares ? ` · 份额 ${item.shares}` : ' · 按持有金额'} · {item.accountName ?? '默认账本'}</small>
-              </div>
-              <div>
-                <span className="font-black text-ink">{money.format(item.marketValue)}</span>
-                <small className={item.profit >= 0 ? 'block font-bold text-red-700' : 'block font-bold text-emerald-700'}>{money.format(item.profit)} / {item.returnRate.toFixed(2)}%</small>
-              </div>
-              <div>
-                <span className="font-black text-ink"><PieChart className="mr-1 inline h-4 w-4" />{item.weight.toFixed(1)}%</span>
-                <small>{item.quote ? `${item.quote.quoteDate} · 今日 ${money.format(item.estimatedDailyProfit)}` : item.quoteStatus === 'ok' ? '按截图金额' : '净值未知'}</small>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => onRemoveHolding(item.id)}><Trash2 className="h-4 w-4" />删除</Button>
-            </article>
-          ))}
-        </div>
+        <>
+          <div className="yb-holding-toolbar">
+            <span>持仓明细</span>
+            <div className="yb-sort-group" role="group" aria-label="持仓排序">
+              {sortOptions.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  className={option.key === sortKey ? 'yb-sort-chip is-active' : 'yb-sort-chip'}
+                  aria-pressed={option.key === sortKey}
+                  onClick={() => setSortKey(option.key)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mt-3 grid gap-3">
+            {sortedItems.map((item) => (
+              <article className="yb-holding-row" key={item.id}>
+                <div>
+                  <strong className="yb-holding-name">{item.fundName}</strong>
+                  <small className="yb-holding-meta">{/^\d{6}$/.test(item.fundCode) ? item.fundCode : '自填持仓'}{item.shares ? ` · 份额 ${item.shares}` : ''}</small>
+                </div>
+                {editingId === item.id ? (
+                  <div className="yb-holding-edit">
+                    <label>
+                      <span>持有金额</span>
+                      <input type="number" inputMode="decimal" min="0" step="0.01" value={editValue} onChange={(event) => setEditValue(event.target.value)} aria-label={`${item.fundName} 持有金额`} />
+                    </label>
+                    <label>
+                      <span>成本金额</span>
+                      <input type="number" inputMode="decimal" min="0" step="0.01" value={editCost} onChange={(event) => setEditCost(event.target.value)} aria-label={`${item.fundName} 成本金额`} />
+                    </label>
+                  </div>
+                ) : (
+                  <div>
+                    <span className="yb-holding-value">{money.format(item.marketValue)}</span>
+                    <small className={item.profit >= 0 ? 'yb-holding-profit-up' : 'yb-holding-profit-down'}>{money.format(item.profit)} / {item.returnRate.toFixed(2)}%</small>
+                  </div>
+                )}
+                <div>
+                  <span className="yb-holding-weight"><PieChart className="mr-1 inline h-4 w-4" />{item.weight.toFixed(1)}%</span>
+                  <small className="yb-holding-meta">{item.quote ? `${item.quote.quoteDate} · 今日 ${money.format(item.estimatedDailyProfit)}` : ''}</small>
+                </div>
+                {editingId === item.id ? (
+                  <div className="yb-holding-actions">
+                    <Button variant="ghost" size="sm" onClick={() => commitEdit(item.id)}><Check className="h-4 w-4" />保存</Button>
+                    <Button variant="ghost" size="sm" onClick={cancelEdit}><X className="h-4 w-4" />取消</Button>
+                  </div>
+                ) : (
+                  <div className="yb-holding-actions">
+                    <Button variant="ghost" size="sm" onClick={() => startEdit(item)}><Pencil className="h-4 w-4" />编辑</Button>
+                    <Button variant="ghost" size="sm" onClick={() => onRemoveHolding(item.id)}><Trash2 className="h-4 w-4" />删除</Button>
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+        </>
       )}
       <div className="mt-6 flex flex-wrap gap-2">
         <h3 className="mr-2 w-full text-lg font-black text-ink">自选基金</h3>

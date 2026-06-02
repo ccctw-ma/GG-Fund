@@ -62,3 +62,60 @@ export async function GET(request: Request) {
     return jsonError('PORTFOLIO_ROUTE_ERROR', message, 500);
   }
 }
+
+type HoldingPayload = {
+  fundCode?: unknown;
+  fundName?: unknown;
+  shares?: unknown;
+  costAmount?: unknown;
+  recordedMarketValue?: unknown;
+  purchaseDate?: unknown;
+  note?: unknown;
+};
+
+type SyncPayload = {
+  holdings?: HoldingPayload[];
+  watchlist?: Array<{ fundCode?: unknown; fundName?: unknown }>;
+};
+
+const isPositive = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0;
+const isNonNegative = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
+
+export async function PUT(request: Request) {
+  try {
+    const db = await getRuntimeDatabase();
+    if (!db) {
+      return jsonError('PORTFOLIO_DB_UNAVAILABLE', 'GG_FUND_DB is not available in the current runtime', 500);
+    }
+
+    const payload = (await request.json().catch(() => undefined)) as SyncPayload | undefined;
+    if (!payload || !Array.isArray(payload.holdings) || !Array.isArray(payload.watchlist)) {
+      return jsonError('PORTFOLIO_SYNC_INVALID', 'holdings 与 watchlist 必须为数组', 400);
+    }
+
+    const holdings = payload.holdings
+      .filter((item) => typeof item.fundCode === 'string' && typeof item.fundName === 'string' && isNonNegative(item.costAmount) && (isPositive(item.shares) || isPositive(item.recordedMarketValue)))
+      .map((item) => ({
+        fundCode: item.fundCode as string,
+        fundName: item.fundName as string,
+        shares: isPositive(item.shares) ? (item.shares as number) : undefined,
+        costAmount: item.costAmount as number,
+        recordedMarketValue: isPositive(item.recordedMarketValue) ? (item.recordedMarketValue as number) : undefined,
+        purchaseDate: typeof item.purchaseDate === 'string' ? item.purchaseDate : undefined,
+        note: typeof item.note === 'string' ? item.note : undefined,
+      }));
+
+    const watchlist = payload.watchlist
+      .filter((item) => typeof item.fundCode === 'string' && typeof item.fundName === 'string')
+      .map((item) => ({ fundCode: item.fundCode as string, fundName: item.fundName as string }));
+
+    const repository = createPortfolioRepository(db);
+    const userId = await getRequestUserId(db, request);
+    const portfolio = await repository.ensureDefaultPortfolio(userId);
+    await repository.replaceSnapshot(portfolio.id, holdings, watchlist);
+    return Response.json(await repository.getSnapshot(portfolio.id));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to sync default portfolio';
+    return jsonError('PORTFOLIO_ROUTE_ERROR', message, 500);
+  }
+}

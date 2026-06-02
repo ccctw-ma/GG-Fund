@@ -33,6 +33,19 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function putJson<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(path, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? '请求失败');
+  }
+  return response.json() as Promise<T>;
+}
+
 export type AuthProvider = 'email';
 export type OAuthProvider = 'github' | 'wechat';
 export type AuthChallengeResponse = {
@@ -69,6 +82,8 @@ export const api = {
   getFund: (code: string) => getJson<FundQuote>(`/api/funds/${code}`),
   getFundHistory: (code: string, range = '1y') => getJson<FundHistoryPoint[]>(`/api/funds/${code}/history?range=${encodeURIComponent(range)}`),
   getTrendingFunds: () => getJson<FundQuote[]>('/api/funds/trending'),
+  syncPortfolio: (holdings: unknown[], watchlist: unknown[]) =>
+    putJson<unknown>('/api/portfolio/default', { holdings, watchlist }),
   getCurrentUser: () => getJson<AuthSessionResponse>('/api/auth/me'),
   logout: () => postJson<{ ok: true }>('/api/auth/logout', {}),
   startAuthChallenge: (provider: AuthProvider, identifier: string) => postJson<AuthChallengeResponse>('/api/auth/challenge', { provider, identifier }),

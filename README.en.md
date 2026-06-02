@@ -20,7 +20,7 @@ GG Fund now uses a Cloudflare-first Next.js App Router architecture as its main 
 - Fund details: prefers Tiantian intraday estimated NAV, estimated change, and estimate time while keeping the previous official NAV.
 - Fund analysis trend chart: fund details use a dark data-radar ECharts visualization that combines NAV, range return, drawdown, value range, and time-range switching.
 - Beginner decision map: explains fund type, NAV, market temperature, holding status, risk level, single-fund concentration, and monthly review paths.
-- Local portfolio: calculates market value, cost, profit/loss, return rate, weights, estimated daily profit, ledger source, and local risk reminders after adding funds.
+- Local portfolio: calculates market value, cost, profit/loss, return rate, weights, estimated daily profit, ledger source, and local risk reminders after adding funds. The holdings list supports sorting by market value / return rate / name and lets you manually edit the held amount and cost amount; edits are saved locally immediately and, when signed in, are synced to Cloudflare D1 via `PUT /api/portfolio/default` (the `holdings.recorded_market_value` column stores the manually entered or screenshot-imported market value so screenshot holdings without 6-digit codes are still valued correctly).
 - Watchlist: follows funds without counting them as holdings.
 - Resend email login: `/login` uses a standalone minimal sign-in page, redirects back to `/app#portfolio` after OTP sign-in succeeds, `/api/auth/challenge` sends a 6-digit email OTP and returns Resend delivery failure details to the frontend, and `/api/auth/verify` creates a GG Fund-owned session; `/api/portfolio/default` prefers the signed-in user's portfolio.
 - Cloudflare Worker deployment: Next Route Handlers are built by OpenNext into the Worker runtime with `GG_FUND_DB` and `GG_FUND_CACHE` bindings.
@@ -127,6 +127,7 @@ Default smoke endpoints:
 - `POST /api/auth/verify`
 - `POST /api/auth/logout`
 - `GET /api/portfolio/default`
+- `PUT /api/portfolio/default` (full sync of holdings and watchlist to D1 when signed in)
 
 ## Data Sources
 

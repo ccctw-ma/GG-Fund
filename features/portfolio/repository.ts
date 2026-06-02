@@ -19,6 +19,7 @@ export type PortfolioSnapshot = {
     fundName: string;
     shares: number;
     costAmount: number;
+    recordedMarketValue?: number | null;
     purchaseDate?: string | null;
     note?: string | null;
     createdAt: string;
@@ -34,8 +35,9 @@ export type PortfolioSnapshot = {
 export type HoldingInput = {
   fundCode: string;
   fundName: string;
-  shares: number;
+  shares?: number;
   costAmount: number;
+  recordedMarketValue?: number;
   purchaseDate?: string;
   note?: string;
 };
@@ -70,7 +72,7 @@ export function createPortfolioRepository(db: D1Database, nowIso = () => new Dat
         .bind(portfolioId)
         .first<PortfolioSnapshot['portfolio']>();
       const holdings = await db
-        .prepare('select id, fund_code as fundCode, fund_name as fundName, shares, cost_amount as costAmount, purchase_date as purchaseDate, note, created_at as createdAt, updated_at as updatedAt from holdings where portfolio_id = ? order by created_at')
+        .prepare('select id, fund_code as fundCode, fund_name as fundName, shares, cost_amount as costAmount, recorded_market_value as recordedMarketValue, purchase_date as purchaseDate, note, created_at as createdAt, updated_at as updatedAt from holdings where portfolio_id = ? order by created_at')
         .bind(portfolioId)
         .all<PortfolioSnapshot['holdings'][number]>();
       const watchlist = await db
@@ -84,12 +86,13 @@ export function createPortfolioRepository(db: D1Database, nowIso = () => new Dat
       const timestamp = nowIso();
       await db
         .prepare(`
-          insert into holdings (id, portfolio_id, fund_code, fund_name, shares, cost_amount, purchase_date, note, created_at, updated_at)
-          values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          insert into holdings (id, portfolio_id, fund_code, fund_name, shares, cost_amount, recorded_market_value, purchase_date, note, created_at, updated_at)
+          values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           on conflict(portfolio_id, fund_code) do update set
             fund_name = excluded.fund_name,
             shares = excluded.shares,
             cost_amount = excluded.cost_amount,
+            recorded_market_value = excluded.recorded_market_value,
             purchase_date = excluded.purchase_date,
             note = excluded.note,
             updated_at = excluded.updated_at
@@ -99,8 +102,9 @@ export function createPortfolioRepository(db: D1Database, nowIso = () => new Dat
           portfolioId,
           input.fundCode,
           input.fundName,
-          input.shares,
+          input.shares ?? 0,
           input.costAmount,
+          input.recordedMarketValue ?? null,
           input.purchaseDate ?? null,
           input.note ?? null,
           timestamp,
@@ -118,6 +122,19 @@ export function createPortfolioRepository(db: D1Database, nowIso = () => new Dat
         `)
         .bind(portfolioId, input.fundCode, input.fundName, nowIso())
         .run();
+    },
+
+    async replaceSnapshot(portfolioId: string, holdings: HoldingInput[], watchlist: WatchItemInput[]) {
+      await db.prepare('delete from holdings where portfolio_id = ?').bind(portfolioId).run();
+      await db.prepare('delete from watchlist where portfolio_id = ?').bind(portfolioId).run();
+      for (const holding of holdings) {
+        await this.addHolding(portfolioId, holding);
+      }
+      for (const item of watchlist) {
+        await this.addWatchItem(portfolioId, item);
+      }
+      const timestamp = nowIso();
+      await db.prepare('update portfolios set updated_at = ? where id = ?').bind(timestamp, portfolioId).run();
     },
   };
 }

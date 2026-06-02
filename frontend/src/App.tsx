@@ -120,6 +120,14 @@ export default function App() {
     saveWatchlist(watchlist);
   }, [watchlist, storageReady]);
 
+  useEffect(() => {
+    if (!storageReady || !session) return;
+    const handle = setTimeout(() => {
+      api.syncPortfolio(holdings, watchlist).catch(() => undefined);
+    }, 600);
+    return () => clearTimeout(handle);
+  }, [holdings, watchlist, storageReady, session]);
+
   const summary = useMemo(() => calculatePortfolioSummary(holdings, quotes), [holdings, quotes]);
   const exportText = useMemo(() => exportLocalData({ holdings, watchlist }), [holdings, watchlist]);
   const positive = summary.totalProfit >= 0;
@@ -172,6 +180,29 @@ export default function App() {
         updatedAt: createdAt,
       },
     ]);
+  }
+
+  function updateHolding(id: string, patch: { recordedMarketValue: number; costAmount: number }) {
+    setHoldings((current) =>
+      current.map((holding) =>
+        holding.id === id
+          ? {
+              ...holding,
+              recordedMarketValue: patch.recordedMarketValue,
+              costAmount: patch.costAmount,
+              updatedAt: nowIso(),
+            }
+          : holding,
+      ),
+    );
+    // 手动填写的市值优先于行情估值，清除该基金缓存的行情，让汇总使用录入金额。
+    setQuotes((current) => {
+      const target = holdings.find((holding) => holding.id === id);
+      if (!target) return current;
+      const next = { ...current };
+      delete next[target.fundCode];
+      return next;
+    });
   }
 
   function toggleWatch(fund: FundQuote) {
@@ -345,16 +376,12 @@ export default function App() {
 
           {activePage === 'portfolio' && (
             <section className="workspace-section" id="portfolio-page" aria-labelledby="portfolio-page-title">
-              <div className="workspace-heading">
-                <div>
-                  <span className="section-kicker">Portfolio</span>
-                  <h2 id="portfolio-page-title">组合账户</h2>
-                  <p>把持仓、市值、盈亏和自选列表集中到独立页面，避免在长页面里来回查找。</p>
-                </div>
+              <div className="workspace-heading workspace-heading-compact">
+                <h2 id="portfolio-page-title" className="sr-only">组合账户</h2>
                 <button type="button" className="ghost-cta" onClick={() => changePage('workspace')}><BarChart3 className="h-4 w-4" /> 返回行情</button>
               </div>
               <div className="banking-grid single-page-grid">
-                <PortfolioPanel summary={summary} watchlist={watchlist} onRemoveHolding={(id) => setHoldings((current) => current.filter((holding) => holding.id !== id))} />
+                <PortfolioPanel summary={summary} watchlist={watchlist} onRemoveHolding={(id) => setHoldings((current) => current.filter((holding) => holding.id !== id))} onUpdateHolding={updateHolding} />
                 <SettingsPanel exportText={exportText} importError={importError} onImport={importData} />
               </div>
             </section>

@@ -40,7 +40,7 @@ import { GET as searchFunds } from '../app/api/funds/search/route';
 import { GET as getTrendingFunds } from '../app/api/funds/trending/route';
 import { GET as getHealth } from '../app/api/health/route';
 import { GET as getIndices } from '../app/api/market/indices/route';
-import { GET as getDefaultPortfolio } from '../app/api/portfolio/default/route';
+import { GET as getDefaultPortfolio, PUT as syncDefaultPortfolio } from '../app/api/portfolio/default/route';
 
 class FakePrepared {
   params: unknown[] = [];
@@ -124,6 +124,7 @@ class FakeD1 {
           fundName: item.fundName,
           shares: item.shares,
           costAmount: item.costAmount,
+          recordedMarketValue: item.recordedMarketValue ?? null,
           purchaseDate: item.purchaseDate,
           note: item.note,
           createdAt: item.createdAt,
@@ -145,6 +146,32 @@ class FakeD1 {
   run(sql: string, params: unknown[]) {
     if (sql.includes('insert into portfolios')) {
       this.portfolios.push({ id: params[0], userId: params[1], name: params[2], createdAt: params[3], updatedAt: params[4] });
+      return;
+    }
+    if (sql.includes('update portfolios set updated_at')) {
+      const target = this.portfolios.find((item) => item.id === params[1]);
+      if (target) target.updatedAt = params[0];
+      return;
+    }
+    if (sql.includes('delete from holdings')) {
+      this.holdings = this.holdings.filter((item) => item.portfolioId !== params[0]);
+      return;
+    }
+    if (sql.includes('delete from watchlist')) {
+      this.watchlist = this.watchlist.filter((item) => item.portfolioId !== params[0]);
+      return;
+    }
+    if (sql.includes('insert into holdings')) {
+      const existing = this.holdings.find((item) => item.portfolioId === params[1] && item.fundCode === params[2]);
+      const next = { id: params[0], portfolioId: params[1], fundCode: params[2], fundName: params[3], shares: params[4], costAmount: params[5], recordedMarketValue: params[6], purchaseDate: params[7], note: params[8], createdAt: params[9], updatedAt: params[10] };
+      if (existing) Object.assign(existing, next, { id: existing.id, createdAt: existing.createdAt });
+      else this.holdings.push(next);
+      return;
+    }
+    if (sql.includes('insert into watchlist')) {
+      const existing = this.watchlist.find((item) => item.portfolioId === params[0] && item.fundCode === params[1]);
+      if (existing) Object.assign(existing, { fundName: params[2] });
+      else this.watchlist.push({ portfolioId: params[0], fundCode: params[1], fundName: params[2], createdAt: params[3] });
     }
   }
 }
@@ -427,6 +454,7 @@ describe('app api routes', () => {
           fundName: '华夏成长混合',
           shares: 100,
           costAmount: 120,
+          recordedMarketValue: null,
           purchaseDate: '2026-05-01',
           note: '核心持仓',
           createdAt: '2026-05-30T00:00:00.000Z',
@@ -440,6 +468,62 @@ describe('app api routes', () => {
           createdAt: '2026-05-30T00:00:00.000Z',
         },
       ],
+    });
+  });
+
+  it('replaces the default portfolio snapshot via PUT sync', async () => {
+    const db = new FakeD1();
+    db.portfolios.push({
+      id: 'portfolio-1',
+      userId: null,
+      name: '默认组合',
+      createdAt: '2026-05-30T00:00:00.000Z',
+      updatedAt: '2026-05-30T00:00:00.000Z',
+    });
+    db.holdings.push({
+      id: 'holding-old',
+      portfolioId: 'portfolio-1',
+      fundCode: '000001',
+      fundName: '旧持仓',
+      shares: 100,
+      costAmount: 120,
+      createdAt: '2026-05-30T00:00:00.000Z',
+      updatedAt: '2026-05-30T00:00:00.000Z',
+    });
+    (globalThis as { GG_FUND_DB?: FakeD1 }).GG_FUND_DB = db;
+
+    const response = await syncDefaultPortfolio(new Request('https://example.com/api/portfolio/default', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        holdings: [
+          { fundCode: 'ALIPAY001', fundName: '支付宝自填持仓', costAmount: 8000, recordedMarketValue: 8500 },
+          { fundCode: 'bad', fundName: '无效持仓', costAmount: 0 },
+        ],
+        watchlist: [{ fundCode: '110022', fundName: '易方达消费行业股票' }],
+      }),
+    }));
+
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.holdings).toHaveLength(1);
+    expect(payload.holdings[0]).toEqual(expect.objectContaining({ fundCode: 'ALIPAY001', recordedMarketValue: 8500 }));
+    expect(payload.watchlist).toEqual([expect.objectContaining({ fundCode: '110022' })]);
+  });
+
+  it('rejects PUT sync payloads that are not arrays', async () => {
+    const db = new FakeD1();
+    (globalThis as { GG_FUND_DB?: FakeD1 }).GG_FUND_DB = db;
+
+    const response = await syncDefaultPortfolio(new Request('https://example.com/api/portfolio/default', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ holdings: 'nope', watchlist: [] }),
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: expect.objectContaining({ code: 'PORTFOLIO_SYNC_INVALID' }),
     });
   });
 
@@ -503,6 +587,7 @@ describe('app api routes', () => {
           fundName: '中欧医疗健康混合',
           shares: 50,
           costAmount: 80,
+          recordedMarketValue: null,
           purchaseDate: '2026-05-12',
           note: '登录用户持仓',
           createdAt: '2026-05-30T01:00:00.000Z',

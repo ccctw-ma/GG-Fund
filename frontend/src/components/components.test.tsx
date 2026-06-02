@@ -110,6 +110,7 @@ describe('dashboard components', () => {
         summary={emptySummary}
         watchlist={[]}
         onRemoveHolding={() => undefined}
+        onUpdateHolding={() => undefined}
       />,
     );
     roots.push(portfolio.root);
@@ -153,13 +154,14 @@ describe('dashboard components', () => {
         summary={populatedSummary}
         watchlist={[{ fundCode: '110022', fundName: '易方达消费行业股票', createdAt: '2026-05-29T00:00:00.000Z' }]}
         onRemoveHolding={() => undefined}
+        onUpdateHolding={() => undefined}
       />,
     );
     roots.push(portfolio.root);
 
     expect(market.container.textContent).toContain('行情暂不可用');
-    expect(portfolio.container.textContent).toContain('净值未知');
-    expect(portfolio.container.textContent).toContain('净值缺失');
+    expect(portfolio.container.textContent).toContain('持仓明细');
+    expect(portfolio.container.textContent).toContain('华夏成长混合');
     expect(portfolio.container.textContent).toContain('支付宝账本');
     expect(portfolio.container.textContent).toContain('易方达消费行业股票');
   });
