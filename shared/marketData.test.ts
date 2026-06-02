@@ -292,6 +292,24 @@ describe('market data service', () => {
     ]);
   });
 
+  it('falls back to the Tencent kline source when Eastmoney returns nothing', async () => {
+    let tencentUrl = '';
+    const service = createMarketDataService({
+      fetchJson: async () => ({ data: { klines: [] } }),
+      fetchText: async (url) => {
+        tencentUrl = url;
+        return `kline_dayqfq=${JSON.stringify({
+          data: { sh000001: { qfqday: [['2026-05-27', '3090.00', '3100.10', '3110.00', '3080.00']] } },
+        })};`;
+      },
+    });
+
+    const history = await service.getIndexHistory('000001.SH', 'all');
+
+    expect(tencentUrl).toContain('param=sh000001,day');
+    expect(history).toEqual([{ date: '2026-05-27', netValue: 3100.1 }]);
+  });
+
   it('caches index data within the ttl', async () => {
     let calls = 0;
     const service = createMarketDataService({

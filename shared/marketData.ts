@@ -342,6 +342,41 @@ function eastmoneySecidForIndex(code: string): string {
   return `100.${rawCode}`;
 }
 
+function tencentSymbolForIndex(code: string): string {
+  const [rawCode, market] = code.split('.');
+  if (market === 'SH') return `sh${rawCode}`;
+  if (market === 'SZ') return `sz${rawCode}`;
+  return rawCode;
+}
+
+function historyFromTencentKline(text: string): FundHistoryPoint[] {
+  const match = text.match(/=(\{[\s\S]*\});?$/);
+  if (!match) return [];
+  let payload: unknown;
+  try {
+    payload = JSON.parse(match[1]);
+  } catch {
+    return [];
+  }
+  if (typeof payload !== 'object' || payload === null) return [];
+  const data = (payload as { data?: unknown }).data;
+  if (typeof data !== 'object' || data === null) return [];
+  const symbolEntry = Object.values(data as Record<string, unknown>)[0];
+  if (typeof symbolEntry !== 'object' || symbolEntry === null) return [];
+  const entry = symbolEntry as Record<string, unknown>;
+  const klines = entry.day ?? entry.qfqday ?? entry.hisfqday;
+  if (!Array.isArray(klines)) return [];
+  return klines
+    .map((row) => {
+      if (!Array.isArray(row)) return undefined;
+      const date = row[0];
+      const netValue = toNumber(row[2]);
+      if (typeof date !== 'string' || netValue === undefined) return undefined;
+      return { date, netValue };
+    })
+    .filter((item): item is FundHistoryPoint => Boolean(item));
+}
+
 async function defaultFetchText(url: string, headers?: Record<string, string>): Promise<string> {
   const response = await fetch(url, { headers: { 'user-agent': 'GG-Fund/0.1', ...headers } });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -463,6 +498,13 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     return historyFromEastmoneyKline(await fetchJson(url, headers));
   }
 
+  async function getTencentIndexHistory(code: string, limit = 120): Promise<FundHistoryPoint[]> {
+    const symbol = tencentSymbolForIndex(code);
+    const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${symbol},day,,,${limit},qfq`;
+    return historyFromTencentKline(await fetchText(url));
+  }
+
+
   return {
     async getIndices(): Promise<IndexQuote[]> {
       return cached('indices', 60_000, async () => {
@@ -479,6 +521,12 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
       return cached(`index-history:${code}:${limit}`, 86_400_000, async () => {
         try {
           const history = await getEastmoneyIndexHistory(code, limit);
+          if (history.length > 0) return history;
+        } catch {
+          // fall through to Tencent
+        }
+        try {
+          const history = await getTencentIndexHistory(code, limit);
           if (history.length > 0) return history;
         } catch {
           // fall through to empty history
