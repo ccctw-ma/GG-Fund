@@ -20,10 +20,21 @@ function holdingDays(purchaseDate?: string) {
 }
 
 function dailyProfit(holding: Holding, quote?: FundQuote) {
-  if (!quote?.dailyChangePercent || quote.dailyChangePercent === -100) return 0;
-  const marketValue = holding.shares * quote.netValue;
-  const previousValue = marketValue / (1 + quote.dailyChangePercent / 100);
-  return marketValue - previousValue;
+  if (quote?.dailyChangePercent && quote.dailyChangePercent !== -100 && holding.shares) {
+    const marketValue = holding.shares * quote.netValue;
+    const previousValue = marketValue / (1 + quote.dailyChangePercent / 100);
+    return marketValue - previousValue;
+  }
+  return holding.recordedDailyProfit ?? 0;
+}
+
+function holdingMarketValue(holding: Holding, quote?: FundQuote) {
+  if (quote && holding.shares) return holding.shares * quote.netValue;
+  return holding.recordedMarketValue ?? 0;
+}
+
+function hasValuation(holding: Holding, quote?: FundQuote) {
+  return Boolean((quote && holding.shares) || holding.recordedMarketValue);
 }
 
 function buildLedgers(items: PortfolioSummary['items']): PortfolioLedger[] {
@@ -130,15 +141,12 @@ export function calculatePortfolioSummary(
   holdings: Holding[],
   quotes: Record<string, FundQuote | undefined>,
 ): PortfolioSummary {
-  const totalMarketValue = holdings.reduce((sum, holding) => {
-    const quote = quotes[holding.fundCode];
-    return sum + (quote ? holding.shares * quote.netValue : 0);
-  }, 0);
+  const totalMarketValue = holdings.reduce((sum, holding) => sum + holdingMarketValue(holding, quotes[holding.fundCode]), 0);
   const totalCost = holdings.reduce((sum, holding) => sum + holding.costAmount, 0);
 
   const items = holdings.map((holding) => {
     const quote = quotes[holding.fundCode];
-    const marketValue = quote ? holding.shares * quote.netValue : 0;
+    const marketValue = holdingMarketValue(holding, quote);
     const profit = marketValue - holding.costAmount;
     const returnRate = holding.costAmount > 0 ? percent(profit / holding.costAmount) : 0;
     const weight = totalMarketValue > 0 ? percent(marketValue / totalMarketValue) : 0;
@@ -153,7 +161,7 @@ export function calculatePortfolioSummary(
       weight,
       estimatedDailyProfit,
       holdingDays: holdingDays(holding.purchaseDate),
-      quoteStatus: quote ? ('ok' as const) : ('missing' as const),
+      quoteStatus: hasValuation(holding, quote) ? ('ok' as const) : ('missing' as const),
     };
   });
 

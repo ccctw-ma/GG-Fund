@@ -20,7 +20,9 @@ function validateHolding(value: unknown, index: number): Holding | string {
   if (!isString(value.id)) return `第 ${index + 1} 条持仓缺少 ID`;
   if (!isString(value.fundCode)) return `第 ${index + 1} 条持仓缺少基金代码`;
   if (!isString(value.fundName)) return `第 ${index + 1} 条持仓缺少基金名称`;
-  if (!isPositiveNumber(value.shares)) return `第 ${index + 1} 条持仓的份额必须大于 0`;
+  const hasShares = isPositiveNumber(value.shares);
+  const hasRecordedValue = isPositiveNumber(value.recordedMarketValue);
+  if (!hasShares && !hasRecordedValue) return `第 ${index + 1} 条持仓需要份额或持有金额`;
   if (!isNonNegativeNumber(value.costAmount)) return `第 ${index + 1} 条持仓的成本不能为负数`;
   if (!isString(value.createdAt)) return `第 ${index + 1} 条持仓缺少创建时间`;
   if (!isString(value.updatedAt)) return `第 ${index + 1} 条持仓缺少更新时间`;
@@ -29,8 +31,10 @@ function validateHolding(value: unknown, index: number): Holding | string {
     id: value.id,
     fundCode: value.fundCode,
     fundName: value.fundName,
-    shares: value.shares,
+    shares: isPositiveNumber(value.shares) ? value.shares : undefined,
     costAmount: value.costAmount,
+    recordedMarketValue: isPositiveNumber(value.recordedMarketValue) ? value.recordedMarketValue : undefined,
+    recordedDailyProfit: typeof value.recordedDailyProfit === 'number' && Number.isFinite(value.recordedDailyProfit) ? value.recordedDailyProfit : undefined,
     accountName: typeof value.accountName === 'string' ? value.accountName : undefined,
     platform: typeof value.platform === 'string' && platforms.has(value.platform) ? value.platform as Holding['platform'] : undefined,
     targetWeight: isNonNegativeNumber(value.targetWeight) ? value.targetWeight : undefined,

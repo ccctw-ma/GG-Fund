@@ -245,6 +245,32 @@ describe('dashboard components', () => {
     expect(settings.container.textContent).toContain('已识别截图');
   });
 
+  it('recognizes a real Alipay holding screenshot without fund codes', () => {
+    const ocrText = [
+      '我 的 持 有 2 持 有 收益 排序',
+      '名 称 SH/IEEWRD 持 有 收益 / 率',
+      '南方 纳 斯 达 克 100 指 数 19,374.21 +2,624.21',
+      '(QDIDC +49.08 +15.86%',
+      '华夏 中 证 电网 设备 主题 30,289.47 +2,289.47',
+      'ETF 联 接 C -2.14 +8.18%',
+      '中 银 国 有 企业 债 债券 C 43,919.06 +1,034.94',
+      '+35.26 +2.41%',
+      '基金 销售 服务 由 蚂蚁 (杭州 ) 基金 销售 有 限 公司 提供',
+    ].join('\n');
+    const importText = buildRecognizedImport(ocrText, 'alipay');
+    const parsed = JSON.parse(importText) as {
+      holdings: Array<{ fundCode: string; fundName: string; recordedMarketValue: number; costAmount: number; platform: string }>;
+    };
+
+    expect(parsed.holdings.length).toBeGreaterThanOrEqual(3);
+    const first = parsed.holdings[0];
+    expect(first.recordedMarketValue).toBe(19374.21);
+    expect(first.costAmount).toBeCloseTo(19374.21 - 2624.21, 2);
+    expect(first.platform).toBe('alipay');
+    expect(first.fundName).toContain('纳斯达克');
+    expect(parsed.holdings.every((holding) => holding.recordedMarketValue > 0)).toBe(true);
+  });
+
   it('exposes a complete typed research catalog with live and roadmap capabilities', () => {
     expect(researchCatalog.assetNavigation.map((item) => item.title)).toEqual([
       '全球核心指数',

@@ -34,6 +34,83 @@ function detectAccountName(line: string) {
   return '默认账本';
 }
 
+const FUND_SUFFIX = /(指数|混合|股票|债券|ETF|联接|增强|主题|QDII|LOF|FOF|货币|纳斯达克|沪深|中证|创业板|科创|养殖|有色|电力|银行|白酒|消费|医药|金属|矿业|制造|科技|智能|公用事业)/;
+const NOISE_LINE = /(我的持有|持有收益|偏股|偏债|更多产品|基金销售|投资锦囊|产品提醒|历史长牛|去市场|市场机会|排序|名称|当日|涨跌|蚂蚁|杭州)/;
+
+function cleanFundName(raw: string) {
+  return raw
+    .replace(/[（(][^）)]*[）)]/g, '')
+    .replace(/\s+/g, '')
+    .replace(/定投$/, '')
+    .replace(/^[·•。、,，]+|[·•。、,，]+$/g, '')
+    .trim();
+}
+
+function parseAmount(token: string) {
+  const value = Number(token.replace(/[+＋]/g, '').replace(/,/g, ''));
+  return Number.isFinite(value) ? value : undefined;
+}
+
+// 仅把带千分位或小数点的数字视为金额（支付宝持有金额/收益恒为两位小数），
+// 避免把基金名里的 100/300/500 等编号误当成金额。
+const MONEY_TOKEN = /[+＋-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?%?|[+＋-]?\d+\.\d+%?/g;
+
+// 支付宝「我的持有」截图没有基金代码，结构为：名称 + 持有金额 + 持有收益（+ 续行的当日收益 / 收益率）。
+function parseAlipayHoldingScreenshot(text: string, preferredPlatform: string) {
+  const now = new Date().toISOString();
+  const holdings: Array<Record<string, unknown>> = [];
+  const lines = text.replace(/\r/g, '\n').split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  let pendingName = '';
+  let counter = 0;
+
+  lines.forEach((rawLine) => {
+    // OCR 会在每个汉字之间插入空格，先压缩空白再做关键词/金额匹配。
+    const line = rawLine.replace(/\s+/g, '');
+    const amounts = (line.match(MONEY_TOKEN) ?? []);
+    if (NOISE_LINE.test(line) && amounts.length === 0) {
+      pendingName = '';
+      return;
+    }
+    const textPart = cleanFundName(line.replace(MONEY_TOKEN, ' ').replace(/\d+/g, ''));
+
+    // 纯名称行（无金额）：作为下一行的基金名称前缀。
+    const firstAmount = amounts[0];
+    if (!firstAmount) {
+      if (FUND_SUFFIX.test(line) || line.length >= 4) pendingName = cleanFundName(`${pendingName}${line}`);
+      return;
+    }
+
+    // 续行（当日收益/收益率行）：持有金额列永远是无符号正数，带 +/- 或 % 开头的首列说明这是上一只基金的涨跌续行。
+    if (/^[+＋-]/.test(firstAmount) || firstAmount.includes('%')) {
+      return;
+    }
+
+    const marketValue = parseAmount(firstAmount);
+    const secondAmount = amounts[1];
+    const profit = secondAmount ? parseAmount(secondAmount.replace('%', '')) : undefined;
+    const name = cleanFundName(`${pendingName}${textPart}`);
+    pendingName = '';
+
+    if (marketValue === undefined || marketValue <= 0 || !name || name.length < 3) return;
+    counter += 1;
+    const recordedMarketValue = Number(marketValue.toFixed(2));
+    const recordedProfit = profit !== undefined && secondAmount && !secondAmount.includes('%') ? Number(profit.toFixed(2)) : 0;
+    holdings.push({
+      id: `alipay-shot-${counter}`,
+      fundCode: `ALIPAY${String(counter).padStart(3, '0')}`,
+      fundName: name,
+      recordedMarketValue,
+      costAmount: Number((recordedMarketValue - recordedProfit).toFixed(2)),
+      accountName: '默认账本',
+      platform: preferredPlatform === 'manual' ? 'alipay' : preferredPlatform,
+      createdAt: now,
+      updatedAt: now,
+    });
+  });
+
+  return holdings;
+}
+
 function readMaybeJsonHoldings(text: string) {
   try {
     const parsed = JSON.parse(text) as unknown;
@@ -87,6 +164,14 @@ export function buildRecognizedImport(text: string, preferredPlatform = 'manual'
 
     watchlist.push({ fundCode: code, fundName: name, createdAt: now });
   });
+
+  // 代码式文本没识别到任何持仓时，回退到支付宝「我的持有」截图格式（无基金代码）。
+  if (holdings.length === 0) {
+    const screenshotHoldings = parseAlipayHoldingScreenshot(normalizedText, preferredPlatform);
+    if (screenshotHoldings.length > 0) {
+      return JSON.stringify({ holdings: screenshotHoldings, watchlist }, null, 2);
+    }
+  }
 
   return JSON.stringify({ holdings, watchlist }, null, 2);
 }

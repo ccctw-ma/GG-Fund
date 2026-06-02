@@ -51,7 +51,7 @@ describe('parseImportedData', () => {
       }),
     );
 
-    expect(result).toEqual({ ok: false, error: '第 1 条持仓的份额必须大于 0' });
+    expect(result).toEqual({ ok: false, error: '第 1 条持仓需要份额或持有金额' });
   });
 });
 

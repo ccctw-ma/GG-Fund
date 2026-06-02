@@ -80,7 +80,7 @@ export function PortfolioPanel({
             <article className="yb-holding-row" key={item.id}>
               <div>
                 <strong className="text-ink">{item.fundName}</strong>
-                <small>{item.fundCode} · 份额 {item.shares} · {item.accountName ?? '默认账本'}</small>
+                <small>{item.fundCode.startsWith('ALIPAY') ? '截图导入' : item.fundCode}{item.shares ? ` · 份额 ${item.shares}` : ' · 按持有金额'} · {item.accountName ?? '默认账本'}</small>
               </div>
               <div>
                 <span className="font-black text-ink">{money.format(item.marketValue)}</span>
@@ -88,7 +88,7 @@ export function PortfolioPanel({
               </div>
               <div>
                 <span className="font-black text-ink"><PieChart className="mr-1 inline h-4 w-4" />{item.weight.toFixed(1)}%</span>
-                <small>{item.quoteStatus === 'ok' ? `${item.quote?.quoteDate} · 今日 ${money.format(item.estimatedDailyProfit)}` : '净值未知'}</small>
+                <small>{item.quote ? `${item.quote.quoteDate} · 今日 ${money.format(item.estimatedDailyProfit)}` : item.quoteStatus === 'ok' ? '按截图金额' : '净值未知'}</small>
               </div>
               <Button variant="ghost" size="sm" onClick={() => onRemoveHolding(item.id)}><Trash2 className="h-4 w-4" />删除</Button>
             </article>

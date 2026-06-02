@@ -2,8 +2,10 @@ export type Holding = {
   id: string;
   fundCode: string;
   fundName: string;
-  shares: number;
+  shares?: number;
   costAmount: number;
+  recordedMarketValue?: number;
+  recordedDailyProfit?: number;
   accountName?: string;
   platform?: 'manual' | 'alipay' | 'wechat' | 'tiantian' | 'xueqiu' | 'other';
   targetWeight?: number;
