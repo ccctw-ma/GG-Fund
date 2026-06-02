@@ -5,8 +5,8 @@ type CacheEntry<T> = { expiresAt: number; value: T };
 type MarketDataOptions = {
   now?: () => number;
   fetchIndices?: () => Promise<IndexQuote[]>;
-  fetchText?: (url: string) => Promise<string>;
-  fetchJson?: (url: string) => Promise<unknown>;
+  fetchText?: (url: string, headers?: Record<string, string>) => Promise<string>;
+  fetchJson?: (url: string, headers?: Record<string, string>) => Promise<unknown>;
 };
 
 const EASTMONEY_SOURCE = '东方财富公开接口';
@@ -318,14 +318,14 @@ function historyFromEastmoneyData(data: unknown): FundHistoryPoint[] {
     .reverse();
 }
 
-async function defaultFetchText(url: string): Promise<string> {
-  const response = await fetch(url, { headers: { 'user-agent': 'GG-Fund/0.1' } });
+async function defaultFetchText(url: string, headers?: Record<string, string>): Promise<string> {
+  const response = await fetch(url, { headers: { 'user-agent': 'GG-Fund/0.1', ...headers } });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.text();
 }
 
-async function defaultFetchJson(url: string): Promise<unknown> {
-  const response = await fetch(url, { headers: { 'user-agent': 'GG-Fund/0.1' } });
+async function defaultFetchJson(url: string, headers?: Record<string, string>): Promise<unknown> {
+  const response = await fetch(url, { headers: { 'user-agent': 'GG-Fund/0.1', ...headers } });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json();
 }
@@ -409,7 +409,10 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
 
   async function getEastmoneyHistory(code: string, pageSize = 30): Promise<FundHistoryPoint[]> {
     const url = `https://api.fund.eastmoney.com/f10/lsjz?fundCode=${encodeURIComponent(code)}&pageIndex=1&pageSize=${pageSize}`;
-    return historyFromEastmoneyData(await fetchJson(url));
+    return historyFromEastmoneyData(await fetchJson(url, {
+      'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+      referer: `https://fundf10.eastmoney.com/jjjz_${code}.html`,
+    }));
   }
 
   return {

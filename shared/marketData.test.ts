@@ -253,6 +253,24 @@ describe('market data service', () => {
     expect(history[0]).toHaveProperty('netValue');
   });
 
+  it('sends an Eastmoney referer when fetching fund history', async () => {
+    let capturedHeaders: Record<string, string> | undefined;
+    const service = createMarketDataService({
+      fetchJson: async (url, headers) => {
+        if (url.includes('lsjz')) {
+          capturedHeaders = headers;
+          return { Data: { LSJZList: [{ FSRQ: '2026-05-28', DWJZ: '1.2890' }] } };
+        }
+        return {};
+      },
+    });
+
+    const history = await service.getFundHistory('000001', 'all');
+
+    expect(history).toEqual([{ date: '2026-05-28', netValue: 1.289 }]);
+    expect(capturedHeaders?.referer).toBe('https://fundf10.eastmoney.com/jjjz_000001.html');
+  });
+
   it('caches index data within the ttl', async () => {
     let calls = 0;
     const service = createMarketDataService({
