@@ -350,13 +350,17 @@ function tencentSymbolForIndex(code: string): string {
 }
 
 function historyFromTencentKline(text: string): FundHistoryPoint[] {
-  const match = text.match(/=(\{[\s\S]*\});?$/);
-  if (!match) return [];
   let payload: unknown;
   try {
-    payload = JSON.parse(match[1]);
+    payload = JSON.parse(text);
   } catch {
-    return [];
+    const match = text.match(/=(\{[\s\S]*\});?\s*$/);
+    if (!match) return [];
+    try {
+      payload = JSON.parse(match[1]);
+    } catch {
+      return [];
+    }
   }
   if (typeof payload !== 'object' || payload === null) return [];
   const data = (payload as { data?: unknown }).data;
