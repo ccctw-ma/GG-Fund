@@ -221,6 +221,7 @@ export default function App() {
   function editHoldingIdentity(id: string, patch: { fundCode: string; fundName: string }) {
     const fundCode = patch.fundCode.trim();
     const fundName = patch.fundName.trim();
+    const manualCode = /^\d{6}$/.test(fundCode);
     setHoldings((current) =>
       current.map((holding) =>
         holding.id === id
@@ -228,6 +229,7 @@ export default function App() {
               ...holding,
               fundCode: fundCode || holding.fundCode,
               fundName: fundName || holding.fundName,
+              codeSource: manualCode ? 'manual' : holding.codeSource,
               updatedAt: nowIso(),
             }
           : holding,
@@ -235,7 +237,7 @@ export default function App() {
     );
     // 填的是有效 6 位代码：行情/详情由 holdings 变更的 effect 自动拉取。
     // 只改了名称、没给有效代码：按名称搜索自动补全真实代码与走势。
-    if (!/^\d{6}$/.test(fundCode) && fundName) {
+    if (!manualCode && fundName) {
       const base = holdings.find((holding) => holding.id === id);
       if (!base) return;
       backfillHoldingCodes([{ ...base, fundCode: 'PENDING', fundName }], api.searchFunds, nowIso)
@@ -243,7 +245,7 @@ export default function App() {
           if (!resolved || resolved.fundCode === 'PENDING') return;
           setHoldings((current) =>
             current.map((holding) =>
-              holding.id === id ? { ...holding, fundCode: resolved.fundCode, fundName: resolved.fundName, updatedAt: nowIso() } : holding,
+              holding.id === id ? { ...holding, fundCode: resolved.fundCode, fundName: resolved.fundName, codeSource: 'auto', updatedAt: nowIso() } : holding,
             ),
           );
         })

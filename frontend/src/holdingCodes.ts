@@ -37,7 +37,7 @@ export async function backfillHoldingCodes(
       try {
         const match = pickBestMatch(holding.fundName, await search(holding.fundName));
         if (!match) return holding;
-        return { ...holding, fundCode: match.code, fundName: match.name, updatedAt: now() };
+        return { ...holding, fundCode: match.code, fundName: match.name, codeSource: 'auto', updatedAt: now() };
       } catch {
         return holding;
       }

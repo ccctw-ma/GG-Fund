@@ -2,6 +2,8 @@ export type Holding = {
   id: string;
   fundCode: string;
   fundName: string;
+  /** 代码来源：auto = 按名称自动补全，manual = 用户手动填写/确认。 */
+  codeSource?: 'auto' | 'manual';
   shares?: number;
   costAmount: number;
   recordedMarketValue?: number;

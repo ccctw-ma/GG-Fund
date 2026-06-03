@@ -34,6 +34,7 @@ describe('backfillHoldingCodes', () => {
     const [resolved] = await backfillHoldingCodes([baseHolding], search, () => '2026-06-02T00:00:00.000Z');
     expect(search).toHaveBeenCalledWith('华夏成长混合');
     expect(resolved.fundCode).toBe('000001');
+    expect(resolved.codeSource).toBe('auto');
     expect(resolved.updatedAt).toBe('2026-06-02T00:00:00.000Z');
   });
 

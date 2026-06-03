@@ -278,7 +278,11 @@ export function PortfolioPanel({
               <article className="yb-holding-row">
                 <div>
                   <strong className="yb-holding-name">{item.fundName}</strong>
-                  <small className="yb-holding-meta">{hasCode ? item.fundCode : '自填持仓'}{item.shares ? ` · 份额 ${item.shares}` : ''}</small>
+                  <small className="yb-holding-meta">
+                    {hasCode ? item.fundCode : '自填持仓'}{item.shares ? ` · 份额 ${item.shares}` : ''}
+                    {hasCode && item.codeSource === 'auto' && <em className="yb-code-tag yb-code-tag-auto" title="按名称自动补全的代码">自动补全</em>}
+                    {!hasCode && <em className="yb-code-tag yb-code-tag-pending" title="未匹配到 6 位代码，编辑可手动补全">待完善</em>}
+                  </small>
                 </div>
                 {editingId === item.id ? (
                   <div className="yb-holding-edit">
@@ -332,7 +336,7 @@ export function PortfolioPanel({
               {isDetail && (
                 <>
                 <div className="yb-holding-detail" data-testid="holding-detail">
-                  <div><span>基金代码</span><strong>{hasCode ? item.fundCode : '待补全'}</strong></div>
+                  <div><span>基金代码</span><strong>{hasCode ? `${item.fundCode}${item.codeSource === 'auto' ? '（自动补全）' : item.codeSource === 'manual' ? '（手动确认）' : ''}` : '待补全'}</strong></div>
                   <div><span>最新净值</span><strong>{item.quote?.netValue ? item.quote.netValue.toFixed(4) : '自填估值'}</strong></div>
                   <div><span>日涨跌</span><strong className={(item.quote?.dailyChangePercent ?? 0) >= 0 ? 'yb-holding-profit-up' : 'yb-holding-profit-down'}>{item.quote?.dailyChangePercent !== undefined ? `${item.quote.dailyChangePercent >= 0 ? '+' : ''}${item.quote.dailyChangePercent.toFixed(2)}%` : '--'}</strong></div>
                   <div><span>持有市值</span><strong>{money.format(item.marketValue)}</strong></div>

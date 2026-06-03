@@ -401,6 +401,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .yb-sort-chip.is-active { background: linear-gradient(135deg, rgba(244,183,64,.85), rgba(125,226,184,.7)); color: #042014; }
 .yb-holding-name { display: block; color: var(--text-strong); font-size: 1.02rem; font-weight: 950; letter-spacing: -.01em; }
 .yb-holding-meta { display: block; margin-top: 4px; color: var(--text-muted); font-size: .78rem; font-weight: 800; }
+.yb-code-tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: .68rem; font-weight: 900; font-style: normal; letter-spacing: .02em; vertical-align: middle; }
+.yb-code-tag-auto { color: #6fd3c0; background: rgba(111, 211, 192, .14); border: 1px solid rgba(111, 211, 192, .3); }
+.yb-code-tag-pending { color: #f0b86c; background: rgba(240, 184, 108, .14); border: 1px solid rgba(240, 184, 108, .3); }
 .yb-holding-value { display: block; color: var(--text-strong); font-size: 1.12rem; font-weight: 950; letter-spacing: -.02em; }
 .yb-holding-weight { display: block; color: var(--text-strong); font-size: 1rem; font-weight: 900; }
 .yb-holding-profit-up { display: block; margin-top: 4px; color: #ff9d8f; font-size: .86rem; font-weight: 900; }
