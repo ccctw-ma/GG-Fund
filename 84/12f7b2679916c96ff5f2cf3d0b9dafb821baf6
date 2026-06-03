@@ -1,0 +1,136 @@
+frontend/src/components/components.test.tsx
+  7374a0aec251d9e6 183-184 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fd25544ea3122a5e1ac18","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Range":[183,184]}]}]}
+frontend/src/components/PortfolioPanel.tsx
+  7374a0aec251d9e6 6,56,64-68,84-98,268,280-308 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fd25544ea3122a5e1ac18","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":6},{"Single":56},{"Range":[64,68]},{"Range":[84,98]},{"Single":268},{"Range":[280,308]}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "8412f7b2679916c96ff5f2cf3d0b9dafb821baf6",
+  "prompts": {
+    "7374a0aec251d9e6": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a1c0ba3a61ace05932b5bdb",
+        "model": "openrouter-3o__max"
+      },
+      "human_author": "mashichen <mashichen.msc@bytedance.com>",
+      "messages": [],
+      "total_additions": 55,
+      "total_deletions": 2,
+      "accepted_lines": 55,
+      "overriden_lines": 0
+    }
+  },
+  "attestation_metadata": {
+    "frontend/src/components/PortfolioPanel.tsx": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 6
+          },
+          {
+            "Single": 56
+          },
+          {
+            "Range": [
+              64,
+              68
+            ]
+          },
+          {
+            "Range": [
+              84,
+              98
+            ]
+          },
+          {
+            "Single": 268
+          },
+          {
+            "Range": [
+              280,
+              308
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fd25544ea3122a5e1ac18",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 6
+              },
+              {
+                "Single": 56
+              },
+              {
+                "Range": [
+                  64,
+                  68
+                ]
+              },
+              {
+                "Range": [
+                  84,
+                  98
+                ]
+              },
+              {
+                "Single": 268
+              },
+              {
+                "Range": [
+                  280,
+                  308
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "frontend/src/components/components.test.tsx": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Range": [
+              183,
+              184
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fd25544ea3122a5e1ac18",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Range": [
+                  183,
+                  184
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "7374a0aec251d9e6": {
+      "tool": "trae",
+      "conversation_id": "6a1c0ba3a61ace05932b5bdb",
+      "session_id": "6a1c0ba3a61ace05932b5bdb",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
