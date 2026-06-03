@@ -1,0 +1,734 @@
+frontend/src/App.tsx
+  7374a0aec251d9e6 28,72,160-166,410 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":28},{"Single":72},{"Range":[160,166]},{"Single":410}]}]}
+README.en.md
+  7374a0aec251d9e6 125 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":125}]}]}
+frontend/src/components/FundSearch.tsx
+  7374a0aec251d9e6 3-4,17,34,36,67,71-73,89-91,98-121 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Range":[3,4]},{"Single":17},{"Single":34},{"Single":36},{"Single":67},{"Range":[71,73]},{"Range":[89,91]},{"Range":[98,121]}]}]}
+frontend/src/types.ts
+  7374a0aec251d9e6 60-72 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Range":[60,72]}]}]}
+shared/marketData.test.ts
+  7374a0aec251d9e6 277-313 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Range":[277,313]}]}]}
+frontend/src/styles.css
+  7374a0aec251d9e6 30,44,439-464 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":30},{"Single":44},{"Range":[439,464]}]}]}
+shared/marketData.ts
+  7374a0aec251d9e6 1,302-326,498-502,632-640 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":1},{"Range":[302,326]},{"Range":[498,502]},{"Range":[632,640]}]}]}
+app/api/funds/[code]/holdings/route.ts
+  7374a0aec251d9e6 1-17 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Range":[1,17]}]}]}
+shared/types.ts
+  7374a0aec251d9e6 36-48 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Range":[36,48]}]}]}
+frontend/src/api.ts
+  7374a0aec251d9e6 1,85 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":1},{"Single":85}]}]}
+README.md
+  7374a0aec251d9e6 125 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":125}]}]}
+frontend/src/components/components.test.tsx
+  7374a0aec251d9e6 42,50,53,66-71 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":42},{"Single":50},{"Single":53},{"Range":[66,71]}]}]}
+features/market/service.ts
+  7374a0aec251d9e6 2,77-82 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":2},{"Range":[77,82]}]}]}
+backend/local.test.ts
+  7374a0aec251d9e6 10 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":10}]}]}
+features/market/service.test.ts
+  7374a0aec251d9e6 19,54-67,87 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":19},{"Range":[54,67]},{"Single":87}]}]}
+frontend/src/App.test.tsx
+  7374a0aec251d9e6 17 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":17}]}]}
+tests/app-api-routes.test.ts
+  7374a0aec251d9e6 14,41,191,417-446 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":14},{"Single":41},{"Single":191},{"Range":[417,446]}]}]}
+backend/api.test.ts
+  7374a0aec251d9e6 108 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a1fc20644ea3122a5e1ab0a","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":108}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "fc670ed9d700271a3c9794cbb0670e331f84b0f9",
+  "prompts": {
+    "7374a0aec251d9e6": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a1c0ba3a61ace05932b5bdb",
+        "model": "openrouter-3o__max"
+      },
+      "human_author": "mashichen <mashichen.msc@bytedance.com>",
+      "messages": [],
+      "total_additions": 270,
+      "total_deletions": 21,
+      "accepted_lines": 268,
+      "overriden_lines": 0
+    }
+  },
+  "attestation_metadata": {
+    "README.en.md": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 125
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 125
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "README.md": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 125
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 125
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "app/api/funds/[code]/holdings/route.ts": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              17
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  17
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "backend/api.test.ts": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 108
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 108
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "backend/local.test.ts": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 10
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 10
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "features/market/service.test.ts": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 19
+          },
+          {
+            "Range": [
+              54,
+              67
+            ]
+          },
+          {
+            "Single": 87
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 19
+              },
+              {
+                "Range": [
+                  54,
+                  67
+                ]
+              },
+              {
+                "Single": 87
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "features/market/service.ts": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 2
+          },
+          {
+            "Range": [
+              77,
+              82
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 2
+              },
+              {
+                "Range": [
+                  77,
+                  82
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "frontend/src/App.test.tsx": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 17
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 17
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "frontend/src/App.tsx": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 28
+          },
+          {
+            "Single": 72
+          },
+          {
+            "Range": [
+              160,
+              166
+            ]
+          },
+          {
+            "Single": 410
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 28
+              },
+              {
+                "Single": 72
+              },
+              {
+                "Range": [
+                  160,
+                  166
+                ]
+              },
+              {
+                "Single": 410
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "frontend/src/api.ts": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 1
+          },
+          {
+            "Single": 85
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 1
+              },
+              {
+                "Single": 85
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "frontend/src/components/FundSearch.tsx": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Range": [
+              3,
+              4
+            ]
+          },
+          {
+            "Single": 17
+          },
+          {
+            "Single": 34
+          },
+          {
+            "Single": 36
+          },
+          {
+            "Single": 67
+          },
+          {
+            "Range": [
+              71,
+              73
+            ]
+          },
+          {
+            "Range": [
+              89,
+              91
+            ]
+          },
+          {
+            "Range": [
+              98,
+              121
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Range": [
+                  3,
+                  4
+                ]
+              },
+              {
+                "Single": 17
+              },
+              {
+                "Single": 34
+              },
+              {
+                "Single": 36
+              },
+              {
+                "Single": 67
+              },
+              {
+                "Range": [
+                  71,
+                  73
+                ]
+              },
+              {
+                "Range": [
+                  89,
+                  91
+                ]
+              },
+              {
+                "Range": [
+                  98,
+                  121
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "frontend/src/components/components.test.tsx": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 42
+          },
+          {
+            "Single": 50
+          },
+          {
+            "Single": 53
+          },
+          {
+            "Range": [
+              66,
+              71
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 42
+              },
+              {
+                "Single": 50
+              },
+              {
+                "Single": 53
+              },
+              {
+                "Range": [
+                  66,
+                  71
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "frontend/src/styles.css": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 30
+          },
+          {
+            "Single": 44
+          },
+          {
+            "Range": [
+              439,
+              464
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 30
+              },
+              {
+                "Single": 44
+              },
+              {
+                "Range": [
+                  439,
+                  464
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "frontend/src/types.ts": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Range": [
+              60,
+              72
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Range": [
+                  60,
+                  72
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "shared/marketData.test.ts": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Range": [
+              277,
+              313
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Range": [
+                  277,
+                  313
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "shared/marketData.ts": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 1
+          },
+          {
+            "Range": [
+              302,
+              326
+            ]
+          },
+          {
+            "Range": [
+              498,
+              502
+            ]
+          },
+          {
+            "Range": [
+              632,
+              640
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 1
+              },
+              {
+                "Range": [
+                  302,
+                  326
+                ]
+              },
+              {
+                "Range": [
+                  498,
+                  502
+                ]
+              },
+              {
+                "Range": [
+                  632,
+                  640
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "shared/types.ts": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Range": [
+              36,
+              48
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Range": [
+                  36,
+                  48
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "tests/app-api-routes.test.ts": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 14
+          },
+          {
+            "Single": 41
+          },
+          {
+            "Single": 191
+          },
+          {
+            "Range": [
+              417,
+              446
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a1fc20644ea3122a5e1ab0a",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 14
+              },
+              {
+                "Single": 41
+              },
+              {
+                "Single": 191
+              },
+              {
+                "Range": [
+                  417,
+                  446
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "7374a0aec251d9e6": {
+      "tool": "trae",
+      "conversation_id": "6a1c0ba3a61ace05932b5bdb",
+      "session_id": "6a1c0ba3a61ace05932b5bdb",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
