@@ -1,0 +1,112 @@
+shared/marketData.ts
+  de085fe444e7f2e4 220-261,520-523 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a201f4a44ea3122a5e1b3e9","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Range":[220,261]},{"Range":[520,523]}]}]}
+shared/marketData.test.ts
+  de085fe444e7f2e4 189-201,212 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a201f4a44ea3122a5e1b3e9","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Range":[189,201]},{"Single":212}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "65c76a2ef1ba10da7c919709d15d8f8e6fe84e3f",
+  "prompts": {
+    "de085fe444e7f2e4": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a20149744ea3122a5e1b124",
+        "model": "openrouter-3o__max"
+      },
+      "human_author": "mashichen <mashichen.msc@bytedance.com>",
+      "messages": [],
+      "total_additions": 60,
+      "total_deletions": 6,
+      "accepted_lines": 60,
+      "overriden_lines": 0
+    }
+  },
+  "attestation_metadata": {
+    "shared/marketData.test.ts": [
+      {
+        "hash": "de085fe444e7f2e4",
+        "line_ranges": [
+          {
+            "Range": [
+              189,
+              201
+            ]
+          },
+          {
+            "Single": 212
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a201f4a44ea3122a5e1b3e9",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Range": [
+                  189,
+                  201
+                ]
+              },
+              {
+                "Single": 212
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "shared/marketData.ts": [
+      {
+        "hash": "de085fe444e7f2e4",
+        "line_ranges": [
+          {
+            "Range": [
+              220,
+              261
+            ]
+          },
+          {
+            "Range": [
+              520,
+              523
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a201f4a44ea3122a5e1b3e9",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Range": [
+                  220,
+                  261
+                ]
+              },
+              {
+                "Range": [
+                  520,
+                  523
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "de085fe444e7f2e4": {
+      "tool": "trae",
+      "conversation_id": "6a20149744ea3122a5e1b124",
+      "session_id": "6a20149744ea3122a5e1b124",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
