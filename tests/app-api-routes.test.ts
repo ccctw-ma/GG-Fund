@@ -276,6 +276,7 @@ describe('app api routes', () => {
     const response = await getIndices();
 
     expect(marketService.getIndices).toHaveBeenCalledTimes(1);
+    expect(response.headers.get('cache-control')).toContain('s-maxage=60');
     await expect(response.json()).resolves.toEqual([
       { code: '000001.SH', name: '上证指数', value: 3200, change: 10, changePercent: 0.31, quoteTime: '2026-05-30 15:00:00' },
     ]);
@@ -300,6 +301,7 @@ describe('app api routes', () => {
     });
 
     expect(marketService.getIndexHistory).toHaveBeenCalledWith('000001.SH', 'all');
+    expect(response.headers.get('cache-control')).toContain('stale-while-revalidate=604800');
     await expect(response.json()).resolves.toEqual([{ date: '2026-05-29', netValue: 3128.42 }]);
   });
 
@@ -324,6 +326,7 @@ describe('app api routes', () => {
     const response = await searchFunds(new Request('https://example.com/api/funds/search?q=%E6%B6%88%E8%B4%B9'));
 
     expect(marketService.searchFunds).toHaveBeenCalledWith('消费');
+    expect(response.headers.get('cache-control')).toContain('s-maxage=300');
     await expect(response.json()).resolves.toEqual([
       { code: '000001', name: '华夏成长混合', netValue: 1.23, quoteDate: '2026-05-30', quoteType: 'official', source: 'test-search' },
     ]);
@@ -358,6 +361,7 @@ describe('app api routes', () => {
     });
 
     expect(marketService.getFund).toHaveBeenCalledWith('000001');
+    expect(response.headers.get('cache-control')).toContain('s-maxage=120');
     await expect(response.json()).resolves.toEqual({
       code: '000001',
       name: '华夏成长混合',
@@ -395,6 +399,7 @@ describe('app api routes', () => {
     });
 
     expect(marketService.getFundHistory).toHaveBeenCalledWith('000001', '6m');
+    expect(response.headers.get('cache-control')).toContain('s-maxage=86400');
     await expect(response.json()).resolves.toEqual([
       { date: '2026-05-30', netValue: 1.31 },
       { date: '2026-05-31', netValue: 1.33 },
@@ -425,6 +430,7 @@ describe('app api routes', () => {
     });
 
     expect(marketService.getFundHoldings).toHaveBeenCalledWith('161725');
+    expect(response.headers.get('cache-control')).toContain('s-maxage=86400');
     await expect(response.json()).resolves.toEqual({
       reportDate: '2026-03-31',
       stocks: [{ code: '600519', name: '贵州茅台', weight: 18.33 }],
@@ -452,6 +458,7 @@ describe('app api routes', () => {
     const response = await getTrendingFunds();
 
     expect(marketService.getTrendingFunds).toHaveBeenCalledTimes(1);
+    expect(response.headers.get('cache-control')).toContain('s-maxage=86400');
     await expect(response.json()).resolves.toEqual([
       { code: '110022', name: '易方达消费行业股票', netValue: 1.66, quoteDate: '2026-05-30', quoteType: 'official', source: 'test-trending' },
     ]);

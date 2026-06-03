@@ -1,6 +1,6 @@
 import type { FundHistoryPoint, FundHoldings, FundQuote, IndexQuote } from './types';
 
-type CacheEntry<T> = { expiresAt: number; value: T };
+type CacheEntry<T> = { expiresAt: number; staleUntil: number; value: T; pending?: Promise<T> };
 
 type MarketDataOptions = {
   now?: () => number;
@@ -15,6 +15,8 @@ const EASTMONEY_STOCK_SOURCE = '东方财富 A股行情';
 const EASTMONEY_F10_HOLDINGS_SOURCE = '东方财富 F10 持仓明细';
 const TENCENT_STOCK_SOURCE = '腾讯证券行情';
 const TIANTIAN_ESTIMATE_SOURCE = '天天基金实时估算';
+const FETCH_TIMEOUT_MS = 8_000;
+const STALE_CACHE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const INDEX_NAMES: Record<string, string> = {
   '000001': '上证指数',
@@ -499,8 +501,18 @@ function historyFromTencentKline(text: string): FundHistoryPoint[] {
     .filter((item): item is FundHistoryPoint => Boolean(item));
 }
 
+async function fetchWithTimeout(url: string, init: RequestInit = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function defaultFetchText(url: string, headers?: Record<string, string>): Promise<string> {
-  const response = await fetch(url, { headers: { 'user-agent': 'GG-Fund/0.1', ...headers } });
+  const response = await fetchWithTimeout(url, { headers: { 'user-agent': 'GG-Fund/0.1', ...headers } });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   // 腾讯证券行情接口（qt.gtimg.cn）返回 GBK 编码，直接 text() 会把中文名解析成乱码。
   if (url.includes('qt.gtimg.cn')) {
@@ -511,7 +523,7 @@ async function defaultFetchText(url: string, headers?: Record<string, string>): 
 }
 
 async function defaultFetchJson(url: string, headers?: Record<string, string>): Promise<unknown> {
-  const response = await fetch(url, { headers: { 'user-agent': 'GG-Fund/0.1', ...headers } });
+  const response = await fetchWithTimeout(url, { headers: { 'user-agent': 'GG-Fund/0.1', ...headers } });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json();
 }
@@ -526,9 +538,23 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
   async function cached<T>(key: string, ttlMs: number, loader: () => Promise<T>): Promise<T> {
     const entry = cache.get(key) as CacheEntry<T> | undefined;
     if (entry && entry.expiresAt > now()) return entry.value;
-    const value = await loader();
-    cache.set(key, { value, expiresAt: now() + ttlMs });
-    return value;
+    if (entry?.pending) return entry.pending;
+    const pending = loader()
+      .then((value) => {
+        cache.set(key, { value, expiresAt: now() + ttlMs, staleUntil: now() + ttlMs + STALE_CACHE_MS });
+        return value;
+      })
+      .catch((error) => {
+        if (entry && entry.staleUntil > now()) return entry.value;
+        throw error;
+      })
+      .finally(() => {
+        const current = cache.get(key) as CacheEntry<T> | undefined;
+        if (current?.pending === pending) delete current.pending;
+      });
+    if (entry) entry.pending = pending;
+    else cache.set(key, { value: undefined as T, expiresAt: 0, staleUntil: 0, pending });
+    return pending;
   }
 
   async function getEastmoneyIndices(): Promise<IndexQuote[]> {

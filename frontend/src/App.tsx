@@ -52,20 +52,26 @@ const hashPageMap: Record<string, WorkspacePage> = {
   settings: 'portfolio',
 };
 
+export type AppInitialData = {
+  indices?: IndexQuote[];
+  trendingFunds?: FundQuote[];
+  benchmarkHistory?: FundHistoryPoint[];
+};
+
 function pageFromHash(hash: string): WorkspacePage {
   const key = hash.replace(/^#/, '');
   return hashPageMap[key] ?? 'overview';
 }
 
-export default function App() {
-  const [indices, setIndices] = useState<IndexQuote[]>([]);
-  const [marketLoading, setMarketLoading] = useState(true);
+export default function App({ initialData }: { initialData?: AppInitialData }) {
+  const [indices, setIndices] = useState<IndexQuote[]>(() => initialData?.indices ?? []);
+  const [marketLoading, setMarketLoading] = useState(() => !initialData?.indices?.length);
   const [marketError, setMarketError] = useState<string>();
   const [query, setQuery] = useState('000001');
-  const [results, setResults] = useState<FundQuote[]>([]);
+  const [results, setResults] = useState<FundQuote[]>(() => initialData?.trendingFunds ?? []);
   const [selectedFund, setSelectedFund] = useState<FundQuote>();
   const [history, setHistory] = useState<FundHistoryPoint[]>([]);
-  const [benchmarkHistory, setBenchmarkHistory] = useState<FundHistoryPoint[]>([]);
+  const [benchmarkHistory, setBenchmarkHistory] = useState<FundHistoryPoint[]>(() => initialData?.benchmarkHistory ?? []);
   const [fundHoldings, setFundHoldings] = useState<FundHoldings>({ stocks: [] });
   const [fundLoading, setFundLoading] = useState(false);
   const [fundError, setFundError] = useState<string>();
@@ -79,6 +85,17 @@ export default function App() {
   const [activePage, setActivePage] = useState<WorkspacePage>('overview');
 
   useEffect(() => {
+    queueMicrotask(() => {
+      const cachedIndices = api.getCachedIndices();
+      if (cachedIndices?.length) {
+        setIndices(cachedIndices);
+        setMarketLoading(false);
+      }
+      const cachedTrending = api.getCachedTrendingFunds();
+      if (cachedTrending?.length) setResults(cachedTrending);
+      const cachedBenchmark = api.getCachedIndexHistory('000300.SH', 'all');
+      if (cachedBenchmark?.length) setBenchmarkHistory(cachedBenchmark);
+    });
     api.getIndices()
       .then(setIndices)
       .catch((error: Error) => setMarketError(error.message))
@@ -136,10 +153,16 @@ export default function App() {
   async function searchFunds() {
     setFundLoading(true);
     setFundError(undefined);
+    const normalizedQuery = query.trim();
+    const cached = api.getCachedSearchFunds(normalizedQuery);
+    if (cached?.length) {
+      setResults(cached);
+      void selectFund(cached[0].code, { preferCached: true });
+    }
     try {
-      const funds = await api.searchFunds(query);
+      const funds = await api.searchFunds(normalizedQuery);
       setResults(funds);
-      if (funds[0]) await selectFund(funds[0].code);
+      if (funds[0]) await selectFund(funds[0].code, { preferCached: false });
     } catch (error) {
       setFundError(error instanceof Error ? error.message : '基金查询失败');
     } finally {
@@ -147,9 +170,20 @@ export default function App() {
     }
   }
 
-  async function selectFund(code: string) {
+  async function selectFund(code: string, options: { preferCached?: boolean } = {}) {
     setFundLoading(true);
     setFundError(undefined);
+    const cachedFund = api.getCachedFund(code);
+    const cachedHistory = api.getCachedFundHistory(code, 'all') ?? api.getCachedFundHistory(code, '1m');
+    const cachedHoldings = api.getCachedFundHoldings(code);
+    if (cachedFund) {
+      setSelectedFund(cachedFund);
+      setQuotes((current) => ({ ...current, [cachedFund.code]: cachedFund }));
+      if (cachedFund.name) setQuery(cachedFund.name);
+    }
+    if (cachedHistory?.length) setHistory(cachedHistory);
+    if (cachedHoldings) setFundHoldings(cachedHoldings);
+    if (options.preferCached && cachedFund && cachedHistory?.length) setFundLoading(false);
     try {
       // 渐进式加载：先用 1 个月历史快速出图，再后台补全全量历史，避免首屏一次拉太多数据。
       const [fund, nextHistory] = await Promise.all([api.getFund(code), api.getFundHistory(code, '1m')]);
@@ -159,7 +193,7 @@ export default function App() {
       // 用接口返回的真实基金名称回填搜索框，纠正用户可能输错的名称。
       if (fund.name) setQuery(fund.name);
       if (fund.assetType === 'fund') {
-        api.getFundHoldings(fund.code).then(setFundHoldings).catch(() => setFundHoldings({ stocks: [] }));
+        api.getFundHoldings(fund.code).then(setFundHoldings).catch(() => setFundHoldings((current) => (current.stocks.length ? current : { stocks: [] })));
         api.getFundHistory(code, 'all')
           .then((full) => { if (full.length > 0) setHistory((current) => (current.length >= full.length ? current : full)); })
           .catch(() => undefined);

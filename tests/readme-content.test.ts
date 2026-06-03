@@ -14,6 +14,7 @@ describe('README content reconstruction', () => {
     expect(readme).toContain('`/app/portfolio`');
     expect(readme).toContain('四大指数行情');
     expect(readme).toContain('金融资产搜索');
+    expect(readme).toContain('性能缓存');
     expect(readme).toContain('养基宝式账本能力');
     expect(readme).toContain('多平台导入助手');
     expect(readme).toContain('支付宝 `.txt` / `.csv` / `.json`');
@@ -32,6 +33,7 @@ describe('README content reconstruction', () => {
     expect(readmeEn).toContain('`/app/portfolio`');
     expect(readmeEn).toContain('Core index market');
     expect(readmeEn).toContain('Financial asset search');
+    expect(readmeEn).toContain('Performance caching');
     expect(readmeEn).toContain('Yangjibao-style portfolio ledger');
     expect(readmeEn).toContain('Multi-platform import assistant');
     expect(readmeEn).toContain('Alipay `.txt` / `.csv` / `.json`');

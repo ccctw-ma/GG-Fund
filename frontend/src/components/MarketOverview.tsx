@@ -24,6 +24,10 @@ export function MarketOverview({ indices, loading, error }: { indices: IndexQuot
   useEffect(() => {
     if (!activeHistoryCode || historyMap[activeHistoryCode] !== undefined) return;
     let cancelled = false;
+    queueMicrotask(() => {
+      const cached = api.getCachedIndexHistory(activeHistoryCode, 'all');
+      if (!cancelled && cached?.length) setHistoryMap((current) => (current[activeHistoryCode] ? current : { ...current, [activeHistoryCode]: cached }));
+    });
     api.getIndexHistory(activeHistoryCode, 'all')
       .then((points) => {
         if (!cancelled) setHistoryMap((current) => ({ ...current, [activeHistoryCode]: points }));

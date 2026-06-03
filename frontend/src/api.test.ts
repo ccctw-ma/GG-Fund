@@ -87,4 +87,14 @@ describe('frontend api client', () => {
     expect(localStorage.getItem('gg_fund_session_token')).toBeNull();
   });
 
+  it('hydrates cached fund history when a later network request fails', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ date: '2026-05-29', netValue: 1.23 }]), { status: 200, headers: { 'content-type': 'application/json' } }))
+      .mockRejectedValueOnce(new Error('network timeout'));
+
+    await expect(api.getFundHistory('000001', '1m')).resolves.toEqual([{ date: '2026-05-29', netValue: 1.23 }]);
+    expect(api.getCachedFundHistory('000001', '1m')).toEqual([{ date: '2026-05-29', netValue: 1.23 }]);
+    await expect(api.getFundHistory('000001', '1m')).resolves.toEqual([{ date: '2026-05-29', netValue: 1.23 }]);
+  });
+
 });

@@ -1,10 +1,11 @@
 import { isHttpError, jsonError } from '../../../../lib/http';
+import { cachedJson } from '../../../../lib/httpCache';
 import { getDefaultMarketService } from '../../../../features/market/service';
 
 
 export async function GET() {
   try {
-    return Response.json(await getDefaultMarketService().getTrendingFunds());
+    return cachedJson(await getDefaultMarketService().getTrendingFunds(), 86_400, 604_800);
   } catch (error) {
     return isHttpError(error)
       ? jsonError(error.code, error.message, error.status)

@@ -101,6 +101,10 @@ export function PortfolioPanel({
     if (historyMap[expandedCode] !== undefined && historyMap[expandedCode].length > 28) return;
     historyLoadingRef.current.add(expandedCode);
     const code = expandedCode;
+    queueMicrotask(() => {
+      const cached = api.getCachedFundHistory(code, 'all') ?? api.getCachedFundHistory(code, '1m');
+      if (cached?.length) setHistoryMap((current) => (current[code]?.length ? current : { ...current, [code]: cached }));
+    });
     // 渐进式加载：先取 1 个月数据快速出图，再后台补全全量历史，降低首屏延迟。
     api.getFundHistory(code, '1m')
       .then((points) => {
@@ -125,6 +129,10 @@ export function PortfolioPanel({
   useEffect(() => {
     if (!detailCode || holdingsMap[detailCode] !== undefined) return;
     let cancelled = false;
+    queueMicrotask(() => {
+      const cached = api.getCachedFundHoldings(detailCode);
+      if (!cancelled && cached) setHoldingsMap((current) => (current[detailCode] ? current : { ...current, [detailCode]: cached }));
+    });
     api.getFundHoldings(detailCode)
       .then((holdings) => {
         if (!cancelled) setHoldingsMap((current) => ({ ...current, [detailCode]: holdings }));
@@ -155,6 +163,10 @@ export function PortfolioPanel({
   useEffect(() => {
     if (!stockId || !/^\d{6}$/.test(stockId) || stockHistoryMap[stockId] !== undefined) return;
     let cancelled = false;
+    queueMicrotask(() => {
+      const cached = api.getCachedFundHistory(stockId, 'all');
+      if (!cancelled && cached?.length) setStockHistoryMap((current) => (current[stockId] ? current : { ...current, [stockId]: cached }));
+    });
     api.getFundHistory(stockId, 'all')
       .then((points) => {
         if (!cancelled) setStockHistoryMap((current) => ({ ...current, [stockId]: points }));
