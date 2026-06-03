@@ -6,14 +6,12 @@ const readmeEn = readFileSync('README.en.md', 'utf8');
 
 describe('README content reconstruction', () => {
   it('documents Chinese route and capability guardrails', () => {
-    expect(readme).toContain('全景工具宇宙');
-    expect(readme).toContain('已接入');
-    expect(readme).toContain('可接入');
-    expect(readme).toContain('路线图');
+    expect(readme).not.toContain('全景工具宇宙');
+    expect(readme).not.toContain('工具宇宙');
+    expect(readme).not.toContain('基金与股票研究工具');
     expect(readme).toContain('根路径 `/` 会直接跳转到 `/app` 工作台');
     expect(readme).toContain('`/settings` 目前提供基础说明入口');
     expect(readme).toContain('`/app/portfolio`');
-    expect(readme).toContain('基金与股票研究工具');
     expect(readme).toContain('全球市场雷达');
     expect(readme).toContain('金融资产搜索');
     expect(readme).toContain('养基宝式账本能力');
@@ -27,14 +25,11 @@ describe('README content reconstruction', () => {
   });
 
   it('keeps the English README aligned with live, connectable, and roadmap language', () => {
-    expect(readmeEn).toContain('Tool Universe');
-    expect(readmeEn).toContain('Live');
-    expect(readmeEn).toContain('Connectable');
-    expect(readmeEn).toContain('Roadmap');
+    expect(readmeEn).not.toContain('Tool Universe');
+    expect(readmeEn).not.toContain('Fund and stock research tools');
     expect(readmeEn).toContain('the root path `/` redirects directly to the `/app` workspace');
     expect(readmeEn).toContain('`/settings` currently provides a basic information entry');
     expect(readmeEn).toContain('`/app/portfolio`');
-    expect(readmeEn).toContain('Fund and stock research tools');
     expect(readmeEn).toContain('Global market radar');
     expect(readmeEn).toContain('Financial asset search');
     expect(readmeEn).toContain('Yangjibao-style portfolio ledger');

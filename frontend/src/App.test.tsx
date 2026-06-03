@@ -60,14 +60,8 @@ describe('App', () => {
     expect(container.textContent).toContain('智能基金账户');
     expect(container.textContent).toContain('账户总览');
     expect(container.textContent).toContain('交易与基金工具');
-    expect(container.textContent).toContain('工具宇宙');
+    expect(container.textContent).not.toContain('工具宇宙');
     expect(container.querySelector('[aria-current="page"]')?.textContent).toContain('总览');
-
-    clickButton('工具宇宙');
-    expect(container.textContent).toContain('全景工具宇宙');
-    expect(container.textContent).toContain('ETF / LOF');
-    expect(container.textContent).toContain('官方公告与高信任披露');
-    expect(container.textContent).toContain('开源研究底座');
 
     clickButton('行情工作台');
     expect(container.textContent).toContain('中国基金行情');

@@ -20,7 +20,6 @@ import { FundSearch } from './components/FundSearch';
 import { MarketOverview } from './components/MarketOverview';
 import { PortfolioPanel } from './components/PortfolioPanel';
 import { SettingsPanel } from './components/SettingsPanel';
-import { ToolUniverse } from './components/ToolUniverse';
 import type { WorkspacePage } from './components/Header';
 import { calculatePortfolioSummary } from './portfolio';
 import { backfillHoldingCodes } from './holdingCodes';
@@ -46,8 +45,6 @@ const transactionFeatures = [
 const hashPageMap: Record<string, WorkspacePage> = {
   overview: 'overview',
   features: 'overview',
-  'tool-universe': 'tools',
-  tools: 'tools',
   workspace: 'workspace',
   funds: 'workspace',
   portfolio: 'portfolio',
@@ -396,8 +393,6 @@ export default function App() {
               </section>
             </>
           )}
-
-          {activePage === 'tools' && <ToolUniverse onOpenWorkspace={() => changePage('workspace')} />}
 
           {activePage === 'workspace' && (
             <section className="workspace-section" id="workspace" aria-labelledby="workspace-title">

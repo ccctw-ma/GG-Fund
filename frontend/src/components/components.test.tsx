@@ -3,13 +3,12 @@ import type { ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
 import { calculatePortfolioSummary } from '../portfolio';
-import { researchCatalog, getLiveCatalogItems } from '../researchCatalog';
+import { decisionSteps } from '../decisionSteps';
 import { BeginnerGuide } from './BeginnerGuide';
 import { FundSearch } from './FundSearch';
 import { MarketOverview } from './MarketOverview';
 import { PortfolioPanel } from './PortfolioPanel';
 import { SettingsPanel, buildRecognizedImport } from './SettingsPanel';
-import { ToolUniverse } from './ToolUniverse';
 
 const fund = { code: '000001', name: '华夏成长混合', netValue: 1.35, quoteDate: '2026-05-29', quoteType: 'estimate' as const, source: 'test' };
 const emptySummary = calculatePortfolioSummary([], {});
@@ -250,20 +249,14 @@ describe('dashboard components', () => {
     expect(guide.container.textContent).toContain('单只基金权重');
   });
 
-  it('renders the investment tool universe catalog', () => {
-    const universe = render(<ToolUniverse />);
-    roots.push(universe.root);
-
-    [
-      '全景工具宇宙',
-      '全球核心指数',
-      '基金筛选、对比与诊断',
-      '官方公告与高信任披露',
-      'AKShare / AKTools',
-      '已接入',
-      '可接入',
-      '路线图',
-    ].forEach((text) => expect(universe.container.textContent).toContain(text));
+  it('exposes the beginner decision steps without the removed tool universe catalog', () => {
+    expect(decisionSteps.map((step) => step.title)).toEqual([
+      '确认资金期限',
+      '匹配风险等级',
+      '观察市场温度',
+      '检查持仓权重',
+      '分批执行与复盘',
+    ]);
   });
 
   it('recognizes Alipay holding text into importable local portfolio JSON', () => {
@@ -336,24 +329,5 @@ describe('dashboard components', () => {
     expect(first.platform).toBe('alipay');
     expect(first.fundName).toContain('纳斯达克');
     expect(parsed.holdings.every((holding) => holding.recordedMarketValue > 0)).toBe(true);
-  });
-
-  it('exposes a complete typed research catalog with live and roadmap capabilities', () => {
-    expect(researchCatalog.assetNavigation.map((item) => item.title)).toEqual([
-      '全球核心指数',
-      '基金与 A 股行情',
-      '养基账本',
-      'ETF / LOF',
-      'REITs',
-      '债券与可转债',
-      '新债 / 新发基金',
-      '港美与全球观察',
-    ]);
-    expect(researchCatalog.toolGroups.map((group) => group.title)).toContain('基金筛选、对比与诊断');
-    expect(researchCatalog.toolGroups.flatMap((group) => group.capabilities.map((capability) => capability.title))).toContain('盈亏周报/月报');
-    expect(researchCatalog.sourceGroups.map((group) => group.title)).toContain('官方公告与高信任披露');
-    expect(researchCatalog.openSourceStack.map((item) => item.name)).toEqual(['AKShare / AKTools', 'Qlib', 'Tushare', 'Backtrader', 'Pyfolio', 'Streamlit']);
-    expect(getLiveCatalogItems().some((item) => item.title === '基金与 A 股行情')).toBe(true);
-    expect(researchCatalog.assetNavigation.find((item) => item.title === '港美与全球观察')?.status).toBe('connectable');
   });
 });

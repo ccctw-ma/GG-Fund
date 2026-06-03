@@ -217,11 +217,11 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
   await expect(page.getByText('基金研究操作系统').first()).toBeVisible();
   await expect(page.getByTestId('banking-hero-card')).toBeVisible();
 
-  await page.getByRole('button', { name: /工具宇宙/ }).click();
-  await expect(page.getByRole('heading', { name: '全景工具宇宙' })).toBeVisible();
-  await expect(page.getByText('基金筛选、对比与诊断').first()).toBeVisible();
-  await expect(page.getByText('官方公告与高信任披露').first()).toBeVisible();
-  await expect(page.getByText('AKShare / AKTools').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /工具宇宙/ })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '全景工具宇宙' })).toHaveCount(0);
+  await expect(page.getByText('基金筛选、对比与诊断').first()).toHaveCount(0);
+  await expect(page.getByText('官方公告与高信任披露').first()).toHaveCount(0);
+  await expect(page.getByText('AKShare / AKTools').first()).toHaveCount(0);
 
   await page.getByRole('button', { name: /行情工作台/ }).click();
   await expect(page.getByRole('heading', { name: '中国基金行情' })).toBeAttached();

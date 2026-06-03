@@ -1,7 +1,7 @@
 'use client';
 
 import { BookOpen, Compass, ShieldAlert, TrendingUp } from 'lucide-react';
-import { researchCatalog } from '../researchCatalog';
+import { decisionSteps } from '../decisionSteps';
 import type { FundQuote, IndexQuote, PortfolioSummary } from '../types';
 
 type BeginnerGuideProps = {
@@ -72,7 +72,7 @@ export function BeginnerGuide({ selectedFund, leadingIndex, summary }: BeginnerG
       </div>
       <div className="decision-ladder" aria-label="基金操作路径">
         <strong>默认路径：</strong>
-        {researchCatalog.decisionSteps.map((step) => (
+        {decisionSteps.map((step) => (
           <span className="decision-ladder-step" title={step.detail} key={step.title}>
             <span className="decision-ladder-step-title">{step.title}</span>
             <small>{step.detail}</small>

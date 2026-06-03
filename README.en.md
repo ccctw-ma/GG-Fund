@@ -7,14 +7,9 @@ GG Fund now uses a Cloudflare-first Next.js App Router architecture as its main 
 ## Features
 
 - Next.js App Router workspace: the root path `/` redirects directly to the `/app` workspace, `/login` provides a standalone email OTP sign-in page, `/settings` currently provides a basic information entry, and `/app/portfolio` currently serves as a landing page while local-first holdings and watchlist stay in the main workspace.
-- Top navigation workspace: `/app` switches between Overview, Tool Universe, Live Workspace, and Portfolio through a sticky top nav, with a compact account status card in the top-right corner; clicking the top-right Login button opens `/login`.
-- Tool Universe: reorganizes common stock/fund website capabilities into a browsable map for quotes, screening, comparison, diagnostics, accounts, news, disclosures, and open-source quant research.
-- Multi-asset navigation: A-share/HK/US core indices, A-share live stock quotes, and fund NAVs are live; ETF / LOF, REITs, bonds and convertible bonds, new bonds / newly issued funds, and global market watch are labeled as connectable or roadmap capabilities.
-- Fund and stock research tools: fund discovery, A-share search, diagnostics, local holdings, and watchlist are live today; fund comparison and ETF / LOF topics are explicitly marked as connectable.
+- Top navigation workspace: `/app` switches between Overview, Live Workspace, and Portfolio through a sticky top nav, with a compact account status card in the top-right corner; clicking the top-right Login button opens `/login`.
 - Yangjibao-style portfolio ledger: the Portfolio page now provides estimated daily profit, multi-platform ledgers, weekly/monthly P/L summaries, contribution breakdowns, concentration checks, missing NAV warnings, 7-day redemption reminders, target-weight drift, educational recurring-investment plans, and target take-profit prompts.
 - Multi-platform import assistant: users can paste holding text from Alipay, WeChat Wealth, Tiantian Fund, Snowball, or manual exports, upload Alipay `.txt` / `.csv` / `.json` text-based holding files, or upload Alipay holding screenshots that are recognized into text by in-browser OCR (`tesseract.js`, Simplified Chinese + English) before import. Screenshot OCR runs entirely in the browser and is not uploaded to the server. Platform authorization sync, live trading, and whole-network user buy/sell rankings remain roadmap items and are not faked.
-- Research sources and disclosures: separates Eastmoney/10jqka/Tiantian-style market data, Howbuy-style fund screening and diagnostics, Snowball-style community opinions, and exchange official disclosures into explicit content layers.
-- Open research stack roadmap: AKShare / AKTools, Qlib, Tushare, Backtrader, Pyfolio, and Streamlit are documented as inspiration for data ingestion, quant research, backtesting, portfolio attribution, and dashboards.
 - Global market radar: reads SSE Composite, SZSE Component, ChiNext, CSI 300, STAR 50, BSE 50, Hang Seng, and Nasdaq from Eastmoney push2 with Tencent quote fallback.
 - Financial asset search: searches public fund data and A-share live quotes by code or name, with built-in fallback samples when upstream APIs fail.
 - Fund details: prefers Tiantian intraday estimated NAV, estimated change, and estimate time while keeping the previous official NAV.
@@ -140,8 +135,8 @@ Financial asset search reads Eastmoney fund search, Eastmoney A-share quote list
 GG Fund uses three explicit status labels:
 
 - `Live`: real API or local product capability is available today, such as global core indices, A-share live stock quotes, fund NAVs, fund discovery/search, diagnostics, history, local holdings, watchlist, Yangjibao-style ledgers, P/L reports, risk reminders, Alipay text-file upload, in-browser OCR of Alipay screenshots, text import, Resend email login, import, and export.
-- `Connectable`: the product shape is defined and can be wired to real data or stronger algorithms later, such as ETF / LOF topics, fund comparison, and AKShare / AKTools data infrastructure.
-- `Roadmap`: shown as the reconstructed product direction, not as a live production claim, such as REITs, convertible bonds, issuance calendars, official disclosure aggregation, community opinions, real screenshot OCR, platform authorization sync, whole-network user buy/sell rankings, live trading, Qlib backtesting, and portfolio optimization.
+- `Connectable`: the product shape is defined but still needs real data or stronger algorithms, such as platform authorization sync and whole-network user buy/sell rankings.
+- `Roadmap`: not presented as live production functionality, such as platform authorization sync, whole-network user buy/sell rankings, live trading, Qlib backtesting, and portfolio optimization.
 
 All displayed data is for learning and reference only and is not investment advice.
 

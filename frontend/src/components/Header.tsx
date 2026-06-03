@@ -1,7 +1,7 @@
-import { BarChart3, Compass, LogOut, UserRound, WalletCards } from 'lucide-react';
+import { BarChart3, Compass, LogOut, UserRound } from 'lucide-react';
 import type { AuthSessionResponse } from '../api';
 
-export type WorkspacePage = 'overview' | 'tools' | 'workspace' | 'portfolio';
+export type WorkspacePage = 'overview' | 'workspace' | 'portfolio';
 
 type HeaderProps = {
   session?: AuthSessionResponse;
@@ -13,8 +13,7 @@ type HeaderProps = {
 
 const navItems = [
   { id: 'overview', label: '总览', icon: Compass },
-  { id: 'tools', label: '工具宇宙', icon: BarChart3 },
-  { id: 'workspace', label: '行情工作台', icon: WalletCards },
+  { id: 'workspace', label: '行情工作台', icon: BarChart3 },
   { id: 'portfolio', label: '组合账户', icon: UserRound },
 ] satisfies Array<{ id: WorkspacePage; label: string; icon: typeof Compass }>;
 
