@@ -1,0 +1,314 @@
+frontend/src/App.tsx
+  7374a0aec251d9e6 156-157,165-167 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a20039e44ea3122a5e1afdf","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Range":[156,157]},{"Range":[165,167]}]}]}
+frontend/src/components/FundTrendChart.tsx
+  7374a0aec251d9e6 9 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a20039e44ea3122a5e1afdf","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":9}]}]}
+frontend/src/components/PortfolioPanel.tsx
+  7374a0aec251d9e6 4,33-54,81,95-100,102,104-116,138,154-163,377,379-382,385-386 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a20039e44ea3122a5e1afdf","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":4},{"Range":[33,54]},{"Single":81},{"Range":[95,100]},{"Single":102},{"Range":[104,116]},{"Single":138},{"Range":[154,163]},{"Single":377},{"Range":[379,382]},{"Range":[385,386]}]}]}
+frontend/src/styles.css
+  7374a0aec251d9e6 372,481 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a20039e44ea3122a5e1afdf","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":372},{"Single":481}]}]}
+frontend/src/fundMetrics.ts
+  7374a0aec251d9e6 3,19 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a20039e44ea3122a5e1afdf","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Single":3},{"Single":19}]}]}
+frontend/src/fundMetrics.test.ts
+  7374a0aec251d9e6 36-50 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a20039e44ea3122a5e1afdf","tool_type":"agent","tool_id":"RunCommand","line_ranges":[{"Range":[36,50]}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "8e72f5e559f86e2fb0c2b660dbdc2f8eeee494fd",
+  "prompts": {
+    "7374a0aec251d9e6": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a1c0ba3a61ace05932b5bdb",
+        "model": "openrouter-3o__max"
+      },
+      "human_author": "mashichen <mashichen.msc@bytedance.com>",
+      "messages": [],
+      "total_additions": 94,
+      "total_deletions": 25,
+      "accepted_lines": 88,
+      "overriden_lines": 0
+    }
+  },
+  "attestation_metadata": {
+    "frontend/src/App.tsx": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Range": [
+              156,
+              157
+            ]
+          },
+          {
+            "Range": [
+              165,
+              167
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a20039e44ea3122a5e1afdf",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Range": [
+                  156,
+                  157
+                ]
+              },
+              {
+                "Range": [
+                  165,
+                  167
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "frontend/src/components/FundTrendChart.tsx": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 9
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a20039e44ea3122a5e1afdf",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 9
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "frontend/src/components/PortfolioPanel.tsx": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 4
+          },
+          {
+            "Range": [
+              33,
+              54
+            ]
+          },
+          {
+            "Single": 81
+          },
+          {
+            "Range": [
+              95,
+              100
+            ]
+          },
+          {
+            "Single": 102
+          },
+          {
+            "Range": [
+              104,
+              116
+            ]
+          },
+          {
+            "Single": 138
+          },
+          {
+            "Range": [
+              154,
+              163
+            ]
+          },
+          {
+            "Single": 377
+          },
+          {
+            "Range": [
+              379,
+              382
+            ]
+          },
+          {
+            "Range": [
+              385,
+              386
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a20039e44ea3122a5e1afdf",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 4
+              },
+              {
+                "Range": [
+                  33,
+                  54
+                ]
+              },
+              {
+                "Single": 81
+              },
+              {
+                "Range": [
+                  95,
+                  100
+                ]
+              },
+              {
+                "Single": 102
+              },
+              {
+                "Range": [
+                  104,
+                  116
+                ]
+              },
+              {
+                "Single": 138
+              },
+              {
+                "Range": [
+                  154,
+                  163
+                ]
+              },
+              {
+                "Single": 377
+              },
+              {
+                "Range": [
+                  379,
+                  382
+                ]
+              },
+              {
+                "Range": [
+                  385,
+                  386
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "frontend/src/fundMetrics.test.ts": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Range": [
+              36,
+              50
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a20039e44ea3122a5e1afdf",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Range": [
+                  36,
+                  50
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "frontend/src/fundMetrics.ts": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 3
+          },
+          {
+            "Single": 19
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a20039e44ea3122a5e1afdf",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 3
+              },
+              {
+                "Single": 19
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "frontend/src/styles.css": [
+      {
+        "hash": "7374a0aec251d9e6",
+        "line_ranges": [
+          {
+            "Single": 372
+          },
+          {
+            "Single": 481
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a20039e44ea3122a5e1afdf",
+            "tool_type": "agent",
+            "tool_id": "RunCommand",
+            "line_ranges": [
+              {
+                "Single": 372
+              },
+              {
+                "Single": 481
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "7374a0aec251d9e6": {
+      "tool": "trae",
+      "conversation_id": "6a1c0ba3a61ace05932b5bdb",
+      "session_id": "6a1c0ba3a61ace05932b5bdb",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
