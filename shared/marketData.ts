@@ -451,6 +451,11 @@ function historyFromTencentKline(text: string): FundHistoryPoint[] {
 async function defaultFetchText(url: string, headers?: Record<string, string>): Promise<string> {
   const response = await fetch(url, { headers: { 'user-agent': 'GG-Fund/0.1', ...headers } });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  // 腾讯证券行情接口（qt.gtimg.cn）返回 GBK 编码，直接 text() 会把中文名解析成乱码。
+  if (url.includes('qt.gtimg.cn')) {
+    const buffer = await response.arrayBuffer();
+    return new TextDecoder('gbk').decode(buffer);
+  }
   return response.text();
 }
 
