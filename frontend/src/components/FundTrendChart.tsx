@@ -47,7 +47,8 @@ export function FundTrendChart({
 
   const option = {
     backgroundColor: 'transparent',
-    color: ['#f7c96b', '#7de2b8', '#ff8a80'],
+    // 中国习惯：涨/收益用红，跌/回撤用绿。净值线保持金色。
+    color: ['#f7c96b', '#ff5d52', '#3fd6a0'],
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(4, 17, 31, 0.92)',
@@ -135,7 +136,7 @@ export function FundTrendChart({
         smooth: true,
         symbol: 'none',
         yAxisIndex: 1,
-        lineStyle: { width: 2, type: 'dashed', shadowBlur: 14, shadowColor: 'rgba(125,226,184,.42)' },
+        lineStyle: { width: 2, type: 'dashed', shadowBlur: 14, shadowColor: 'rgba(255,93,82,.42)' },
         data: metrics.points.map((point) => point.cumulativeReturn),
       },
       {
@@ -144,7 +145,7 @@ export function FundTrendChart({
         smooth: true,
         symbol: 'none',
         yAxisIndex: 1,
-        lineStyle: { width: 2, shadowBlur: 12, shadowColor: 'rgba(255,138,128,.38)' },
+        lineStyle: { width: 2, shadowBlur: 12, shadowColor: 'rgba(63,214,160,.38)' },
         areaStyle: { opacity: 0.12 },
         data: metrics.points.map((point) => point.drawdown),
       },
