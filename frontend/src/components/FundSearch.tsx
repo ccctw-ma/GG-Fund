@@ -1,7 +1,7 @@
 'use client';
 
-import { Search, Star, WalletCards } from 'lucide-react';
-import type { FundHistoryPoint, FundQuote, WatchItem } from '../types';
+import { Layers, Search, Star, WalletCards } from 'lucide-react';
+import type { FundHistoryPoint, FundHoldings, FundQuote, WatchItem } from '../types';
 import { FundTrendChart } from './FundTrendChart';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -14,6 +14,7 @@ type Props = {
   results: FundQuote[];
   selectedFund?: FundQuote;
   history: FundHistoryPoint[];
+  holdings?: FundHoldings;
   loading: boolean;
   error?: string;
   onSearch: () => void;
@@ -30,8 +31,9 @@ function formatAssetValue(fund: FundQuote) {
   return fund.assetType === 'stock' ? fund.netValue.toFixed(2) : fund.netValue ? fund.netValue.toFixed(4) : '--';
 }
 
-export function FundSearch({ query, setQuery, results, selectedFund, history, loading, error, onSearch, onSelect, onAddHolding, onToggleWatch, watchlist }: Props) {
+export function FundSearch({ query, setQuery, results, selectedFund, history, holdings, loading, error, onSearch, onSelect, onAddHolding, onToggleWatch, watchlist }: Props) {
   const selectedIsStock = selectedFund?.assetType === 'stock';
+  const holdingStocks = holdings?.stocks ?? [];
   return (
     <Card id="funds" className="lg:col-span-1">
       <CardHeader>
@@ -62,13 +64,13 @@ export function FundSearch({ query, setQuery, results, selectedFund, history, lo
         ))}
       </div>
       {selectedFund && (
-        <article className="mt-5 rounded-[1.75rem] border border-[#10251f]/10 bg-gradient-to-br from-white/80 to-[#e5f7e9]/70 p-5 shadow-inner">
+        <article className="mt-5 rounded-[1.75rem] border border-white/10 bg-slate-950/45 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.06)] backdrop-blur">
           <div className="flex flex-col justify-between gap-4 sm:flex-row">
             <div>
               <Badge tone={selectedIsStock ? 'blue' : selectedFund.quoteType === 'estimate' ? 'red' : 'green'} className="mb-2">{selectedIsStock ? '实时股价' : selectedFund.quoteType === 'estimate' ? '实时估算' : '官方净值'}</Badge>
-              <h3 className="font-display text-3xl font-black tracking-[-0.05em] text-ink">{selectedFund.name}</h3>
-              <p className="text-sm font-semibold text-ink/60">{selectedFund.market ? `${selectedFund.market} · ` : ''}{selectedFund.code} · {selectedIsStock ? '最新价' : selectedFund.quoteType === 'estimate' ? '盘中估算净值' : '最新官方净值'} {formatAssetValue(selectedFund)} · 日期 {selectedFund.quoteDate || '待更新'}</p>
-              {selectedFund.officialNetValue && selectedFund.quoteType === 'estimate' && <p className="mt-1 text-sm text-ink/60">上一官方净值：{selectedFund.officialNetValue.toFixed(4)} · 估算时间：{selectedFund.estimateTime || '未知'}</p>}
+              <h3 className="font-display text-3xl font-black tracking-[-0.05em] text-[var(--text-strong)]">{selectedFund.name}</h3>
+              <p className="text-sm font-semibold text-[var(--text-muted)]">{selectedFund.market ? `${selectedFund.market} · ` : ''}{selectedFund.code} · {selectedIsStock ? '最新价' : selectedFund.quoteType === 'estimate' ? '盘中估算净值' : '最新官方净值'} {formatAssetValue(selectedFund)} · 日期 {selectedFund.quoteDate || '待更新'}</p>
+              {selectedFund.officialNetValue && selectedFund.quoteType === 'estimate' && <p className="mt-1 text-sm text-[var(--text-muted)]">上一官方净值：{selectedFund.officialNetValue.toFixed(4)} · 估算时间：{selectedFund.estimateTime || '未知'}</p>}
               <p className={selectedFund.dailyChangePercent && selectedFund.dailyChangePercent >= 0 ? 'mt-2 font-black text-[var(--bull)]' : 'mt-2 font-black text-[var(--bear)]'}>日涨跌：{selectedFund.dailyChangePercent?.toFixed(2) ?? '--'}%</p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -84,14 +86,38 @@ export function FundSearch({ query, setQuery, results, selectedFund, history, lo
                 ['最高 / 最低', selectedFund.high && selectedFund.low ? `${numberFormat.format(selectedFund.high)} / ${numberFormat.format(selectedFund.low)}` : '--'],
                 ['成交量 / 成交额', selectedFund.volume || selectedFund.turnover ? `${selectedFund.volume ? compactNumberFormat.format(selectedFund.volume) : '--'} / ${selectedFund.turnover ? compactNumberFormat.format(selectedFund.turnover) : '--'}` : '--'],
               ].map(([label, value]) => (
-                <div className="rounded-3xl border border-[#10251f]/10 bg-white/60 p-4" key={label}>
-                  <small className="text-xs font-black uppercase tracking-[0.18em] text-ink/45">{label}</small>
-                  <strong className="mt-2 block text-lg font-black text-ink">{value}</strong>
+                <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-4" key={label}>
+                  <small className="text-xs font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">{label}</small>
+                  <strong className="mt-2 block text-lg font-black text-[var(--text-strong)]">{value}</strong>
                 </div>
               ))}
             </div>
           ) : (
             <FundTrendChart history={history} />
+          )}
+          {!selectedIsStock && holdingStocks.length > 0 && (
+            <div className="fund-holdings" data-testid="fund-holdings">
+              <div className="fund-holdings-head">
+                <span><Layers className="h-4 w-4" /> 重仓持股 / 占净值比</span>
+                {holdings?.reportDate && <small>报告期 {holdings.reportDate}</small>}
+              </div>
+              <ul>
+                {holdingStocks.map((stock) => (
+                  <li key={stock.code}>
+                    <button type="button" onClick={() => onSelect(stock.code)} aria-label={`查看 ${stock.name} 详情`}>
+                      <span className="fund-holdings-name">
+                        <strong>{stock.name}</strong>
+                        <small>{stock.code}{stock.industry ? ` · ${stock.industry}` : ''}{stock.changeType ? ` · ${stock.changeType}` : ''}</small>
+                      </span>
+                      <span className="fund-holdings-weight">
+                        <em>{stock.weight.toFixed(2)}%</em>
+                        <i style={{ width: `${Math.min(100, stock.weight * 4)}%` }} />
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </article>
       )}

@@ -14,6 +14,7 @@ vi.mock('./api', () => ({
     searchFunds: vi.fn(async () => [fund]),
     getFund: vi.fn(async () => fund),
     getFundHistory: vi.fn(async () => [{ date: '2026-05-29', netValue: 1.35 }]),
+    getFundHoldings: vi.fn(async () => ({ reportDate: '2026-03-31', stocks: [] })),
     syncPortfolio: vi.fn(async () => ({})),
     hasSessionToken: vi.fn(() => false),
     getCurrentUser: vi.fn(async () => undefined),

@@ -1,4 +1,4 @@
-import type { FundHistoryPoint, FundQuote, IndexQuote } from './types';
+import type { FundHistoryPoint, FundHoldings, FundQuote, IndexQuote } from './types';
 
 type CacheEntry<T> = { expiresAt: number; value: T };
 
@@ -299,6 +299,31 @@ function quoteFromTiantianEstimate(text: string, code: string): FundQuote | unde
   };
 }
 
+function holdingsFromEastmoney(data: unknown): FundHoldings {
+  const empty: FundHoldings = { stocks: [] };
+  if (typeof data !== 'object' || data === null || !('Datas' in data)) return empty;
+  const root = data as Record<string, unknown>;
+  const datas = root.Datas;
+  const reportDate = typeof root.Expansion === 'string' ? root.Expansion : undefined;
+  if (typeof datas !== 'object' || datas === null) return empty;
+  const list = (datas as { fundStocks?: unknown }).fundStocks;
+  if (!Array.isArray(list)) return { reportDate, stocks: [] };
+  const stocks = list
+    .map((item) => {
+      if (typeof item !== 'object' || item === null) return undefined;
+      const record = item as Record<string, unknown>;
+      const code = String(record.GPDM ?? '').trim();
+      const name = String(record.GPJC ?? '').trim();
+      const weight = toNumber(record.JZBL);
+      if (!code || !name || weight === undefined) return undefined;
+      const changeType = typeof record.PCTNVCHGTYPE === 'string' ? record.PCTNVCHGTYPE : undefined;
+      const industry = typeof record.INDEXNAME === 'string' ? record.INDEXNAME : undefined;
+      return { code, name, weight, changeType, industry };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  return { reportDate, stocks };
+}
+
 function historyFromEastmoneyData(data: unknown): FundHistoryPoint[] {
   if (typeof data !== 'object' || data === null || !('Data' in data)) return [];
   const dataRecord = (data as { Data?: unknown }).Data;
@@ -470,6 +495,11 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     return quoteFromEastmoneyDetail(await fetchJson(url), code);
   }
 
+  async function getEastmoneyFundHoldings(code: string): Promise<FundHoldings> {
+    const url = `https://fundmobapi.eastmoney.com/FundMNewApi/FundMNInverstPosition?FCODE=${encodeURIComponent(code)}&deviceid=gg-fund&plat=Web&product=EFund&version=1.0.0`;
+    return holdingsFromEastmoney(await fetchJson(url));
+  }
+
   async function getEastmoneyHistory(code: string, targetCount = 30): Promise<FundHistoryPoint[]> {
     const headers = {
       'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
@@ -597,6 +627,15 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
           // fall through to local fallback
         }
         return historyByCode[code] ?? [];
+      });
+    },
+    async getFundHoldings(code: string): Promise<FundHoldings> {
+      return cached(`fund-holdings:${code}`, 86_400_000, async () => {
+        try {
+          return await getEastmoneyFundHoldings(code);
+        } catch {
+          return { stocks: [] };
+        }
       });
     },
     async getTrendingFunds(): Promise<FundQuote[]> {

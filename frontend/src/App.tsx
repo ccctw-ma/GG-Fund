@@ -25,7 +25,7 @@ import type { WorkspacePage } from './components/Header';
 import { calculatePortfolioSummary } from './portfolio';
 import { backfillHoldingCodes } from './holdingCodes';
 import { exportLocalData, loadHoldings, loadWatchlist, parseImportedData, saveHoldings, saveWatchlist } from './storage';
-import type { FundHistoryPoint, FundQuote, Holding, IndexQuote, WatchItem } from './types';
+import type { FundHistoryPoint, FundHoldings, FundQuote, Holding, IndexQuote, WatchItem } from './types';
 
 const nowIso = () => new Date().toISOString();
 const money = new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY', maximumFractionDigits: 2 });
@@ -69,6 +69,7 @@ export default function App() {
   const [results, setResults] = useState<FundQuote[]>([]);
   const [selectedFund, setSelectedFund] = useState<FundQuote>();
   const [history, setHistory] = useState<FundHistoryPoint[]>([]);
+  const [fundHoldings, setFundHoldings] = useState<FundHoldings>({ stocks: [] });
   const [fundLoading, setFundLoading] = useState(false);
   const [fundError, setFundError] = useState<string>();
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -156,6 +157,13 @@ export default function App() {
       setSelectedFund(fund);
       setQuotes((current) => ({ ...current, [fund.code]: fund }));
       setHistory(nextHistory);
+      // 用接口返回的真实基金名称回填搜索框，纠正用户可能输错的名称。
+      if (fund.name) setQuery(fund.name);
+      if (fund.assetType === 'fund') {
+        api.getFundHoldings(fund.code).then(setFundHoldings).catch(() => setFundHoldings({ stocks: [] }));
+      } else {
+        setFundHoldings({ stocks: [] });
+      }
     } catch (error) {
       setFundError(error instanceof Error ? error.message : '基金详情加载失败');
     } finally {
@@ -399,6 +407,7 @@ export default function App() {
                   results={results}
                   selectedFund={selectedFund}
                   history={history}
+                  holdings={fundHoldings}
                   loading={fundLoading}
                   error={fundError}
                   onSearch={searchFunds}

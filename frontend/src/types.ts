@@ -57,6 +57,19 @@ export type FundHistoryPoint = {
   netValue: number;
 };
 
+export type FundHolding = {
+  code: string;
+  name: string;
+  weight: number;
+  changeType?: string;
+  industry?: string;
+};
+
+export type FundHoldings = {
+  reportDate?: string;
+  stocks: FundHolding[];
+};
+
 export type FundAnalysisIndicators = {
   totalReturn: number;
   maxDrawdown: number;

@@ -1,5 +1,5 @@
 import { createMarketDataService, type MarketDataService } from '../../shared/marketData';
-import type { FundHistoryPoint, FundQuote, IndexQuote } from '../../shared/types';
+import type { FundHistoryPoint, FundHoldings, FundQuote, IndexQuote } from '../../shared/types';
 import { HttpError } from '../../lib/http';
 
 type CacheNamespace = {
@@ -73,6 +73,12 @@ export function createMarketService(options: MarketServiceOptions) {
         throw new HttpError(400, 'FUND_CODE_INVALID', '基金代码格式不正确');
       }
       return marketData.getFundHistory(code, range);
+    },
+    async getFundHoldings(code: string): Promise<FundHoldings> {
+      if (!isFundCode(code)) {
+        throw new HttpError(400, 'FUND_CODE_INVALID', '基金代码格式不正确');
+      }
+      return marketData.getFundHoldings(code);
     },
     async getTrendingFunds(): Promise<FundQuote[]> {
       return marketData.getTrendingFunds();

@@ -7,6 +7,7 @@ const marketData = {
   getIndexHistory: async () => [],
   searchFunds: async () => [{ code: '000001', name: '华夏成长混合', netValue: 1.333, quoteDate: '2026-05-29', quoteType: 'official' as const, source: 'test' }],
   getFundHistory: async () => [],
+  getFundHoldings: async () => ({ stocks: [] }),
   getTrendingFunds: async () => [],
   getFund: async () => ({ code: '000001', name: '华夏成长混合', netValue: 1.35, quoteDate: '2026-05-29', source: 'test' }),
 };

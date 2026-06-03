@@ -11,6 +11,7 @@ const {
     searchFunds: vi.fn(),
     getFund: vi.fn(),
     getFundHistory: vi.fn(),
+    getFundHoldings: vi.fn(),
     getTrendingFunds: vi.fn(),
   },
   getCloudflareContextMock: vi.fn(),
@@ -37,6 +38,7 @@ import { GET as getAuth, POST as postAuth } from '../app/api/auth/[action]/route
 import { POST as analyzeFund } from '../app/api/ai/analyze-fund/route';
 import { GET as getFund } from '../app/api/funds/[code]/route';
 import { GET as getFundHistory } from '../app/api/funds/[code]/history/route';
+import { GET as getFundHoldings } from '../app/api/funds/[code]/holdings/route';
 import { GET as searchFunds } from '../app/api/funds/search/route';
 import { GET as getTrendingFunds } from '../app/api/funds/trending/route';
 import { GET as getHealth } from '../app/api/health/route';
@@ -186,6 +188,7 @@ function resetMarketServiceMocks() {
   marketService.searchFunds.mockReset();
   marketService.getFund.mockReset();
   marketService.getFundHistory.mockReset();
+  marketService.getFundHoldings.mockReset();
   marketService.getTrendingFunds.mockReset();
 }
 
@@ -408,6 +411,36 @@ describe('app api routes', () => {
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toEqual({
       error: { code: 'FUND_NOT_FOUND', message: '未找到该基金' },
+    });
+  });
+
+  it('reads the code param before returning fund holdings', async () => {
+    marketService.getFundHoldings.mockResolvedValueOnce({
+      reportDate: '2026-03-31',
+      stocks: [{ code: '600519', name: '贵州茅台', weight: 18.33 }],
+    });
+
+    const response = await getFundHoldings(new Request('https://example.com/api/funds/161725/holdings'), {
+      params: Promise.resolve({ code: '161725' }),
+    });
+
+    expect(marketService.getFundHoldings).toHaveBeenCalledWith('161725');
+    await expect(response.json()).resolves.toEqual({
+      reportDate: '2026-03-31',
+      stocks: [{ code: '600519', name: '贵州茅台', weight: 18.33 }],
+    });
+  });
+
+  it('maps HttpErrors from fund holdings lookups', async () => {
+    marketService.getFundHoldings.mockRejectedValueOnce(new HttpError(400, 'FUND_CODE_INVALID', '基金代码格式不正确'));
+
+    const response = await getFundHoldings(new Request('https://example.com/api/funds/bad/holdings'), {
+      params: Promise.resolve({ code: 'bad' }),
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'FUND_CODE_INVALID', message: '基金代码格式不正确' },
     });
   });
 

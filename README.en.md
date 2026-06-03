@@ -122,6 +122,7 @@ Default smoke endpoints:
 - `GET /api/funds/search?q=消费`
 - `GET /api/funds/:code`
 - `GET /api/funds/:code/history?range=1m|3m|6m|1y|all`
+- `GET /api/funds/:code/holdings`
 - `GET /api/funds/trending`
 - `GET /api/auth/me`
 - `POST /api/auth/challenge`

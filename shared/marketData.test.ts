@@ -274,6 +274,43 @@ describe('market data service', () => {
     expect(capturedReferers.every((referer) => referer === 'https://fundf10.eastmoney.com/jjjz_000001.html')).toBe(true);
   });
 
+  it('parses fund holdings with weight, industry, and report date', async () => {
+    let capturedUrl = '';
+    const service = createMarketDataService({
+      fetchJson: async (url) => {
+        capturedUrl = url;
+        return {
+          Datas: {
+            fundStocks: [
+              { GPDM: '600519', GPJC: '贵州茅台', JZBL: '18.33', PCTNVCHGTYPE: '增持', INDEXNAME: '食品饮料' },
+              { GPDM: '000858', GPJC: '五粮液', JZBL: '16.14', PCTNVCHGTYPE: '增持', INDEXNAME: '食品饮料' },
+            ],
+          },
+          Expansion: '2026-03-31',
+        };
+      },
+    });
+
+    const holdings = await service.getFundHoldings('161725');
+
+    expect(capturedUrl).toContain('FundMNInverstPosition');
+    expect(holdings.reportDate).toBe('2026-03-31');
+    expect(holdings.stocks).toEqual([
+      { code: '600519', name: '贵州茅台', weight: 18.33, changeType: '增持', industry: '食品饮料' },
+      { code: '000858', name: '五粮液', weight: 16.14, changeType: '增持', industry: '食品饮料' },
+    ]);
+  });
+
+  it('returns empty fund holdings when the upstream request fails', async () => {
+    const service = createMarketDataService({
+      fetchJson: async () => {
+        throw new Error('network');
+      },
+    });
+
+    await expect(service.getFundHoldings('161725')).resolves.toEqual({ stocks: [] });
+  });
+
   it('parses index kline history and maps the secid by market', async () => {
     let capturedUrl = '';
     const service = createMarketDataService({

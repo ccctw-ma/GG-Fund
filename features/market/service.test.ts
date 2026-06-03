@@ -16,6 +16,7 @@ const buildService = () =>
           ? { code, name: '华夏成长混合', netValue: 1.35, officialNetValue: 1.33, dailyChangePercent: 1.2, quoteDate: '2026-05-30', estimateTime: '2026-05-30 14:30', quoteType: 'estimate' as const, source: 'test-fund' }
           : undefined,
       getFundHistory: async (_code: string, range: string) => [{ date: `range:${range}`, netValue: 1.1 }],
+      getFundHoldings: async (code: string) => ({ reportDate: '2026-03-31', stocks: [{ code: '600519', name: '贵州茅台', weight: 18.33, industry: '食品饮料', changeType: '增持' }, { code, name: '基金占位', weight: 1 }] }),
       getTrendingFunds: async () => [
         { code: '110022', name: '易方达消费行业股票', netValue: 1.66, quoteDate: '2026-05-30', quoteType: 'official' as const, source: 'test-trending' },
       ],
@@ -50,6 +51,20 @@ describe('market service', () => {
     ]);
   });
 
+  it('reads fund holdings and validates fund codes', async () => {
+    const service = buildService();
+
+    await expect(service.getFundHoldings('161725')).resolves.toEqual(
+      expect.objectContaining({
+        reportDate: '2026-03-31',
+        stocks: expect.arrayContaining([
+          expect.objectContaining({ code: '600519', name: '贵州茅台', weight: 18.33 }),
+        ]),
+      }),
+    );
+    await expect(service.getFundHoldings('bad')).rejects.toThrow('基金代码格式不正确');
+  });
+
   it('reads index history and validates index codes', async () => {
     const service = buildService();
 
@@ -69,6 +84,7 @@ describe('market service', () => {
           throw new Error('should not call upstream');
         },
         getFundHistory: async () => [],
+        getFundHoldings: async () => ({ stocks: [] }),
         getTrendingFunds: async () => [],
       },
       cache: {

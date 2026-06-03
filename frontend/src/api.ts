@@ -1,4 +1,4 @@
-import type { FundHistoryPoint, FundQuote, IndexQuote } from './types';
+import type { FundHistoryPoint, FundHoldings, FundQuote, IndexQuote } from './types';
 
 const SESSION_TOKEN_KEY = 'gg_fund_session_token';
 let memorySessionToken = '';
@@ -82,6 +82,7 @@ export const api = {
   searchFunds: (query: string) => getJson<FundQuote[]>(`/api/funds/search?q=${encodeURIComponent(query)}`),
   getFund: (code: string) => getJson<FundQuote>(`/api/funds/${code}`),
   getFundHistory: (code: string, range = '1y') => getJson<FundHistoryPoint[]>(`/api/funds/${code}/history?range=${encodeURIComponent(range)}`),
+  getFundHoldings: (code: string) => getJson<FundHoldings>(`/api/funds/${code}/holdings`),
   getTrendingFunds: () => getJson<FundQuote[]>('/api/funds/trending'),
   syncPortfolio: (holdings: unknown[], watchlist: unknown[]) =>
     putJson<unknown>('/api/portfolio/default', { holdings, watchlist }),

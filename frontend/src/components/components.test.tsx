@@ -39,6 +39,7 @@ describe('dashboard components', () => {
     );
     roots.push(market.root);
 
+    const onSelectCodes: string[] = [];
     const search = render(
       <FundSearch
         query="000001"
@@ -46,9 +47,10 @@ describe('dashboard components', () => {
         results={[fund]}
         selectedFund={fund}
         history={[{ date: '2026-05-29', netValue: 1.35 }]}
+        holdings={{ reportDate: '2026-03-31', stocks: [{ code: '600519', name: '贵州茅台', weight: 18.33, industry: '食品饮料', changeType: '增持' }] }}
         loading={false}
         onSearch={() => undefined}
-        onSelect={() => undefined}
+        onSelect={(code) => onSelectCodes.push(code)}
         onAddHolding={() => undefined}
         onToggleWatch={() => undefined}
         watchlist={[]}
@@ -61,6 +63,12 @@ describe('dashboard components', () => {
     expect(search.container.textContent).toContain('实时估算');
     expect(search.container.textContent).toContain('基金分析走势图');
     expect(search.container.textContent).toContain('Fund Signal Matrix');
+    expect(search.container.textContent).toContain('重仓持股');
+    expect(search.container.textContent).toContain('贵州茅台');
+    const holdingButton = search.container.querySelector<HTMLButtonElement>('[data-testid="fund-holdings"] button');
+    expect(holdingButton).not.toBeNull();
+    act(() => holdingButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(onSelectCodes).toContain('600519');
   });
 
   it('renders stock quote details without the fund trend matrix', () => {
