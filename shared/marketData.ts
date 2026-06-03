@@ -217,6 +217,48 @@ function stockFromEastmoneyItem(item: unknown): FundQuote | undefined {
   };
 }
 
+// 单只标的详情接口（push2 stock/get）返回的价格是按 f59 位小数放大的整数，需要还原。
+function stockFromEastmoneyDetail(data: unknown, code: string): FundQuote | undefined {
+  if (typeof data !== 'object' || data === null || !('data' in data)) return undefined;
+  const record = (data as { data?: unknown }).data;
+  if (typeof record !== 'object' || record === null) return undefined;
+  const fields = record as Record<string, unknown>;
+  const decimals = toNumber(fields.f59) ?? 2;
+  const scale = 10 ** decimals;
+  const descale = (value: unknown) => {
+    const num = toNumber(value);
+    return num === undefined ? undefined : num / scale;
+  };
+  const name = typeof fields.f58 === 'string' ? fields.f58 : '';
+  const price = descale(fields.f43);
+  if (!name || price === undefined || price <= 0) return undefined;
+  const timestamp = toNumber(fields.f86);
+  const quoteDate = timestamp
+    ? new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(timestamp * 1000))
+    : new Date().toISOString().slice(0, 10);
+  return {
+    code,
+    name,
+    assetType: 'stock',
+    market: marketFromEastmoneySecid('', code),
+    netValue: price,
+    dailyChangePercent: toNumber(fields.f170) === undefined ? undefined : toNumber(fields.f170)! / 100,
+    change: descale(fields.f169),
+    open: descale(fields.f46),
+    previousClose: descale(fields.f60),
+    high: descale(fields.f44),
+    low: descale(fields.f45),
+    volume: toNumber(fields.f47),
+    turnover: toNumber(fields.f48),
+    quoteDate,
+    estimateTime: timestamp
+      ? new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date(timestamp * 1000))
+      : undefined,
+    quoteType: 'official',
+    source: EASTMONEY_STOCK_SOURCE,
+  };
+}
+
 function stocksFromEastmoneyClist(data: unknown): FundQuote[] {
   if (typeof data !== 'object' || data === null) return [];
   const root = data as { data?: unknown };
@@ -475,9 +517,10 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
   }
 
   async function getEastmoneyStock(code: string): Promise<FundQuote | undefined> {
-    const fields = 'f12,f13,f14,f2,f3,f4,f5,f6,f15,f16,f17,f18,f124';
-    const url = `https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids=${eastmoneySecidForStock(code)}&fields=${fields}`;
-    return stocksFromEastmoneyClist(await fetchJson(url))[0];
+    // push2 ulist.np 已不稳定（多返回空），改用单标的详情接口 stock/get（UTF-8 JSON，价格按 f59 位小数放大）。
+    const fields = 'f43,f44,f45,f46,f47,f48,f57,f58,f59,f60,f86,f169,f170';
+    const url = `https://push2.eastmoney.com/api/qt/stock/get?secid=${eastmoneySecidForStock(code)}&fields=${fields}`;
+    return stockFromEastmoneyDetail(await fetchJson(url), code);
   }
 
   async function getTencentStock(code: string): Promise<FundQuote | undefined> {
