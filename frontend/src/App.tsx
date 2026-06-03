@@ -206,6 +206,39 @@ export default function App() {
     });
   }
 
+  function editHoldingIdentity(id: string, patch: { fundCode: string; fundName: string }) {
+    const fundCode = patch.fundCode.trim();
+    const fundName = patch.fundName.trim();
+    setHoldings((current) =>
+      current.map((holding) =>
+        holding.id === id
+          ? {
+              ...holding,
+              fundCode: fundCode || holding.fundCode,
+              fundName: fundName || holding.fundName,
+              updatedAt: nowIso(),
+            }
+          : holding,
+      ),
+    );
+    // 填的是有效 6 位代码：行情/详情由 holdings 变更的 effect 自动拉取。
+    // 只改了名称、没给有效代码：按名称搜索自动补全真实代码与走势。
+    if (!/^\d{6}$/.test(fundCode) && fundName) {
+      const base = holdings.find((holding) => holding.id === id);
+      if (!base) return;
+      backfillHoldingCodes([{ ...base, fundCode: 'PENDING', fundName }], api.searchFunds, nowIso)
+        .then(([resolved]) => {
+          if (!resolved || resolved.fundCode === 'PENDING') return;
+          setHoldings((current) =>
+            current.map((holding) =>
+              holding.id === id ? { ...holding, fundCode: resolved.fundCode, fundName: resolved.fundName, updatedAt: nowIso() } : holding,
+            ),
+          );
+        })
+        .catch(() => undefined);
+    }
+  }
+
   function toggleWatch(fund: FundQuote) {
     setWatchlist((current) => {
       if (current.some((item) => item.fundCode === fund.code)) return current.filter((item) => item.fundCode !== fund.code);
@@ -386,7 +419,7 @@ export default function App() {
                 <button type="button" className="ghost-cta" onClick={() => changePage('workspace')}><BarChart3 className="h-4 w-4" /> 返回行情</button>
               </div>
               <div className="banking-grid single-page-grid">
-                <PortfolioPanel summary={summary} watchlist={watchlist} onRemoveHolding={(id) => setHoldings((current) => current.filter((holding) => holding.id !== id))} onUpdateHolding={updateHolding} />
+                <PortfolioPanel summary={summary} watchlist={watchlist} onRemoveHolding={(id) => setHoldings((current) => current.filter((holding) => holding.id !== id))} onUpdateHolding={updateHolding} onEditIdentity={editHoldingIdentity} />
                 <SettingsPanel exportText={exportText} importError={importError} onImport={importData} />
               </div>
             </section>

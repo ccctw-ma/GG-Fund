@@ -36,7 +36,7 @@ export function FundSearch({ query, setQuery, results, selectedFund, history, lo
     <Card id="funds" className="lg:col-span-1">
       <CardHeader>
         <div>
-          <Badge tone="blue" className="mb-2"><Search className="h-3 w-3" /> Data Gateway</Badge>
+          <Badge tone="violet" className="mb-2"><Search className="h-3 w-3" /> Data Gateway</Badge>
           <CardTitle>金融资产搜索</CardTitle>
           <CardDescription>基金净值、A股实时行情、公开数据源自动切换。</CardDescription>
         </div>
@@ -56,7 +56,7 @@ export function FundSearch({ query, setQuery, results, selectedFund, history, lo
             </span>
             <span className="text-right">
               <strong className="block text-lg tabular-nums text-[rgba(248,250,252,.98)]">{formatAssetValue(fund)}</strong>
-              {fund.dailyChangePercent !== undefined && <small className={fund.dailyChangePercent >= 0 ? 'font-black text-[#7de2b8]' : 'font-black text-[#ff8f8f]'}>{fund.dailyChangePercent >= 0 ? '+' : ''}{fund.dailyChangePercent.toFixed(2)}%</small>}
+              {fund.dailyChangePercent !== undefined && <small className={fund.dailyChangePercent >= 0 ? 'font-black text-[var(--bull)]' : 'font-black text-[var(--bear)]'}>{fund.dailyChangePercent >= 0 ? '+' : ''}{fund.dailyChangePercent.toFixed(2)}%</small>}
             </span>
           </button>
         ))}

@@ -164,6 +164,61 @@ describe('dashboard components', () => {
     expect(portfolio.container.textContent).toContain('华夏成长混合');
     expect(portfolio.container.textContent).toContain('支付宝账本');
     expect(portfolio.container.textContent).toContain('易方达消费行业股票');
+
+    const detailButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('详情'));
+    expect(detailButton).toBeDefined();
+    act(() => detailButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const detail = portfolio.container.querySelector('[data-testid="holding-detail"]');
+    expect(detail).not.toBeNull();
+    expect(detail?.textContent).toContain('最新净值');
+    expect(detail?.textContent).toContain('累计盈亏');
+  });
+
+  it('edits a holding code and name through the inline editor', () => {
+    const edits: Array<{ id: string; patch: { fundCode: string; fundName: string } }> = [];
+    const populatedSummary = calculatePortfolioSummary(
+      [{
+        id: 'holding-2',
+        fundCode: 'ALIPAY001',
+        fundName: '某只截图基金',
+        recordedMarketValue: 1200,
+        costAmount: 1000,
+        accountName: '支付宝账本',
+        platform: 'alipay',
+        createdAt: '2026-05-29T00:00:00.000Z',
+        updatedAt: '2026-05-29T00:00:00.000Z',
+      }],
+      {},
+    );
+
+    const portfolio = render(
+      <PortfolioPanel
+        summary={populatedSummary}
+        watchlist={[]}
+        onRemoveHolding={() => undefined}
+        onUpdateHolding={() => undefined}
+        onEditIdentity={(id, patch) => edits.push({ id, patch })}
+      />,
+    );
+    roots.push(portfolio.root);
+
+    const editButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('编辑'));
+    act(() => editButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    const codeInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="某只截图基金 基金代码"]');
+    expect(codeInput).not.toBeNull();
+    const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    act(() => {
+      if (!codeInput || !nativeSetter) return;
+      nativeSetter.call(codeInput, '110022');
+      codeInput.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    const saveButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('保存'));
+    act(() => saveButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    expect(edits).toHaveLength(1);
+    expect(edits[0]?.patch.fundCode).toBe('110022');
   });
 
   it('renders beginner decision guidance for selected funds', () => {

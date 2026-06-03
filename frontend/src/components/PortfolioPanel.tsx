@@ -1,6 +1,6 @@
 'use client';
 
-import { BellRing, Check, ChevronDown, ClipboardList, LineChart, Pencil, PieChart, Radar, Repeat2, Trash2, WalletCards, X } from 'lucide-react';
+import { BellRing, Check, ChevronDown, ClipboardList, Info, LineChart, Pencil, PieChart, Radar, Repeat2, Trash2, WalletCards, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import type { FundHistoryPoint, PortfolioItem, PortfolioSignal, PortfolioSummary, WatchItem } from '../types';
@@ -35,18 +35,23 @@ export function PortfolioPanel({
   watchlist,
   onRemoveHolding,
   onUpdateHolding,
+  onEditIdentity,
 }: {
   summary: PortfolioSummary;
   watchlist: WatchItem[];
   onRemoveHolding: (id: string) => void;
   onUpdateHolding: (id: string, patch: { recordedMarketValue: number; costAmount: number }) => void;
+  onEditIdentity?: (id: string, patch: { fundCode: string; fundName: string }) => void;
 }) {
   const positive = summary.totalProfit >= 0;
   const [sortKey, setSortKey] = useState<SortKey>('marketValue');
   const [editingId, setEditingId] = useState<string>();
   const [editValue, setEditValue] = useState('');
   const [editCost, setEditCost] = useState('');
+  const [editCode, setEditCode] = useState('');
+  const [editName, setEditName] = useState('');
   const [expandedId, setExpandedId] = useState<string>();
+  const [detailId, setDetailId] = useState<string>();
   const [historyMap, setHistoryMap] = useState<Record<string, FundHistoryPoint[]>>({});
   const sortedItems = useMemo(() => sortItems(summary.items, sortKey), [summary.items, sortKey]);
 
@@ -74,16 +79,24 @@ export function PortfolioPanel({
     setExpandedId((current) => (current === id ? undefined : id));
   }
 
+  function toggleDetail(id: string) {
+    setDetailId((current) => (current === id ? undefined : id));
+  }
+
   function startEdit(item: PortfolioItem) {
     setEditingId(item.id);
     setEditValue(item.marketValue.toFixed(2));
     setEditCost(item.costAmount.toFixed(2));
+    setEditCode(/^\d{6}$/.test(item.fundCode) ? item.fundCode : '');
+    setEditName(item.fundName);
   }
 
   function cancelEdit() {
     setEditingId(undefined);
     setEditValue('');
     setEditCost('');
+    setEditCode('');
+    setEditName('');
   }
 
   function commitEdit(id: string) {
@@ -91,6 +104,12 @@ export function PortfolioPanel({
     const costAmount = Number(editCost);
     if (!Number.isFinite(recordedMarketValue) || recordedMarketValue <= 0 || !Number.isFinite(costAmount) || costAmount < 0) return;
     onUpdateHolding(id, { recordedMarketValue: Number(recordedMarketValue.toFixed(2)), costAmount: Number(costAmount.toFixed(2)) });
+    const base = summary.items.find((item) => item.id === id);
+    const codeChanged = editCode.trim() !== (base && /^\d{6}$/.test(base.fundCode) ? base.fundCode : '');
+    const nameChanged = editName.trim() !== (base?.fundName ?? '');
+    if (onEditIdentity && (codeChanged || nameChanged)) {
+      onEditIdentity(id, { fundCode: editCode.trim(), fundName: editName.trim() });
+    }
     cancelEdit();
   }
 
@@ -98,7 +117,7 @@ export function PortfolioPanel({
     <Card id="portfolio" className="lg:col-span-2">
       <CardHeader>
         <div>
-          <Badge tone="blue" className="mb-2"><WalletCards className="h-3 w-3" /> Yangjibao Layer</Badge>
+          <Badge tone="amber" className="mb-2"><WalletCards className="h-3 w-3" /> Yangjibao Layer</Badge>
           <CardTitle>我的持仓分析</CardTitle>
           <CardDescription>对标养基宝的账本、盈亏报告、风险提醒和定投路径；真实交易/OCR/全网用户行为暂不伪造。</CardDescription>
         </div>
@@ -167,6 +186,7 @@ export function PortfolioPanel({
             {sortedItems.map((item) => {
               const hasCode = /^\d{6}$/.test(item.fundCode);
               const isExpanded = expandedId === item.id;
+              const isDetail = detailId === item.id;
               return (
               <div key={item.id} className="yb-holding-wrap">
               <article className="yb-holding-row">
@@ -176,6 +196,14 @@ export function PortfolioPanel({
                 </div>
                 {editingId === item.id ? (
                   <div className="yb-holding-edit">
+                    <label>
+                      <span>基金名称</span>
+                      <input type="text" value={editName} onChange={(event) => setEditName(event.target.value)} placeholder="改名称后自动查代码" aria-label={`${item.fundName} 基金名称`} />
+                    </label>
+                    <label>
+                      <span>基金代码</span>
+                      <input type="text" inputMode="numeric" value={editCode} onChange={(event) => setEditCode(event.target.value)} placeholder="6 位代码，自动拉详情" aria-label={`${item.fundName} 基金代码`} />
+                    </label>
                     <label>
                       <span>持有金额</span>
                       <input type="number" inputMode="decimal" min="0" step="0.01" value={editValue} onChange={(event) => setEditValue(event.target.value)} aria-label={`${item.fundName} 持有金额`} />
@@ -202,6 +230,9 @@ export function PortfolioPanel({
                   </div>
                 ) : (
                   <div className="yb-holding-actions">
+                    <Button variant="ghost" size="sm" aria-expanded={isDetail} aria-label={`${item.fundName} 持仓详情`} onClick={() => toggleDetail(item.id)}>
+                      <Info className="h-4 w-4" />详情<ChevronDown className={`h-4 w-4 transition-transform ${isDetail ? 'rotate-180' : ''}`} />
+                    </Button>
                     {hasCode && (
                       <Button variant="ghost" size="sm" aria-expanded={isExpanded} aria-label={`${item.fundName} 走势`} onClick={() => toggleExpand(item.id)}>
                         <LineChart className="h-4 w-4" />走势<ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
@@ -212,6 +243,19 @@ export function PortfolioPanel({
                   </div>
                 )}
               </article>
+              {isDetail && (
+                <div className="yb-holding-detail" data-testid="holding-detail">
+                  <div><span>基金代码</span><strong>{hasCode ? item.fundCode : '待补全'}</strong></div>
+                  <div><span>最新净值</span><strong>{item.quote?.netValue ? item.quote.netValue.toFixed(4) : '自填估值'}</strong></div>
+                  <div><span>日涨跌</span><strong className={(item.quote?.dailyChangePercent ?? 0) >= 0 ? 'yb-holding-profit-up' : 'yb-holding-profit-down'}>{item.quote?.dailyChangePercent !== undefined ? `${item.quote.dailyChangePercent >= 0 ? '+' : ''}${item.quote.dailyChangePercent.toFixed(2)}%` : '--'}</strong></div>
+                  <div><span>持有市值</span><strong>{money.format(item.marketValue)}</strong></div>
+                  <div><span>持仓成本</span><strong>{money.format(item.costAmount)}</strong></div>
+                  <div><span>累计盈亏</span><strong className={item.profit >= 0 ? 'yb-holding-profit-up' : 'yb-holding-profit-down'}>{money.format(item.profit)} / {item.returnRate.toFixed(2)}%</strong></div>
+                  <div><span>组合权重</span><strong>{item.weight.toFixed(1)}%</strong></div>
+                  <div><span>账本来源</span><strong>{item.accountName ?? '默认账本'}</strong></div>
+                  {item.holdingDays !== undefined && <div><span>持有天数</span><strong>{item.holdingDays} 天</strong></div>}
+                </div>
+              )}
               {isExpanded && hasCode && (
                 <FundTrendChart
                   history={expandedHistory}

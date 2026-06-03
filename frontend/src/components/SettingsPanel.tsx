@@ -227,7 +227,7 @@ export function SettingsPanel({
     <Card id="settings" className="lg:col-span-2">
       <CardHeader>
         <div>
-          <Badge tone="blue" className="mb-2"><ServerCog className="h-3 w-3" /> Settings</Badge>
+          <Badge tone="violet" className="mb-2"><ServerCog className="h-3 w-3" /> Settings</Badge>
           <CardTitle>数据与部署说明</CardTitle>
           <CardDescription>浏览器本地数据、Resend 邮箱登录、Cloudflare D1 与 Worker 部署方案。</CardDescription>
         </div>
