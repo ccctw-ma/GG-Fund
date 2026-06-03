@@ -461,6 +461,23 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .fund-holdings-weight { display: grid; gap: 4px; justify-items: end; }
 .fund-holdings-weight em { color: var(--text-strong); font-size: .9rem; font-weight: 900; font-style: normal; font-variant-numeric: tabular-nums; }
 .fund-holdings-weight i { display: block; height: 4px; width: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--blue), var(--mint)); }
+.fund-holdings-item { display: grid; gap: 6px; }
+.fund-holdings-item button { grid-template-columns: minmax(0, 1fr) minmax(96px, 132px) auto; }
+.fund-holdings-item button[aria-expanded="true"] { border-color: rgba(140,200,255,.45); background: rgba(140,200,255,.08); }
+.fund-holdings-detail {
+  display: grid;
+  gap: 10px 18px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  border: 1px solid rgba(140,200,255,.16);
+  border-radius: .9rem;
+  background: rgba(11,36,55,.5);
+  padding: 12px 14px;
+}
+.fund-holdings-detail > div { display: grid; gap: 3px; }
+.fund-holdings-detail span { color: var(--text-muted); font-size: .72rem; font-weight: 850; }
+.fund-holdings-detail strong { color: var(--text-strong); font-size: .92rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+.fund-holdings-detail .yb-holding-profit-up,
+.fund-holdings-detail .yb-holding-profit-down { margin-top: 0; }
 
 .settings-data-card {
   border: 1px solid rgba(255,255,255,.14);

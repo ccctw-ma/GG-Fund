@@ -24,6 +24,7 @@ export function FundTrendChart({
   emptyHint = '暂无历史净值数据，选择其他基金或稍后重试。',
   loading = false,
   testId = 'fund-chart',
+  height = 480,
 }: {
   history: FundHistoryPoint[];
   kicker?: string;
@@ -33,6 +34,7 @@ export function FundTrendChart({
   emptyHint?: string;
   loading?: boolean;
   testId?: string;
+  height?: number;
 }) {
   const [range, setRange] = useState<FundRange>('1M');
   const visible = useMemo(() => selectHistoryRange(history, range), [history, range]);
@@ -186,7 +188,7 @@ export function FundTrendChart({
         </div>
       </div>
       <div className="radar-chart-frame">
-        <ReactECharts option={option} style={{ height: 360, width: '100%' }} notMerge lazyUpdate />
+        <ReactECharts option={option} style={{ height, width: '100%' }} notMerge lazyUpdate />
       </div>
     </div>
   );

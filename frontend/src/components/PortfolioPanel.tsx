@@ -3,7 +3,7 @@
 import { BellRing, Check, ChevronDown, ClipboardList, Info, LineChart, Pencil, PieChart, Radar, Repeat2, Trash2, WalletCards, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
-import type { FundHistoryPoint, FundHoldings, PortfolioItem, PortfolioSignal, PortfolioSummary, WatchItem } from '../types';
+import type { FundHistoryPoint, FundHoldings, FundQuote, PortfolioItem, PortfolioSignal, PortfolioSummary, WatchItem } from '../types';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -54,6 +54,8 @@ export function PortfolioPanel({
   const [detailId, setDetailId] = useState<string>();
   const [historyMap, setHistoryMap] = useState<Record<string, FundHistoryPoint[]>>({});
   const [holdingsMap, setHoldingsMap] = useState<Record<string, FundHoldings>>({});
+  const [stockId, setStockId] = useState<string>();
+  const [stockQuoteMap, setStockQuoteMap] = useState<Record<string, FundQuote | null>>({});
   const sortedItems = useMemo(() => sortItems(summary.items, sortKey), [summary.items, sortKey]);
 
   const expandedItem = useMemo(() => summary.items.find((item) => item.id === expandedId), [summary.items, expandedId]);
@@ -95,6 +97,25 @@ export function PortfolioPanel({
       cancelled = true;
     };
   }, [detailCode, holdingsMap]);
+
+  useEffect(() => {
+    if (!stockId || stockQuoteMap[stockId] !== undefined) return;
+    let cancelled = false;
+    api.getFund(stockId)
+      .then((quote) => {
+        if (!cancelled) setStockQuoteMap((current) => ({ ...current, [stockId]: quote }));
+      })
+      .catch(() => {
+        if (!cancelled) setStockQuoteMap((current) => ({ ...current, [stockId]: null }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [stockId, stockQuoteMap]);
+
+  function toggleStock(code: string) {
+    setStockId((current) => (current === code ? undefined : code));
+  }
 
   function toggleExpand(id: string) {
     setExpandedId((current) => (current === id ? undefined : id));
@@ -289,18 +310,45 @@ export function PortfolioPanel({
                       <p className="yb-empty-copy">暂无该基金的持仓组成数据（指数/货币型基金或未披露）。</p>
                     ) : (
                       <ul>
-                        {detailHoldings?.stocks.map((stock) => (
-                          <li key={stock.code}>
-                            <span className="fund-holdings-name">
-                              <strong>{stock.name}</strong>
-                              <small>{stock.code}{stock.industry ? ` · ${stock.industry}` : ''}{stock.changeType ? ` · ${stock.changeType}` : ''}</small>
-                            </span>
-                            <span className="fund-holdings-weight">
-                              <em>{stock.weight.toFixed(2)}%</em>
-                              <i style={{ width: `${Math.min(100, stock.weight * 4)}%` }} />
-                            </span>
+                        {detailHoldings?.stocks.map((stock) => {
+                          const isStockOpen = stockId === stock.code;
+                          const stockQuote = stockQuoteMap[stock.code];
+                          const stockLoading = isStockOpen && stockQuote === undefined;
+                          return (
+                          <li key={stock.code} className="fund-holdings-item">
+                            <button type="button" aria-expanded={isStockOpen} aria-label={`查看 ${stock.name} 详情`} onClick={() => toggleStock(stock.code)}>
+                              <span className="fund-holdings-name">
+                                <strong>{stock.name}</strong>
+                                <small>{stock.code}{stock.industry ? ` · ${stock.industry}` : ''}{stock.changeType ? ` · ${stock.changeType}` : ''}</small>
+                              </span>
+                              <span className="fund-holdings-weight">
+                                <em>{stock.weight.toFixed(2)}%</em>
+                                <i style={{ width: `${Math.min(100, stock.weight * 4)}%` }} />
+                              </span>
+                              <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isStockOpen ? 'rotate-180' : ''}`} />
+                            </button>
+                            {isStockOpen && (
+                              <div className="fund-holdings-detail" data-testid="holding-stock-detail">
+                                {stockLoading ? (
+                                  <p className="yb-empty-copy">正在加载 {stock.name} 行情…</p>
+                                ) : !stockQuote ? (
+                                  <p className="yb-empty-copy">暂无 {stock.name} 的实时行情。</p>
+                                ) : (
+                                  <>
+                                    <div><span>{stockQuote.assetType === 'stock' ? '最新价' : '净值'}</span><strong>{stockQuote.netValue?.toFixed(2) ?? '--'}</strong></div>
+                                    <div><span>日涨跌</span><strong className={(stockQuote.dailyChangePercent ?? 0) >= 0 ? 'yb-holding-profit-up' : 'yb-holding-profit-down'}>{stockQuote.dailyChangePercent !== undefined ? `${stockQuote.dailyChangePercent >= 0 ? '+' : ''}${stockQuote.dailyChangePercent.toFixed(2)}%` : '--'}</strong></div>
+                                    {stockQuote.open !== undefined && <div><span>今开</span><strong>{stockQuote.open.toFixed(2)}</strong></div>}
+                                    {stockQuote.previousClose !== undefined && <div><span>昨收</span><strong>{stockQuote.previousClose.toFixed(2)}</strong></div>}
+                                    {stockQuote.high !== undefined && stockQuote.low !== undefined && <div><span>最高 / 最低</span><strong>{stockQuote.high.toFixed(2)} / {stockQuote.low.toFixed(2)}</strong></div>}
+                                    <div><span>占基金净值</span><strong>{stock.weight.toFixed(2)}%</strong></div>
+                                    <div><span>数据来源</span><strong>{stockQuote.source}</strong></div>
+                                  </>
+                                )}
+                              </div>
+                            )}
                           </li>
-                        ))}
+                          );
+                        })}
                       </ul>
                     )}
                   </div>
