@@ -1,6 +1,6 @@
 import type { FundHistoryPoint } from './types';
 
-export type FundRange = '1M' | '3M' | '6M' | '1Y' | 'ALL';
+export type FundRange = '1W' | '1M' | '3M' | '6M' | '1Y' | 'ALL';
 
 export type FundMetricPoint = FundHistoryPoint & {
   cumulativeReturn: number;
@@ -16,6 +16,7 @@ export type FundMetricSummary = {
 };
 
 const rangeDays: Record<Exclude<FundRange, 'ALL'>, number> = {
+  '1W': 7,
   '1M': 31,
   '3M': 93,
   '6M': 186,

@@ -153,7 +153,8 @@ export default function App() {
     setFundLoading(true);
     setFundError(undefined);
     try {
-      const [fund, nextHistory] = await Promise.all([api.getFund(code), api.getFundHistory(code, 'all')]);
+      // 渐进式加载：先用 1 个月历史快速出图，再后台补全全量历史，避免首屏一次拉太多数据。
+      const [fund, nextHistory] = await Promise.all([api.getFund(code), api.getFundHistory(code, '1m')]);
       setSelectedFund(fund);
       setQuotes((current) => ({ ...current, [fund.code]: fund }));
       setHistory(nextHistory);
@@ -161,6 +162,9 @@ export default function App() {
       if (fund.name) setQuery(fund.name);
       if (fund.assetType === 'fund') {
         api.getFundHoldings(fund.code).then(setFundHoldings).catch(() => setFundHoldings({ stocks: [] }));
+        api.getFundHistory(code, 'all')
+          .then((full) => { if (full.length > 0) setHistory((current) => (current.length >= full.length ? current : full)); })
+          .catch(() => undefined);
       } else {
         setFundHoldings({ stocks: [] });
       }

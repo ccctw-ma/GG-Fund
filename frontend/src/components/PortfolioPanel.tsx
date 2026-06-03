@@ -1,7 +1,7 @@
 'use client';
 
 import { BellRing, Check, ChevronDown, ClipboardList, Info, LineChart, Pencil, PieChart, Radar, Repeat2, Trash2, WalletCards, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import type { FundHistoryPoint, FundHoldings, FundQuote, PortfolioItem, PortfolioSignal, PortfolioSummary, WatchItem } from '../types';
 import { Badge } from './ui/badge';
@@ -30,6 +30,28 @@ function sortItems(items: PortfolioItem[], key: SortKey) {
   return next.sort((a, b) => a.fundName.localeCompare(b.fundName, 'zh-Hans-CN'));
 }
 
+// 持仓组成里的标的既可能是股票，也可能是基金（FOF/联接），逐源查找并在失败时自动重试。
+async function fetchQuoteWithRetry(code: string, attempts = 3): Promise<FundQuote | null> {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const quote = await api.getFund(code);
+      if (quote) return quote;
+    } catch {
+      // 单次失败后退避重试，覆盖上游限流或临时不可用。
+    }
+    if (attempt < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+    }
+  }
+  return null;
+}
+
+function assetTypeLabel(quote: FundQuote) {
+  if (quote.assetType === 'stock') return '股票';
+  if (quote.assetType === 'index') return '指数';
+  return '基金';
+}
+
 export function PortfolioPanel({
   summary,
   watchlist,
@@ -56,6 +78,7 @@ export function PortfolioPanel({
   const [holdingsMap, setHoldingsMap] = useState<Record<string, FundHoldings>>({});
   const [stockId, setStockId] = useState<string>();
   const [stockQuoteMap, setStockQuoteMap] = useState<Record<string, FundQuote | null>>({});
+  const historyLoadingRef = useRef<Set<string>>(new Set());
   const sortedItems = useMemo(() => sortItems(summary.items, sortKey), [summary.items, sortKey]);
 
   const expandedItem = useMemo(() => summary.items.find((item) => item.id === expandedId), [summary.items, expandedId]);
@@ -69,18 +92,29 @@ export function PortfolioPanel({
   const detailHoldingsLoading = Boolean(detailCode) && holdingsMap[detailCode ?? ''] === undefined;
 
   useEffect(() => {
-    if (!expandedCode || historyMap[expandedCode] !== undefined) return;
-    let cancelled = false;
-    api.getFundHistory(expandedCode, 'all')
+    if (!expandedCode || historyLoadingRef.current.has(expandedCode)) return;
+    if (historyMap[expandedCode] !== undefined && historyMap[expandedCode].length > 28) return;
+    historyLoadingRef.current.add(expandedCode);
+    const code = expandedCode;
+    // 渐进式加载：先取 1 个月数据快速出图，再后台补全全量历史，降低首屏延迟。
+    api.getFundHistory(code, '1m')
       .then((points) => {
-        if (!cancelled) setHistoryMap((current) => ({ ...current, [expandedCode]: points }));
+        if (points.length > 0) setHistoryMap((current) => (current[code]?.length ? current : { ...current, [code]: points }));
       })
-      .catch(() => {
-        if (!cancelled) setHistoryMap((current) => ({ ...current, [expandedCode]: [] }));
+      .catch(() => undefined)
+      .finally(() => {
+        api.getFundHistory(code, 'all')
+          .then((points) => {
+            if (points.length > 0) setHistoryMap((current) => ({ ...current, [code]: points }));
+            else setHistoryMap((current) => (current[code] ? current : { ...current, [code]: [] }));
+          })
+          .catch(() => {
+            setHistoryMap((current) => (current[code] ? current : { ...current, [code]: [] }));
+          })
+          .finally(() => {
+            historyLoadingRef.current.delete(code);
+          });
       });
-    return () => {
-      cancelled = true;
-    };
   }, [expandedCode, historyMap]);
 
   useEffect(() => {
@@ -101,7 +135,7 @@ export function PortfolioPanel({
   useEffect(() => {
     if (!stockId || stockQuoteMap[stockId] !== undefined) return;
     let cancelled = false;
-    api.getFund(stockId)
+    fetchQuoteWithRetry(stockId)
       .then((quote) => {
         if (!cancelled) setStockQuoteMap((current) => ({ ...current, [stockId]: quote }));
       })
@@ -115,6 +149,16 @@ export function PortfolioPanel({
 
   function toggleStock(code: string) {
     setStockId((current) => (current === code ? undefined : code));
+  }
+
+  function retryStock(code: string) {
+    // 清除上次查找结果让 effect 重新触发查找与重试。
+    setStockQuoteMap((current) => {
+      const next = { ...current };
+      delete next[code];
+      return next;
+    });
+    setStockId(code);
   }
 
   function toggleExpand(id: string) {
@@ -330,12 +374,16 @@ export function PortfolioPanel({
                             {isStockOpen && (
                               <div className="fund-holdings-detail" data-testid="holding-stock-detail">
                                 {stockLoading ? (
-                                  <p className="yb-empty-copy">正在加载 {stock.name} 行情…</p>
+                                  <p className="yb-empty-copy">正在查找 {stock.name} 行情…</p>
                                 ) : !stockQuote ? (
-                                  <p className="yb-empty-copy">暂无 {stock.name} 的实时行情。</p>
+                                  <div className="fund-holdings-retry">
+                                    <p className="yb-empty-copy">多次查找仍未获取到 {stock.name} 的行情。</p>
+                                    <Button variant="secondary" size="sm" onClick={() => retryStock(stock.code)}><Repeat2 className="h-4 w-4" />重新查找</Button>
+                                  </div>
                                 ) : (
                                   <>
-                                    <div><span>{stockQuote.assetType === 'stock' ? '最新价' : '净值'}</span><strong>{stockQuote.netValue?.toFixed(2) ?? '--'}</strong></div>
+                                    <div><span>类型</span><strong>{assetTypeLabel(stockQuote)}{stockQuote.market ? ` · ${stockQuote.market}` : ''}</strong></div>
+                                    <div><span>{stockQuote.assetType === 'stock' ? '最新价' : '净值'}</span><strong>{stockQuote.netValue?.toFixed(stockQuote.assetType === 'stock' ? 2 : 4) ?? '--'}</strong></div>
                                     <div><span>日涨跌</span><strong className={(stockQuote.dailyChangePercent ?? 0) >= 0 ? 'yb-holding-profit-up' : 'yb-holding-profit-down'}>{stockQuote.dailyChangePercent !== undefined ? `${stockQuote.dailyChangePercent >= 0 ? '+' : ''}${stockQuote.dailyChangePercent.toFixed(2)}%` : '--'}</strong></div>
                                     {stockQuote.open !== undefined && <div><span>今开</span><strong>{stockQuote.open.toFixed(2)}</strong></div>}
                                     {stockQuote.previousClose !== undefined && <div><span>昨收</span><strong>{stockQuote.previousClose.toFixed(2)}</strong></div>}

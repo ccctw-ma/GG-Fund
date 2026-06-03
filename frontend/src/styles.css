@@ -369,7 +369,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .yb-holding-row {
   display: grid;
   gap: 14px;
-  align-items: center;
+  align-items: start;
   border-radius: 1.5rem;
   padding: 16px;
 }
@@ -478,6 +478,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .fund-holdings-detail strong { color: var(--text-strong); font-size: .92rem; font-weight: 900; font-variant-numeric: tabular-nums; }
 .fund-holdings-detail .yb-holding-profit-up,
 .fund-holdings-detail .yb-holding-profit-down { margin-top: 0; }
+.fund-holdings-retry { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 
 .settings-data-card {
   border: 1px solid rgba(255,255,255,.14);

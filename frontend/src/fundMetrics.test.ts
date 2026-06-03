@@ -33,4 +33,19 @@ describe('fund metrics', () => {
       { date: '2026-03-01', netValue: 1.2 },
     ]);
   });
+
+  it('selects a one-week trailing range', () => {
+    const visible = selectHistoryRange([
+      { date: '2026-03-01', netValue: 1 },
+      { date: '2026-03-20', netValue: 1.1 },
+      { date: '2026-03-25', netValue: 1.15 },
+      { date: '2026-03-26', netValue: 1.2 },
+    ], '1W');
+
+    expect(visible).toEqual([
+      { date: '2026-03-20', netValue: 1.1 },
+      { date: '2026-03-25', netValue: 1.15 },
+      { date: '2026-03-26', netValue: 1.2 },
+    ]);
+  });
 });

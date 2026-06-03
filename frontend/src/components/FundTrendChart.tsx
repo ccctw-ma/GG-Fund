@@ -6,7 +6,7 @@ import { calculateFundMetrics, selectHistoryRange, type FundRange } from '../fun
 import type { FundHistoryPoint } from '../types';
 import { Button } from './ui/button';
 
-const ranges: FundRange[] = ['1M', '3M', '6M', '1Y', 'ALL'];
+const ranges: FundRange[] = ['1W', '1M', '3M', '6M', '1Y', 'ALL'];
 const signalFragments = [
   { text: 'NAV.core()', className: 'radar-fragment radar-fragment-a' },
   { text: 'drawdown.guard', className: 'radar-fragment radar-fragment-b' },
