@@ -87,4 +87,46 @@ describe('calculatePortfolioSummary', () => {
     expect(summary.liveQuoteRatio).toBe(50);
     expect(summary.riskSignals.map((signal) => signal.title)).toContain('净值缺失');
   });
+
+  it('revalues imported amount-only holdings from historical net values and live quotes', () => {
+    const summary = calculatePortfolioSummary(
+      [
+        {
+          id: 'h-3',
+          fundCode: '161725',
+          fundName: '招商中证白酒指数',
+          recordedMarketValue: 1000,
+          costAmount: 900,
+          createdAt: '2026-05-01T10:00:00.000Z',
+          updatedAt: '2026-05-01T10:00:00.000Z',
+        },
+      ],
+      {
+        '161725': {
+          code: '161725',
+          name: '招商中证白酒指数',
+          netValue: 1.2,
+          dailyChangePercent: 2,
+          quoteDate: '2026-05-29',
+          source: 'test',
+        },
+      },
+      {
+        '161725': [
+          { date: '2026-04-30', netValue: 1 },
+          { date: '2026-05-29', netValue: 1.2 },
+        ],
+      },
+    );
+
+    expect(summary.totalMarketValue).toBeCloseTo(1200, 2);
+    expect(summary.totalProfit).toBeCloseTo(300, 2);
+    expect(summary.totalReturnRate).toBeCloseTo(33.3333, 4);
+    expect(summary.estimatedDailyProfit).toBeCloseTo(23.5294, 4);
+    expect(summary.items[0]).toMatchObject({
+      marketValue: 1200,
+      profit: 300,
+      quoteStatus: 'ok',
+    });
+  });
 });

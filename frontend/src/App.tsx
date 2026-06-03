@@ -78,6 +78,7 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [watchlist, setWatchlist] = useState<WatchItem[]>([]);
   const [quotes, setQuotes] = useState<Record<string, FundQuote>>({});
+  const [holdingHistories, setHoldingHistories] = useState<Record<string, FundHistoryPoint[]>>({});
   const [importError, setImportError] = useState<string>();
   const [session, setSession] = useState<AuthSessionResponse>();
   const [authPending, setAuthPending] = useState<'idle' | 'logout'>('idle');
@@ -129,6 +130,16 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
     const codes = Array.from(new Set(holdings.map((holding) => holding.fundCode))).filter((code) => /^\d{6}$/.test(code));
     codes.forEach((code) => {
       api.getFund(code).then((quote) => setQuotes((current) => ({ ...current, [code]: quote }))).catch(() => undefined);
+      const needsHistoryValuation = holdings.some((holding) => holding.fundCode === code && !holding.shares && holding.recordedMarketValue);
+      if (needsHistoryValuation) {
+        const cachedHistory = api.getCachedFundHistory(code, 'all') ?? api.getCachedFundHistory(code, '1m');
+        if (cachedHistory?.length) setHoldingHistories((current) => (current[code]?.length ? current : { ...current, [code]: cachedHistory }));
+        api.getFundHistory(code, 'all')
+          .then((points) => {
+            if (points.length > 0) setHoldingHistories((current) => ({ ...current, [code]: points }));
+          })
+          .catch(() => undefined);
+      }
     });
   }, [holdings, storageReady]);
 
@@ -145,7 +156,7 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
     return () => clearTimeout(handle);
   }, [holdings, watchlist, storageReady, session]);
 
-  const summary = useMemo(() => calculatePortfolioSummary(holdings, quotes), [holdings, quotes]);
+  const summary = useMemo(() => calculatePortfolioSummary(holdings, quotes, holdingHistories), [holdings, quotes, holdingHistories]);
   const exportText = useMemo(() => exportLocalData({ holdings, watchlist }), [holdings, watchlist]);
   const positive = summary.totalProfit >= 0;
   const leadingIndex = indices[0];

@@ -1,4 +1,4 @@
-import type { FundQuote, Holding, PortfolioLedger, PortfolioSignal, PortfolioSummary } from './types';
+import type { FundHistoryPoint, FundQuote, Holding, PortfolioLedger, PortfolioSignal, PortfolioSummary } from './types';
 
 const percent = (value: number) => (Number.isFinite(value) ? value * 100 : 0);
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -19,22 +19,57 @@ function holdingDays(purchaseDate?: string) {
   return Math.max(1, Math.floor((Date.now() - start) / MS_PER_DAY) + 1);
 }
 
-function dailyProfit(holding: Holding, quote?: FundQuote) {
-  if (quote?.dailyChangePercent && quote.dailyChangePercent !== -100 && holding.shares) {
-    const marketValue = holding.shares * quote.netValue;
-    const previousValue = marketValue / (1 + quote.dailyChangePercent / 100);
-    return marketValue - previousValue;
+function dateKey(value?: string) {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  return parsed.toISOString().slice(0, 10);
+}
+
+function baselineNetValue(history: FundHistoryPoint[] | undefined, date?: string) {
+  if (!history?.length || !date) return undefined;
+  const target = dateKey(date);
+  if (!target) return undefined;
+  const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
+  let candidate: FundHistoryPoint | undefined;
+  for (const point of sorted) {
+    if (point.date <= target) candidate = point;
+    else break;
+  }
+  return (candidate ?? sorted.find((point) => point.date >= target))?.netValue;
+}
+
+function latestNetValue(history: FundHistoryPoint[] | undefined, quote?: FundQuote) {
+  return quote?.netValue ?? history?.at(-1)?.netValue;
+}
+
+function estimatedShares(holding: Holding, quote?: FundQuote, history?: FundHistoryPoint[]) {
+  if (holding.shares) return holding.shares;
+  if (!holding.recordedMarketValue) return undefined;
+  const baseline = baselineNetValue(history, holding.purchaseDate ?? holding.createdAt) ?? latestNetValue(history, quote);
+  if (!baseline || baseline <= 0) return undefined;
+  return holding.recordedMarketValue / baseline;
+}
+
+function dailyProfit(holding: Holding, quote?: FundQuote, history?: FundHistoryPoint[], marketValue?: number) {
+  if (quote?.dailyChangePercent && quote.dailyChangePercent !== -100) {
+    const value = marketValue ?? holdingMarketValue(holding, quote, history);
+    const previousValue = value / (1 + quote.dailyChangePercent / 100);
+    return value - previousValue;
   }
   return holding.recordedDailyProfit ?? 0;
 }
 
-function holdingMarketValue(holding: Holding, quote?: FundQuote) {
-  if (quote && holding.shares) return holding.shares * quote.netValue;
+function holdingMarketValue(holding: Holding, quote?: FundQuote, history?: FundHistoryPoint[]) {
+  const shares = estimatedShares(holding, quote, history);
+  const currentNetValue = latestNetValue(history, quote);
+  if (shares && currentNetValue) return shares * currentNetValue;
   return holding.recordedMarketValue ?? 0;
 }
 
-function hasValuation(holding: Holding, quote?: FundQuote) {
-  return Boolean((quote && holding.shares) || holding.recordedMarketValue);
+function hasValuation(holding: Holding, quote?: FundQuote, history?: FundHistoryPoint[]) {
+  if (holding.shares) return Boolean(latestNetValue(history, quote));
+  return Boolean(holding.recordedMarketValue);
 }
 
 function buildLedgers(items: PortfolioSummary['items']): PortfolioLedger[] {
@@ -140,17 +175,19 @@ function buildActionSignals(summary: Pick<PortfolioSummary, 'items' | 'totalRetu
 export function calculatePortfolioSummary(
   holdings: Holding[],
   quotes: Record<string, FundQuote | undefined>,
+  histories: Record<string, FundHistoryPoint[] | undefined> = {},
 ): PortfolioSummary {
-  const totalMarketValue = holdings.reduce((sum, holding) => sum + holdingMarketValue(holding, quotes[holding.fundCode]), 0);
+  const totalMarketValue = holdings.reduce((sum, holding) => sum + holdingMarketValue(holding, quotes[holding.fundCode], histories[holding.fundCode]), 0);
   const totalCost = holdings.reduce((sum, holding) => sum + holding.costAmount, 0);
 
   const items = holdings.map((holding) => {
     const quote = quotes[holding.fundCode];
-    const marketValue = holdingMarketValue(holding, quote);
+    const history = histories[holding.fundCode];
+    const marketValue = holdingMarketValue(holding, quote, history);
     const profit = marketValue - holding.costAmount;
     const returnRate = holding.costAmount > 0 ? percent(profit / holding.costAmount) : 0;
     const weight = totalMarketValue > 0 ? percent(marketValue / totalMarketValue) : 0;
-    const estimatedDailyProfit = dailyProfit(holding, quote);
+    const estimatedDailyProfit = dailyProfit(holding, quote, history, marketValue);
 
     return {
       ...holding,
@@ -161,7 +198,7 @@ export function calculatePortfolioSummary(
       weight,
       estimatedDailyProfit,
       holdingDays: holdingDays(holding.purchaseDate),
-      quoteStatus: hasValuation(holding, quote) ? ('ok' as const) : ('missing' as const),
+      quoteStatus: hasValuation(holding, quote, history) ? ('ok' as const) : ('missing' as const),
     };
   });
 
