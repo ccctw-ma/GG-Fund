@@ -1,0 +1,211 @@
+README.md
+  de085fe444e7f2e4 23 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a202a4744ea3122a5e1b7cc","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Single":23}]}]}
+README.en.md
+  de085fe444e7f2e4 23 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a202a4744ea3122a5e1b7cc","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Single":23}]}]}
+shared/marketData.ts
+  de085fe444e7f2e4 589-595,681-687 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a202a4744ea3122a5e1b7cc","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Range":[589,595]},{"Range":[681,687]}]}]}
+frontend/src/components/PortfolioPanel.tsx
+  de085fe444e7f2e4 81,151-165,395,417-430 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a202a4744ea3122a5e1b7cc","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Single":81},{"Range":[151,165]},{"Single":395},{"Range":[417,430]}]}]}
+shared/marketData.test.ts
+  de085fe444e7f2e4 289-317 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a202a4744ea3122a5e1b7cc","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Range":[289,317]}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "0affa570629dfc80b361ccaa67a8781e39d3900f",
+  "prompts": {
+    "de085fe444e7f2e4": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a20149744ea3122a5e1b124",
+        "model": "openrouter-3o__max"
+      },
+      "human_author": "mashichen <mashichen.msc@bytedance.com>",
+      "messages": [],
+      "total_additions": 80,
+      "total_deletions": 2,
+      "accepted_lines": 80,
+      "overriden_lines": 0
+    }
+  },
+  "attestation_metadata": {
+    "README.en.md": [
+      {
+        "hash": "de085fe444e7f2e4",
+        "line_ranges": [
+          {
+            "Single": 23
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a202a4744ea3122a5e1b7cc",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Single": 23
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "README.md": [
+      {
+        "hash": "de085fe444e7f2e4",
+        "line_ranges": [
+          {
+            "Single": 23
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a202a4744ea3122a5e1b7cc",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Single": 23
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "frontend/src/components/PortfolioPanel.tsx": [
+      {
+        "hash": "de085fe444e7f2e4",
+        "line_ranges": [
+          {
+            "Single": 81
+          },
+          {
+            "Range": [
+              151,
+              165
+            ]
+          },
+          {
+            "Single": 395
+          },
+          {
+            "Range": [
+              417,
+              430
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a202a4744ea3122a5e1b7cc",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Single": 81
+              },
+              {
+                "Range": [
+                  151,
+                  165
+                ]
+              },
+              {
+                "Single": 395
+              },
+              {
+                "Range": [
+                  417,
+                  430
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "shared/marketData.test.ts": [
+      {
+        "hash": "de085fe444e7f2e4",
+        "line_ranges": [
+          {
+            "Range": [
+              289,
+              317
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a202a4744ea3122a5e1b7cc",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Range": [
+                  289,
+                  317
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "shared/marketData.ts": [
+      {
+        "hash": "de085fe444e7f2e4",
+        "line_ranges": [
+          {
+            "Range": [
+              589,
+              595
+            ]
+          },
+          {
+            "Range": [
+              681,
+              687
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a202a4744ea3122a5e1b7cc",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Range": [
+                  589,
+                  595
+                ]
+              },
+              {
+                "Range": [
+                  681,
+                  687
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "de085fe444e7f2e4": {
+      "tool": "trae",
+      "conversation_id": "6a20149744ea3122a5e1b124",
+      "session_id": "6a20149744ea3122a5e1b124",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
