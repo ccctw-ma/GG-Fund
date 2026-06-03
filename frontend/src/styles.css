@@ -443,6 +443,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .fund-holdings-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .fund-holdings-head span { display: inline-flex; align-items: center; gap: 6px; color: var(--text-strong); font-size: .92rem; font-weight: 800; }
 .fund-holdings-head small { color: var(--text-muted); font-size: .74rem; font-weight: 700; }
+.fund-holdings-note { margin: -2px 0 10px; color: var(--text-muted); font-size: .76rem; font-weight: 750; line-height: 1.55; }
 .fund-holdings ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .fund-holdings-item > button {
   display: grid;
@@ -939,6 +940,23 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border-radius: 999px;
   text-align: center;
 }
+.radar-indicator-toolbar {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.radar-indicator-toolbar > div { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.radar-indicator-toolbar span {
+  margin-right: 4px;
+  color: var(--text-muted);
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.radar-indicator-toolbar button { min-height: 30px; border-radius: 999px; padding: 0 10px; }
 .radar-metrics {
   position: relative;
   z-index: 1;
@@ -955,6 +973,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .radar-metrics span { display: block; color: var(--text-muted); font-size: .72rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
 .radar-metrics strong { display: block; margin-top: 5px; color: var(--text-strong); font-size: 1.08rem; font-weight: 950; }
+.radar-metrics small { display: block; margin-top: 5px; color: var(--text-muted); font-size: .72rem; font-weight: 720; line-height: 1.45; }
 .radar-chart-frame {
   position: relative;
   z-index: 1;

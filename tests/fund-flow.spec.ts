@@ -239,7 +239,7 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
   await expect(page.locator('#funds')).toContainText('日涨跌：0.86%');
   await expect(page.locator('#funds')).toContainText('1.2350');
   await expect(page.getByTestId('fund-chart')).toBeVisible();
-  await expect(page.getByTestId('fund-chart').getByText(/区间收益/)).toBeVisible();
+  await expect(page.getByTestId('fund-chart').getByRole('button', { name: '区间收益' })).toBeVisible();
 
   const beginnerGuide = page.locator('[aria-labelledby="beginner-guide-title"]');
   await expect(beginnerGuide).toContainText('华夏成长混合 当前净值');

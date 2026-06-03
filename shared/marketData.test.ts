@@ -315,9 +315,40 @@ describe('market data service', () => {
     ]);
   });
 
-  it('parses fund holdings with weight, industry, and report date', async () => {
+  it('prefers Eastmoney F10 full disclosed stock holdings over the mobile top-10 endpoint', async () => {
     let capturedUrl = '';
     const service = createMarketDataService({
+      fetchText: async (url) => {
+        capturedUrl = url;
+        return `var apidata={ content:"<h4 class='t'><label class='right'>截止至：<font class='px12'>2026-03-31</font></label></h4><table><tbody>
+          <tr><td>1</td><td><a>600519</a></td><td class='tol'><a>贵州茅台</a></td><td></td><td></td><td></td><td>18.33%</td><td>508.34</td><td>737,086.62</td></tr>
+          <tr><td>11</td><td><a>000568</a></td><td class='tol'><a>泸州老窖</a></td><td></td><td></td><td></td><td>1.80%</td><td>320.00</td><td>72,000.00</td></tr>
+        </tbody></table>"}`;
+      },
+      fetchJson: async () => {
+        throw new Error('mobile endpoint should not be used');
+      },
+    });
+
+    const holdings = await service.getFundHoldings('161725');
+
+    expect(capturedUrl).toContain('FundArchivesDatas.aspx');
+    expect(holdings).toEqual({
+      reportDate: '2026-03-31',
+      source: '东方财富 F10 持仓明细',
+      stocks: [
+        { code: '600519', name: '贵州茅台', weight: 18.33, rank: 1, isTopTen: true, shares: 508.34, marketValue: 737086.62 },
+        { code: '000568', name: '泸州老窖', weight: 1.8, rank: 11, isTopTen: false, shares: 320, marketValue: 72000 },
+      ],
+    });
+  });
+
+  it('falls back to mobile fund holdings with weight, industry, and report date', async () => {
+    let capturedUrl = '';
+    const service = createMarketDataService({
+      fetchText: async () => {
+        throw new Error('f10 unavailable');
+      },
       fetchJson: async (url) => {
         capturedUrl = url;
         return {
@@ -336,14 +367,18 @@ describe('market data service', () => {
 
     expect(capturedUrl).toContain('FundMNInverstPosition');
     expect(holdings.reportDate).toBe('2026-03-31');
+    expect(holdings.source).toBe('东方财富公开接口');
     expect(holdings.stocks).toEqual([
-      { code: '600519', name: '贵州茅台', weight: 18.33, changeType: '增持', industry: '食品饮料' },
-      { code: '000858', name: '五粮液', weight: 16.14, changeType: '增持', industry: '食品饮料' },
+      { code: '600519', name: '贵州茅台', weight: 18.33, rank: 1, isTopTen: true, changeType: '增持', industry: '食品饮料' },
+      { code: '000858', name: '五粮液', weight: 16.14, rank: 2, isTopTen: true, changeType: '增持', industry: '食品饮料' },
     ]);
   });
 
   it('returns empty fund holdings when the upstream request fails', async () => {
     const service = createMarketDataService({
+      fetchText: async () => {
+        throw new Error('network');
+      },
       fetchJson: async () => {
         throw new Error('network');
       },

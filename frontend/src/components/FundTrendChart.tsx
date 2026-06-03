@@ -15,8 +15,28 @@ const signalFragments = [
   { text: 'position.trace', className: 'radar-fragment radar-fragment-e' },
 ];
 
+type MetricKey = 'close' | 'return' | 'drawdown' | 'annualized' | 'sharpe' | 'volatility' | 'benchmark' | 'excess';
+
+const defaultMetricKeys: MetricKey[] = ['close', 'return', 'drawdown'];
+const optionalMetricKeys: MetricKey[] = ['annualized', 'sharpe', 'volatility', 'benchmark', 'excess'];
+const metricLabels: Record<MetricKey, string> = {
+  close: '收盘价',
+  return: '区间收益',
+  drawdown: '最大回撤',
+  annualized: '年化收益',
+  sharpe: '夏普',
+  volatility: '波动率',
+  benchmark: '相对基准',
+  excess: '超额收益',
+};
+
+const formatPercent = (value?: number) => (value === undefined ? '--' : `${value.toFixed(2)}%`);
+const formatNumber = (value?: number) => (value === undefined ? '--' : value.toFixed(2));
+
 export function FundTrendChart({
   history,
+  benchmarkHistory = [],
+  benchmarkName = '沪深300',
   kicker = 'Fund Signal Matrix',
   title = '基金分析走势图',
   valueName = '单位净值',
@@ -27,6 +47,8 @@ export function FundTrendChart({
   height = 480,
 }: {
   history: FundHistoryPoint[];
+  benchmarkHistory?: FundHistoryPoint[];
+  benchmarkName?: string;
   kicker?: string;
   title?: string;
   valueName?: string;
@@ -37,20 +59,124 @@ export function FundTrendChart({
   height?: number;
 }) {
   const [range, setRange] = useState<FundRange>('1M');
+  const [activeMetrics, setActiveMetrics] = useState<MetricKey[]>(defaultMetricKeys);
   const visible = useMemo(() => selectHistoryRange(history, range), [history, range]);
-  const metrics = useMemo(() => calculateFundMetrics(visible), [visible]);
+  const visibleBenchmark = useMemo(() => selectHistoryRange(benchmarkHistory, range), [benchmarkHistory, range]);
+  const metrics = useMemo(() => calculateFundMetrics(visible, visibleBenchmark), [visible, visibleBenchmark]);
+  const activeMetricSet = useMemo(() => new Set(activeMetrics), [activeMetrics]);
   const lastPoint = metrics.points.at(-1);
   const firstPoint = metrics.points[0];
   const trendTone = metrics.summary.totalReturn >= 0 ? '趋势增强' : '风险收缩';
+  const primaryLabel = valueName === '单位净值' ? '收盘价/净值' : valueName;
+  const benchmarkAvailable = metrics.summary.benchmarkReturn !== undefined;
+  const availableOptionalMetricKeys = optionalMetricKeys.filter((key) => (key === 'benchmark' || key === 'excess' ? benchmarkAvailable : true));
+
+  function toggleMetric(key: MetricKey) {
+    setActiveMetrics((current) => (current.includes(key) ? current.filter((item) => item !== key) : [...current, key]));
+  }
 
   if (history.length === 0) {
     return <div className="mt-5 rounded-[1.4rem] bg-[#fffaf0]/70 p-6 text-sm font-semibold text-ink/55">{loading ? '正在加载历史数据…' : emptyHint}</div>;
   }
 
+  const chartSeries = [
+    activeMetricSet.has('close') && {
+      name: primaryLabel,
+      type: 'line',
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 5,
+      showSymbol: false,
+      lineStyle: { width: 4, shadowBlur: 18, shadowColor: 'rgba(244,183,64,.58)' },
+      areaStyle: {
+        color: {
+          type: 'linear',
+          x: 0,
+          y: 0,
+          x2: 0,
+          y2: 1,
+          colorStops: [
+            { offset: 0, color: 'rgba(244,183,64,.28)' },
+            { offset: 1, color: 'rgba(244,183,64,0)' },
+          ],
+        },
+      },
+      data: metrics.points.map((point) => point.netValue),
+    },
+    activeMetricSet.has('return') && {
+      name: '区间收益%',
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      yAxisIndex: 1,
+      lineStyle: { width: 2, type: 'dashed', shadowBlur: 14, shadowColor: 'rgba(255,93,82,.42)' },
+      data: metrics.points.map((point) => point.cumulativeReturn),
+    },
+    activeMetricSet.has('drawdown') && {
+      name: '回撤%',
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      yAxisIndex: 1,
+      lineStyle: { width: 2, shadowBlur: 12, shadowColor: 'rgba(63,214,160,.38)' },
+      areaStyle: { opacity: 0.12 },
+      data: metrics.points.map((point) => point.drawdown),
+    },
+    activeMetricSet.has('benchmark') && benchmarkAvailable && {
+      name: `${benchmarkName}收益%`,
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      yAxisIndex: 1,
+      lineStyle: { width: 2, type: 'dotted', shadowBlur: 10, shadowColor: 'rgba(140,200,255,.3)' },
+      data: metrics.points.map((point) => point.benchmarkReturn ?? null),
+    },
+    activeMetricSet.has('excess') && benchmarkAvailable && {
+      name: '超额收益%',
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      yAxisIndex: 1,
+      lineStyle: { width: 2, type: 'dashed', shadowBlur: 10, shadowColor: 'rgba(181,126,255,.32)' },
+      data: metrics.points.map((point) => point.excessReturn ?? null),
+    },
+  ].filter(Boolean);
+
+  const optionalDetails = [
+    activeMetricSet.has('annualized') && {
+      label: '年化收益',
+      value: formatPercent(metrics.summary.annualizedReturn),
+      tone: metrics.summary.annualizedReturn >= 0 ? 'profit-up' : 'profit-down',
+      detail: '按当前时间范围起止净值折算为年化收益，短周期会被放大。',
+    },
+    activeMetricSet.has('sharpe') && {
+      label: '夏普',
+      value: formatNumber(metrics.summary.sharpeRatio),
+      detail: '以 2% 年化无风险利率近似估算，衡量单位波动承担的超额回报。',
+    },
+    activeMetricSet.has('volatility') && {
+      label: '波动率',
+      value: formatPercent(metrics.summary.volatility),
+      detail: '由日收益标准差按 252 个交易日年化，越高代表价格波动越大。',
+    },
+    activeMetricSet.has('benchmark') && benchmarkAvailable && {
+      label: `相对基准`,
+      value: formatPercent(metrics.summary.benchmarkReturn),
+      tone: (metrics.summary.benchmarkReturn ?? 0) >= 0 ? 'profit-up' : 'profit-down',
+      detail: `${benchmarkName} 在当前区间内的累计收益，用于和基金走势对照。`,
+    },
+    activeMetricSet.has('excess') && benchmarkAvailable && {
+      label: '超额收益',
+      value: formatPercent(metrics.summary.excessReturn),
+      tone: (metrics.summary.excessReturn ?? 0) >= 0 ? 'profit-up' : 'profit-down',
+      detail: `基金区间收益减去 ${benchmarkName} 区间收益，正值表示跑赢基准。`,
+    },
+  ].filter(Boolean);
+
   const option = {
     backgroundColor: 'transparent',
     // 中国习惯：涨/收益用红，跌/回撤用绿。净值线保持金色。
-    color: ['#f7c96b', '#ff5d52', '#3fd6a0'],
+    color: ['#f7c96b', '#ff5d52', '#3fd6a0', '#8cc8ff', '#b57eff'],
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(4, 17, 31, 0.92)',
@@ -65,7 +191,7 @@ export function FundTrendChart({
     legend: {
       top: 10,
       right: 18,
-      data: [valueName, '区间收益%', '回撤%'],
+      data: chartSeries.map((series) => (series as { name: string }).name),
       textStyle: { color: '#9eb1c7', fontWeight: 800 },
       itemWidth: 18,
       itemHeight: 8,
@@ -108,50 +234,7 @@ export function FundTrendChart({
         splitLine: { show: false },
       },
     ],
-    series: [
-      {
-        name: valueName,
-        type: 'line',
-        smooth: true,
-        symbol: 'circle',
-        symbolSize: 5,
-        showSymbol: false,
-        lineStyle: { width: 4, shadowBlur: 18, shadowColor: 'rgba(244,183,64,.58)' },
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: 'rgba(244,183,64,.28)' },
-              { offset: 1, color: 'rgba(244,183,64,0)' },
-            ],
-          },
-        },
-        data: metrics.points.map((point) => point.netValue),
-      },
-      {
-        name: '区间收益%',
-        type: 'line',
-        smooth: true,
-        symbol: 'none',
-        yAxisIndex: 1,
-        lineStyle: { width: 2, type: 'dashed', shadowBlur: 14, shadowColor: 'rgba(255,93,82,.42)' },
-        data: metrics.points.map((point) => point.cumulativeReturn),
-      },
-      {
-        name: '回撤%',
-        type: 'line',
-        smooth: true,
-        symbol: 'none',
-        yAxisIndex: 1,
-        lineStyle: { width: 2, shadowBlur: 12, shadowColor: 'rgba(63,214,160,.38)' },
-        areaStyle: { opacity: 0.12 },
-        data: metrics.points.map((point) => point.drawdown),
-      },
-    ],
+    series: chartSeries,
   };
 
   return (
@@ -163,29 +246,53 @@ export function FundTrendChart({
         <div>
           <span className="section-kicker">{kicker}</span>
           <h4>{title}</h4>
-          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · {valueAxisName} / 收益 / 回撤同屏监控</p>
+          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · 默认展示收盘价、区间收益、最大回撤，可按需打开风险与基准指标</p>
         </div>
         <div className="radar-range-tabs" aria-label="走势图时间范围">
           {ranges.map((item) => <Button key={item} size="sm" variant={item === range ? 'default' : 'secondary'} onClick={() => setRange(item)}>{item}</Button>)}
         </div>
       </div>
+      <div className="radar-indicator-toolbar" aria-label="走势图指标开关">
+        <div>
+          <span>默认指标</span>
+          {defaultMetricKeys.map((key) => (
+            <Button key={key} size="sm" variant={activeMetricSet.has(key) ? 'default' : 'secondary'} onClick={() => toggleMetric(key)} aria-pressed={activeMetricSet.has(key)}>
+              {key === 'close' ? primaryLabel : metricLabels[key]}
+            </Button>
+          ))}
+        </div>
+        <div>
+          <span>可选指标</span>
+          {availableOptionalMetricKeys.map((key) => (
+            <Button key={key} size="sm" variant={activeMetricSet.has(key) ? 'default' : 'secondary'} onClick={() => toggleMetric(key)} aria-pressed={activeMetricSet.has(key)}>
+              {metricLabels[key]}
+            </Button>
+          ))}
+        </div>
+      </div>
       <div className="radar-metrics">
+        <div>
+          <span>{primaryLabel}</span>
+          <strong>{metrics.summary.latestNetValue.toFixed(valueName === '收盘价' ? 2 : 4)}</strong>
+          <small>{valueAxisName}区间 {metrics.summary.lowNetValue.toFixed(4)} / {metrics.summary.highNetValue.toFixed(4)}</small>
+        </div>
         <div>
           <span>区间收益</span>
           <strong className={metrics.summary.totalReturn >= 0 ? 'profit-up' : 'profit-down'}>{metrics.summary.totalReturn.toFixed(2)}%</strong>
+          <small>当前选择时间范围内累计涨跌幅</small>
         </div>
         <div>
           <span>最大回撤</span>
           <strong className="profit-down">{metrics.summary.maxDrawdown.toFixed(2)}%</strong>
+          <small>从阶段高点回落的最大幅度</small>
         </div>
-        <div>
-          <span>最新净值</span>
-          <strong>{metrics.summary.latestNetValue.toFixed(4)}</strong>
-        </div>
-        <div>
-          <span>净值区间</span>
-          <strong>{metrics.summary.lowNetValue.toFixed(4)} / {metrics.summary.highNetValue.toFixed(4)}</strong>
-        </div>
+        {optionalDetails.map((item) => item && (
+          <div key={item.label}>
+            <span>{item.label}</span>
+            <strong className={'tone' in item && item.tone ? item.tone : undefined}>{item.value}</strong>
+            <small>{item.detail}</small>
+          </div>
+        ))}
       </div>
       <div className="radar-chart-frame">
         <ReactECharts option={option} style={{ height, width: '100%' }} notMerge lazyUpdate />

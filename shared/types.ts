@@ -37,12 +37,17 @@ export type FundHolding = {
   code: string;
   name: string;
   weight: number;
+  rank?: number;
+  isTopTen?: boolean;
+  shares?: number;
+  marketValue?: number;
   changeType?: string;
   industry?: string;
 };
 
 export type FundHoldings = {
   reportDate?: string;
+  source?: string;
   stocks: FundHolding[];
 };
 

@@ -14,6 +14,7 @@ type Props = {
   results: FundQuote[];
   selectedFund?: FundQuote;
   history: FundHistoryPoint[];
+  benchmarkHistory?: FundHistoryPoint[];
   holdings?: FundHoldings;
   loading: boolean;
   error?: string;
@@ -26,14 +27,19 @@ type Props = {
 
 const numberFormat = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
 const compactNumberFormat = new Intl.NumberFormat('zh-CN', { notation: 'compact', maximumFractionDigits: 2 });
+const fixedPercent = (value: number) => value.toFixed(2);
 
 function formatAssetValue(fund: FundQuote) {
   return fund.assetType === 'stock' ? fund.netValue.toFixed(2) : fund.netValue ? fund.netValue.toFixed(4) : '--';
 }
 
-export function FundSearch({ query, setQuery, results, selectedFund, history, holdings, loading, error, onSearch, onSelect, onAddHolding, onToggleWatch, watchlist }: Props) {
+export function FundSearch({ query, setQuery, results, selectedFund, history, benchmarkHistory = [], holdings, loading, error, onSearch, onSelect, onAddHolding, onToggleWatch, watchlist }: Props) {
   const selectedIsStock = selectedFund?.assetType === 'stock';
   const holdingStocks = holdings?.stocks ?? [];
+  const disclosedStockWeight = holdingStocks.reduce((sum, stock) => sum + stock.weight, 0);
+  const topTenWeight = holdingStocks.reduce((sum, stock, index) => sum + ((stock.isTopTen ?? (stock.rank ? stock.rank <= 10 : index < 10)) ? stock.weight : 0), 0);
+  const disclosedBeyondTopTenWeight = Math.max(0, disclosedStockWeight - topTenWeight);
+  const undisclosedWeight = Math.max(0, 100 - disclosedStockWeight);
   return (
     <Card id="funds" className="lg:col-span-1">
       <CardHeader>
@@ -93,21 +99,27 @@ export function FundSearch({ query, setQuery, results, selectedFund, history, ho
               ))}
             </div>
           ) : (
-            <FundTrendChart history={history} />
+            <FundTrendChart history={history} benchmarkHistory={benchmarkHistory} />
           )}
           {!selectedIsStock && holdingStocks.length > 0 && (
             <div className="fund-holdings" data-testid="fund-holdings">
               <div className="fund-holdings-head">
-                <span><Layers className="h-4 w-4" /> 重仓持股 / 占净值比</span>
+                <span><Layers className="h-4 w-4" /> 已披露股票持仓 / 占净值比</span>
                 {holdings?.reportDate && <small>报告期 {holdings.reportDate}</small>}
               </div>
+              <p className="fund-holdings-note">
+                已披露股票合计 {fixedPercent(disclosedStockWeight)}%，其中前十大 {fixedPercent(topTenWeight)}%、前十大以外已披露 {fixedPercent(disclosedBeyondTopTenWeight)}%；未逐项披露或非股票资产约 {fixedPercent(undisclosedWeight)}%。
+              </p>
               <ul>
-                {holdingStocks.map((stock) => (
+                {holdingStocks.map((stock, index) => (
                   <li key={stock.code}>
                     <button type="button" onClick={() => onSelect(stock.code)} aria-label={`查看 ${stock.name} 详情`}>
                       <span className="fund-holdings-name">
                         <strong>{stock.name}</strong>
-                        <small>{stock.code}{stock.industry ? ` · ${stock.industry}` : ''}{stock.changeType ? ` · ${stock.changeType}` : ''}</small>
+                        <small>
+                          #{stock.rank ?? index + 1} · {stock.code}{stock.industry ? ` · ${stock.industry}` : ''}{stock.changeType ? ` · ${stock.changeType}` : ''}
+                          {stock.shares !== undefined ? ` · 持股 ${numberFormat.format(stock.shares)}万股` : ''}
+                        </small>
                       </span>
                       <span className="fund-holdings-weight">
                         <em>{stock.weight.toFixed(2)}%</em>

@@ -10,6 +10,8 @@ import { Card, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { FundTrendChart } from './FundTrendChart';
 
 const money = new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' });
+const numberFormat = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
+const fixedPercent = (value: number) => value.toFixed(2);
 
 function signalClass(signal: PortfolioSignal) {
   return `yb-signal yb-signal-${signal.tone}`;
@@ -55,12 +57,14 @@ function assetTypeLabel(quote: FundQuote) {
 export function PortfolioPanel({
   summary,
   watchlist,
+  benchmarkHistory = [],
   onRemoveHolding,
   onUpdateHolding,
   onEditIdentity,
 }: {
   summary: PortfolioSummary;
   watchlist: WatchItem[];
+  benchmarkHistory?: FundHistoryPoint[];
   onRemoveHolding: (id: string) => void;
   onUpdateHolding: (id: string, patch: { recordedMarketValue: number; costAmount: number }) => void;
   onEditIdentity?: (id: string, patch: { fundCode: string; fundName: string }) => void;
@@ -289,6 +293,11 @@ export function PortfolioPanel({
               const hasCode = /^\d{6}$/.test(item.fundCode);
               const isExpanded = expandedId === item.id;
               const isDetail = detailId === item.id;
+              const detailStocks = detailHoldings?.stocks ?? [];
+              const disclosedStockWeight = detailStocks.reduce((sum, stock) => sum + stock.weight, 0);
+              const topTenWeight = detailStocks.reduce((sum, stock, index) => sum + ((stock.isTopTen ?? (stock.rank ? stock.rank <= 10 : index < 10)) ? stock.weight : 0), 0);
+              const disclosedBeyondTopTenWeight = Math.max(0, disclosedStockWeight - topTenWeight);
+              const undisclosedWeight = Math.max(0, 100 - disclosedStockWeight);
               return (
               <div key={item.id} className="yb-holding-wrap">
               <article className="yb-holding-row">
@@ -365,16 +374,20 @@ export function PortfolioPanel({
                 {hasCode && (
                   <div className="fund-holdings" data-testid="holding-positions">
                     <div className="fund-holdings-head">
-                      <span><PieChart className="h-4 w-4" /> 持仓组成 / 占净值比</span>
+                      <span><PieChart className="h-4 w-4" /> 已披露股票持仓 / 占净值比</span>
                       {detailHoldings?.reportDate && <small>报告期 {detailHoldings.reportDate}</small>}
                     </div>
                     {detailHoldingsLoading ? (
                       <p className="yb-empty-copy">正在加载持仓组成…</p>
-                    ) : (detailHoldings?.stocks.length ?? 0) === 0 ? (
+                    ) : detailStocks.length === 0 ? (
                       <p className="yb-empty-copy">暂无该基金的持仓组成数据（指数/货币型基金或未披露）。</p>
                     ) : (
+                      <>
+                      <p className="fund-holdings-note">
+                        已披露股票合计 {fixedPercent(disclosedStockWeight)}%，其中前十大 {fixedPercent(topTenWeight)}%、前十大以外已披露 {fixedPercent(disclosedBeyondTopTenWeight)}%；未逐项披露或非股票资产约 {fixedPercent(undisclosedWeight)}%。
+                      </p>
                       <ul>
-                        {detailHoldings?.stocks.map((stock) => {
+                        {detailStocks.map((stock, index) => {
                           const isStockOpen = stockId === stock.code;
                           const stockQuote = stockQuoteMap[stock.code];
                           const stockLoading = isStockOpen && stockQuote === undefined;
@@ -383,7 +396,10 @@ export function PortfolioPanel({
                             <button type="button" aria-expanded={isStockOpen} aria-label={`查看 ${stock.name} 详情`} onClick={() => toggleStock(stock.code)}>
                               <span className="fund-holdings-name">
                                 <strong>{stock.name}</strong>
-                                <small>{stock.code}{stock.industry ? ` · ${stock.industry}` : ''}{stock.changeType ? ` · ${stock.changeType}` : ''}</small>
+                                <small>
+                                  #{stock.rank ?? index + 1} · {stock.code}{stock.industry ? ` · ${stock.industry}` : ''}{stock.changeType ? ` · ${stock.changeType}` : ''}
+                                  {stock.shares !== undefined ? ` · 持股 ${numberFormat.format(stock.shares)}万股` : ''}
+                                </small>
                               </span>
                               <span className="fund-holdings-weight">
                                 <em>{stock.weight.toFixed(2)}%</em>
@@ -417,6 +433,7 @@ export function PortfolioPanel({
                               {stockQuote && /^\d{6}$/.test(stock.code) && (
                                 <FundTrendChart
                                   history={stockHistoryMap[stock.code] ?? []}
+                                  benchmarkHistory={benchmarkHistory}
                                   loading={stockHistoryMap[stock.code] === undefined}
                                   testId="holding-stock-chart"
                                   height={320}
@@ -433,6 +450,7 @@ export function PortfolioPanel({
                           );
                         })}
                       </ul>
+                      </>
                     )}
                   </div>
                 )}
@@ -441,6 +459,7 @@ export function PortfolioPanel({
               {isExpanded && hasCode && (
                 <FundTrendChart
                   history={expandedHistory}
+                  benchmarkHistory={benchmarkHistory}
                   loading={expandedLoading}
                   testId="holding-chart"
                   kicker="Holding Signal Matrix"

@@ -66,6 +66,7 @@ export default function App() {
   const [results, setResults] = useState<FundQuote[]>([]);
   const [selectedFund, setSelectedFund] = useState<FundQuote>();
   const [history, setHistory] = useState<FundHistoryPoint[]>([]);
+  const [benchmarkHistory, setBenchmarkHistory] = useState<FundHistoryPoint[]>([]);
   const [fundHoldings, setFundHoldings] = useState<FundHoldings>({ stocks: [] });
   const [fundLoading, setFundLoading] = useState(false);
   const [fundError, setFundError] = useState<string>();
@@ -84,6 +85,7 @@ export default function App() {
       .catch((error: Error) => setMarketError(error.message))
       .finally(() => setMarketLoading(false));
     api.getTrendingFunds().then(setResults).catch(() => undefined);
+    api.getIndexHistory('000300.SH', 'all').then(setBenchmarkHistory).catch(() => undefined);
     api.getCurrentUser().then(setSession).catch(() => setSession(undefined));
     let cancelled = false;
     queueMicrotask(() => {
@@ -408,6 +410,7 @@ export default function App() {
                   results={results}
                   selectedFund={selectedFund}
                   history={history}
+                  benchmarkHistory={benchmarkHistory}
                   holdings={fundHoldings}
                   loading={fundLoading}
                   error={fundError}
@@ -429,7 +432,7 @@ export default function App() {
                 <button type="button" className="ghost-cta" onClick={() => changePage('workspace')}><BarChart3 className="h-4 w-4" /> 返回行情</button>
               </div>
               <div className="banking-grid single-page-grid">
-                <PortfolioPanel summary={summary} watchlist={watchlist} onRemoveHolding={(id) => setHoldings((current) => current.filter((holding) => holding.id !== id))} onUpdateHolding={updateHolding} onEditIdentity={editHoldingIdentity} />
+                <PortfolioPanel summary={summary} watchlist={watchlist} benchmarkHistory={benchmarkHistory} onRemoveHolding={(id) => setHoldings((current) => current.filter((holding) => holding.id !== id))} onUpdateHolding={updateHolding} onEditIdentity={editHoldingIdentity} />
                 <SettingsPanel exportText={exportText} importError={importError} onImport={importData} />
               </div>
             </section>

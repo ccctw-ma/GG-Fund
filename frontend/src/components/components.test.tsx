@@ -46,7 +46,14 @@ describe('dashboard components', () => {
         results={[fund]}
         selectedFund={fund}
         history={[{ date: '2026-05-29', netValue: 1.35 }]}
-        holdings={{ reportDate: '2026-03-31', stocks: [{ code: '600519', name: '贵州茅台', weight: 18.33, industry: '食品饮料', changeType: '增持' }] }}
+        benchmarkHistory={[{ date: '2026-05-29', netValue: 4000 }]}
+        holdings={{
+          reportDate: '2026-03-31',
+          stocks: [
+            { code: '600519', name: '贵州茅台', weight: 18.33, industry: '食品饮料', changeType: '增持' },
+            { code: '000858', name: '五粮液', weight: 6.12, rank: 11, isTopTen: false, shares: 120.5, industry: '食品饮料' },
+          ],
+        }}
         loading={false}
         onSearch={() => undefined}
         onSelect={(code) => onSelectCodes.push(code)}
@@ -62,10 +69,25 @@ describe('dashboard components', () => {
     expect(search.container.textContent).toContain('实时估算');
     expect(search.container.textContent).toContain('基金分析走势图');
     expect(search.container.textContent).toContain('Fund Signal Matrix');
-    expect(search.container.textContent).toContain('重仓持股');
+    expect(search.container.textContent).toContain('默认指标');
+    expect(search.container.textContent).toContain('收盘价/净值');
+    expect(search.container.textContent).toContain('最大回撤');
+    expect(search.container.textContent).toContain('可选指标');
+    expect(search.container.textContent).toContain('年化收益');
+    expect(search.container.textContent).toContain('夏普');
+    expect(search.container.textContent).toContain('相对基准');
+    expect(search.container.textContent).toContain('已披露股票持仓');
+    expect(search.container.textContent).toContain('已披露股票合计 24.45%');
+    expect(search.container.textContent).toContain('前十大以外已披露 6.12%');
+    expect(search.container.textContent).toContain('未逐项披露或非股票资产约 75.55%');
     expect(search.container.textContent).toContain('贵州茅台');
+    expect(search.container.textContent).toContain('#11 · 000858');
+    expect(search.container.textContent).toContain('持股 120.5万股');
     const holdingButton = search.container.querySelector<HTMLButtonElement>('[data-testid="fund-holdings"] button');
     expect(holdingButton).not.toBeNull();
+    const annualizedButton = Array.from(search.container.querySelectorAll('button')).find((button) => button.textContent?.includes('年化收益'));
+    act(() => annualizedButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(search.container.textContent).toContain('按当前时间范围起止净值折算为年化收益');
     act(() => holdingButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(onSelectCodes).toContain('600519');
   });
@@ -180,7 +202,7 @@ describe('dashboard components', () => {
     expect(detail?.textContent).toContain('最新净值');
     expect(detail?.textContent).toContain('累计盈亏');
     expect(portfolio.container.querySelector('[data-testid="holding-positions"]')).not.toBeNull();
-    expect(portfolio.container.querySelector('[data-testid="holding-positions"]')?.textContent).toContain('持仓组成');
+    expect(portfolio.container.querySelector('[data-testid="holding-positions"]')?.textContent).toContain('已披露股票持仓');
   });
 
   it('edits a holding code and name through the inline editor', () => {

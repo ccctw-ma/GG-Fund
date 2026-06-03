@@ -12,6 +12,7 @@ type MarketDataOptions = {
 const EASTMONEY_SOURCE = '东方财富公开接口';
 const EASTMONEY_SEARCH_SOURCE = '东方财富搜索接口';
 const EASTMONEY_STOCK_SOURCE = '东方财富 A股行情';
+const EASTMONEY_F10_HOLDINGS_SOURCE = '东方财富 F10 持仓明细';
 const TENCENT_STOCK_SOURCE = '腾讯证券行情';
 const TIANTIAN_ESTIMATE_SOURCE = '天天基金实时估算';
 
@@ -54,6 +55,28 @@ const toNumber = (value: unknown) => {
   const number = Number(value);
   return Number.isFinite(number) ? number : undefined;
 };
+const toCleanNumber = (value: unknown) => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.replace(/[%\s,]/g, '');
+  if (!normalized || normalized === '--') return undefined;
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : undefined;
+};
+
+function htmlText(value: string) {
+  return value
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 function unwrapJsonp(text: string): unknown {
   const start = text.indexOf('(');
@@ -351,7 +374,7 @@ function holdingsFromEastmoney(data: unknown): FundHoldings {
   const list = (datas as { fundStocks?: unknown }).fundStocks;
   if (!Array.isArray(list)) return { reportDate, stocks: [] };
   const stocks = list
-    .map((item) => {
+    .map((item, index) => {
       if (typeof item !== 'object' || item === null) return undefined;
       const record = item as Record<string, unknown>;
       const code = String(record.GPDM ?? '').trim();
@@ -360,10 +383,38 @@ function holdingsFromEastmoney(data: unknown): FundHoldings {
       if (!code || !name || weight === undefined) return undefined;
       const changeType = typeof record.PCTNVCHGTYPE === 'string' ? record.PCTNVCHGTYPE : undefined;
       const industry = typeof record.INDEXNAME === 'string' ? record.INDEXNAME : undefined;
-      return { code, name, weight, changeType, industry };
+      const rank = index + 1;
+      return { code, name, weight, rank, isTopTen: rank <= 10, changeType, industry };
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
-  return { reportDate, stocks };
+  return { reportDate, source: EASTMONEY_SOURCE, stocks };
+}
+
+function holdingsFromEastmoneyF10(text: string): FundHoldings {
+  const dateMatch = text.match(/截止至：<font[^>]*>([^<]+)<\/font>/);
+  const reportDate = dateMatch ? htmlText(dateMatch[1]) : undefined;
+  const rows = [...text.matchAll(/<tr>([\s\S]*?)<\/tr>/g)];
+  const stocks = rows
+    .map((row) => {
+      const cells = [...row[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((cell) => htmlText(cell[1]));
+      if (cells.length < 9) return undefined;
+      const rank = toCleanNumber(cells[0].replace('*', ''));
+      const code = cells[1].trim();
+      const name = cells[2].trim();
+      const weight = toCleanNumber(cells[6]);
+      if (!/^\d{6}$/.test(code) || !name || weight === undefined) return undefined;
+      return {
+        code,
+        name,
+        weight,
+        rank,
+        isTopTen: rank !== undefined ? rank <= 10 : undefined,
+        shares: toCleanNumber(cells[7]),
+        marketValue: toCleanNumber(cells[8]),
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  return stocks.length > 0 ? { reportDate, source: EASTMONEY_F10_HOLDINGS_SOURCE, stocks } : { reportDate, stocks: [] };
 }
 
 function historyFromEastmoneyData(data: unknown): FundHistoryPoint[] {
@@ -548,6 +599,15 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     return holdingsFromEastmoney(await fetchJson(url));
   }
 
+  async function getEastmoneyF10FundHoldings(code: string): Promise<FundHoldings> {
+    const url = `https://fundf10.eastmoney.com/FundArchivesDatas.aspx?type=jjcc&code=${encodeURIComponent(code)}&topline=100&year=&month=`;
+    const headers = {
+      'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+      referer: `https://fundf10.eastmoney.com/ccmx_${code}.html`,
+    };
+    return holdingsFromEastmoneyF10(await fetchText(url, headers));
+  }
+
   async function getEastmoneyHistory(code: string, targetCount = 30): Promise<FundHistoryPoint[]> {
     const headers = {
       'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
@@ -693,6 +753,12 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     },
     async getFundHoldings(code: string): Promise<FundHoldings> {
       return cached(`fund-holdings:${code}`, 86_400_000, async () => {
+        try {
+          const holdings = await getEastmoneyF10FundHoldings(code);
+          if (holdings.stocks.length > 0) return holdings;
+        } catch {
+          // fall through to mobile top-10 holdings
+        }
         try {
           return await getEastmoneyFundHoldings(code);
         } catch {
