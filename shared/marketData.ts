@@ -269,7 +269,7 @@ function stocksFromEastmoneyClist(data: unknown): FundQuote[] {
 }
 
 function stockFromTencentLine(line: string): FundQuote | undefined {
-  const match = line.match(/^v_([a-z]{2})(\d{6})="([^"]+)";?$/);
+  const match = line.trim().match(/^v_([a-z]{2})(\d{6})="([^"]+)";?$/);
   if (!match) return undefined;
   const [, marketPrefix, code, payload] = match;
   const parts = payload.split('~');
