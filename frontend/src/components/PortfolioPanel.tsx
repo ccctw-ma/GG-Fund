@@ -78,6 +78,7 @@ export function PortfolioPanel({
   const [holdingsMap, setHoldingsMap] = useState<Record<string, FundHoldings>>({});
   const [stockId, setStockId] = useState<string>();
   const [stockQuoteMap, setStockQuoteMap] = useState<Record<string, FundQuote | null>>({});
+  const [stockHistoryMap, setStockHistoryMap] = useState<Record<string, FundHistoryPoint[]>>({});
   const historyLoadingRef = useRef<Set<string>>(new Set());
   const sortedItems = useMemo(() => sortItems(summary.items, sortKey), [summary.items, sortKey]);
 
@@ -146,6 +147,21 @@ export function PortfolioPanel({
       cancelled = true;
     };
   }, [stockId, stockQuoteMap]);
+
+  useEffect(() => {
+    if (!stockId || !/^\d{6}$/.test(stockId) || stockHistoryMap[stockId] !== undefined) return;
+    let cancelled = false;
+    api.getFundHistory(stockId, 'all')
+      .then((points) => {
+        if (!cancelled) setStockHistoryMap((current) => ({ ...current, [stockId]: points }));
+      })
+      .catch(() => {
+        if (!cancelled) setStockHistoryMap((current) => ({ ...current, [stockId]: [] }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [stockId, stockHistoryMap]);
 
   function toggleStock(code: string) {
     setStockId((current) => (current === code ? undefined : code));
@@ -376,6 +392,7 @@ export function PortfolioPanel({
                               <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isStockOpen ? 'rotate-180' : ''}`} />
                             </button>
                             {isStockOpen && (
+                              <>
                               <div className="fund-holdings-detail" data-testid="holding-stock-detail">
                                 {stockLoading ? (
                                   <p className="yb-empty-copy">正在查找 {stock.name} 行情…</p>
@@ -397,6 +414,20 @@ export function PortfolioPanel({
                                   </>
                                 )}
                               </div>
+                              {stockQuote && /^\d{6}$/.test(stock.code) && (
+                                <FundTrendChart
+                                  history={stockHistoryMap[stock.code] ?? []}
+                                  loading={stockHistoryMap[stock.code] === undefined}
+                                  testId="holding-stock-chart"
+                                  height={320}
+                                  kicker="Equity Signal Matrix"
+                                  title={`${stock.name} 价格走势`}
+                                  valueName="收盘价"
+                                  valueAxisName="价格"
+                                  emptyHint="暂无该标的的历史行情，稍后重试。"
+                                />
+                              )}
+                              </>
                             )}
                           </li>
                           );

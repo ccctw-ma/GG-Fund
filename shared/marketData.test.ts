@@ -286,6 +286,35 @@ describe('market data service', () => {
     expect(capturedReferers.every((referer) => referer === 'https://fundf10.eastmoney.com/jjjz_000001.html')).toBe(true);
   });
 
+  it('falls back to Tencent daily kline for A-share stock history', async () => {
+    let capturedUrl = '';
+    const service = createMarketDataService({
+      fetchJson: async () => ({}),
+      fetchText: async (url) => {
+        capturedUrl = url;
+        return JSON.stringify({
+          code: 0,
+          data: {
+            sh600522: {
+              qfqday: [
+                ['2026-05-29', '44.00', '44.50', '45.10', '43.80', '123456'],
+                ['2026-05-30', '44.60', '44.98', '46.98', '43.40', '234567'],
+              ],
+            },
+          },
+        });
+      },
+    });
+
+    const history = await service.getFundHistory('600522', '1m');
+
+    expect(capturedUrl).toContain('sh600522');
+    expect(history).toEqual([
+      { date: '2026-05-29', netValue: 44.5 },
+      { date: '2026-05-30', netValue: 44.98 },
+    ]);
+  });
+
   it('parses fund holdings with weight, industry, and report date', async () => {
     let capturedUrl = '';
     const service = createMarketDataService({

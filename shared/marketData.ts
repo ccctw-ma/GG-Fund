@@ -586,6 +586,13 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     return historyFromTencentKline(await fetchText(url));
   }
 
+  // A 股个股日线：push2 在 Worker 出口被屏蔽，直接用腾讯前复权日 K（UTF-8 JSON，与指数同结构）。
+  async function getTencentStockHistory(code: string, limit = 120): Promise<FundHistoryPoint[]> {
+    const prefix = code.startsWith('6') ? 'sh' : code.startsWith('8') || code.startsWith('4') ? 'bj' : 'sz';
+    const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${prefix}${encodeURIComponent(code)},day,,,${limit},qfq`;
+    return historyFromTencentKline(await fetchText(url));
+  }
+
 
   return {
     async getIndices(): Promise<IndexQuote[]> {
@@ -670,6 +677,13 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
       return cached(`fund-history:${code}:${pageSize}`, 86_400_000, async () => {
         try {
           const history = await getEastmoneyHistory(code, pageSize);
+          if (history.length > 0) return history;
+        } catch {
+          // fall through to stock kline / local fallback
+        }
+        // 基金历史为空时多半是 A 股个股，用腾讯日 K 兜底，让股票也能看走势图。
+        try {
+          const history = await getTencentStockHistory(code, pageSize);
           if (history.length > 0) return history;
         } catch {
           // fall through to local fallback
