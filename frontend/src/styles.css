@@ -271,8 +271,58 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .workspace-heading-compact { flex-direction: row; align-items: center; justify-content: flex-end; margin-bottom: 16px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .banking-grid { display: grid; gap: 18px; }
-@media (min-width: 1024px) { .banking-grid { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); } }
 .single-page-grid { grid-template-columns: 1fr !important; }
+.market-overview-card, .fund-search-card { width: 100%; }
+.market-overview-head { align-items: flex-start; }
+.index-switch-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+.index-switch-card {
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 1.4rem;
+  background: rgba(255,255,255,.06);
+  padding: 16px;
+  text-align: left;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 14px 36px rgba(0,0,0,.12);
+  transition: transform .15s ease, background .15s ease, border-color .15s ease;
+}
+.index-switch-card:hover { transform: translateY(-1px); border-color: rgba(244,183,64,.36); background: rgba(255,255,255,.1); }
+.index-switch-card.is-active { border-color: rgba(244,183,64,.62); background: linear-gradient(135deg, rgba(244,183,64,.17), rgba(125,226,184,.08)); }
+.fund-search-card { order: 2; }
+.fund-result-tabs {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.fund-result-tab {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 1.35rem;
+  background: rgba(2,6,23,.42);
+  padding: 15px;
+  text-align: left;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 14px 36px rgba(0,0,0,.16);
+  backdrop-filter: blur(14px);
+  transition: transform .15s ease, background .15s ease, border-color .15s ease;
+}
+.fund-result-tab:hover { transform: translateY(-1px); border-color: rgba(125,226,184,.45); background: rgba(2,6,23,.58); }
+.fund-result-tab.is-active { border-color: rgba(244,183,64,.55); background: linear-gradient(135deg, rgba(244,183,64,.14), rgba(140,200,255,.08)); }
+.fund-detail-panel {
+  margin-top: 20px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 1.75rem;
+  background: rgba(2,6,23,.45);
+  padding: clamp(18px, 2.4vw, 24px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+  backdrop-filter: blur(14px);
+}
 
 .yb-hero-grid, .yb-module-grid, .yb-signal-grid {
   display: grid;

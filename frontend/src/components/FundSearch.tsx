@@ -41,7 +41,7 @@ export function FundSearch({ query, setQuery, results, selectedFund, history, be
   const disclosedBeyondTopTenWeight = Math.max(0, disclosedStockWeight - topTenWeight);
   const undisclosedWeight = Math.max(0, 100 - disclosedStockWeight);
   return (
-    <Card id="funds" className="lg:col-span-1">
+    <Card id="funds" className="fund-search-card">
       <CardHeader>
         <div>
           <Badge tone="violet" className="mb-2"><Search className="h-3 w-3" /> Data Gateway</Badge>
@@ -55,9 +55,9 @@ export function FundSearch({ query, setQuery, results, selectedFund, history, be
       </div>
       {loading && <p className="mt-3 text-sm font-semibold text-ink/50">正在查询金融数据…</p>}
       {error && <p className="mt-3 rounded-3xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
-      <div className="mt-4 grid gap-2">
+      <div className="fund-result-tabs">
         {results.map((fund) => (
-          <button className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-[1.35rem] border border-white/10 bg-slate-950/42 p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_14px_36px_rgba(0,0,0,.16)] backdrop-blur transition hover:-translate-y-0.5 hover:border-[var(--mint)]/45 hover:bg-slate-950/58" key={`${fund.assetType ?? 'fund'}-${fund.code}`} onClick={() => onSelect(fund.code)}>
+          <button className={`fund-result-tab ${selectedFund?.code === fund.code ? 'is-active' : ''}`} key={`${fund.assetType ?? 'fund'}-${fund.code}`} onClick={() => onSelect(fund.code)} aria-pressed={selectedFund?.code === fund.code}>
             <span>
               <strong className="block text-[rgba(248,250,252,.96)]">{fund.name}</strong>
               <small className="text-[rgba(226,232,240,.68)]">{fund.assetType === 'stock' ? '股票' : '基金'} · {fund.market ? `${fund.market} · ` : ''}{fund.code} · {fund.source}{fund.quoteDate ? ` · ${fund.quoteDate}` : ''}</small>
@@ -70,7 +70,7 @@ export function FundSearch({ query, setQuery, results, selectedFund, history, be
         ))}
       </div>
       {selectedFund && (
-        <article className="mt-5 rounded-[1.75rem] border border-white/10 bg-slate-950/45 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.06)] backdrop-blur">
+        <article className="fund-detail-panel">
           <div className="flex flex-col justify-between gap-4 sm:flex-row">
             <div>
               <Badge tone={selectedIsStock ? 'blue' : selectedFund.quoteType === 'estimate' ? 'red' : 'green'} className="mb-2">{selectedIsStock ? '实时股价' : selectedFund.quoteType === 'estimate' ? '实时估算' : '官方净值'}</Badge>

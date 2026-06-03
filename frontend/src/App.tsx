@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { api, type AuthSessionResponse } from './api';
-import { BeginnerGuide } from './components/BeginnerGuide';
 import { Header } from './components/Header';
 import { FundSearch } from './components/FundSearch';
 import { MarketOverview } from './components/MarketOverview';
@@ -398,10 +397,7 @@ export default function App() {
 
           {activePage === 'workspace' && (
             <section className="workspace-section" id="workspace" aria-labelledby="workspace-title">
-              <div className="workspace-heading workspace-heading-compact">
-                <h2 id="workspace-title" className="sr-only">中国基金行情</h2>
-                <button type="button" className="ghost-cta" onClick={() => changePage('portfolio')}><BarChart3 className="h-4 w-4" /> 查看组合</button>
-              </div>
+              <h2 id="workspace-title" className="sr-only">中国基金行情</h2>
               <div className="banking-grid">
                 <MarketOverview indices={indices} loading={marketLoading} error={marketError} />
                 <FundSearch
@@ -420,7 +416,6 @@ export default function App() {
                   onToggleWatch={toggleWatch}
                   watchlist={watchlist}
                 />
-                <BeginnerGuide selectedFund={selectedFund} leadingIndex={leadingIndex} summary={summary} />
               </div>
             </section>
           )}

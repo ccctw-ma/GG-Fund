@@ -64,7 +64,8 @@ describe('dashboard components', () => {
     );
     roots.push(search.root);
 
-    expect(market.container.textContent).toContain('全球市场雷达');
+    expect(market.container.textContent).toContain('四大指数行情');
+    expect(market.container.textContent).toContain('默认显示上证指数');
     expect(search.container.textContent).toContain('华夏成长混合');
     expect(search.container.textContent).toContain('实时估算');
     expect(search.container.textContent).toContain('基金分析走势图');

@@ -225,10 +225,10 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
 
   await page.getByRole('button', { name: /行情工作台/ }).click();
   await expect(page.getByRole('heading', { name: '中国基金行情' })).toBeAttached();
-  await expect(page.getByRole('heading', { name: '全球市场雷达' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '四大指数行情' })).toBeVisible();
   await expect(page.locator('#markets')).toContainText('上证指数');
   await expect(page.locator('#markets')).toContainText('3128.42');
-  await expect(page.getByTestId('market-chart').locator('svg')).toBeVisible();
+  await expect(page.getByTestId('market-chart').getByRole('button', { name: /上证指数/ })).toBeVisible();
   await expect(page.getByTestId('index-chart')).toBeVisible();
 
   await page.getByLabel('基金、股票代码或名称').fill('000001');
@@ -241,10 +241,9 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
   await expect(page.getByTestId('fund-chart')).toBeVisible();
   await expect(page.getByTestId('fund-chart').getByRole('button', { name: '区间收益' })).toBeVisible();
 
-  const beginnerGuide = page.locator('[aria-labelledby="beginner-guide-title"]');
-  await expect(beginnerGuide).toContainText('华夏成长混合 当前净值');
-  await expect(beginnerGuide).toContainText('单只基金权重过高时');
-  await expect(beginnerGuide).toContainText('风险等级不是收益承诺');
+  await expect(page.locator('[aria-labelledby="beginner-guide-title"]')).toHaveCount(0);
+  await expect(page.locator('#markets')).toBeVisible();
+  await expect(page.locator('#funds')).toBeVisible();
 
   await page.getByRole('button', { name: '加入持仓' }).click();
 
@@ -307,7 +306,7 @@ test('shows import and fund search errors without breaking the dashboard', async
   await page.getByLabel('基金、股票代码或名称').fill('bad-query');
   await page.getByRole('button', { name: '搜索' }).click();
   await expect(page.getByText('基金查询服务暂不可用')).toBeVisible();
-  await expect(page.getByRole('heading', { name: '全球市场雷达' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '四大指数行情' })).toBeVisible();
 });
 
 test('toggles watchlist and keeps portfolio focused on holdings', async ({ page }) => {

@@ -65,7 +65,10 @@ describe('App', () => {
 
     clickButton('行情工作台');
     expect(container.textContent).toContain('中国基金行情');
-    expect(container.textContent).toContain('基金小白决策地图');
+    expect(container.textContent).toContain('四大指数行情');
+    expect(container.textContent).toContain('金融资产搜索');
+    expect(container.textContent).not.toContain('基金小白决策地图');
+    expect(container.textContent).not.toContain('查看组合');
 
     expect(container.textContent).not.toContain('登录设置');
     expect(container.textContent).not.toContain('个人信息');

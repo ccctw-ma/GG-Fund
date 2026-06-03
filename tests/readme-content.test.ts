@@ -12,7 +12,7 @@ describe('README content reconstruction', () => {
     expect(readme).toContain('根路径 `/` 会直接跳转到 `/app` 工作台');
     expect(readme).toContain('`/settings` 目前提供基础说明入口');
     expect(readme).toContain('`/app/portfolio`');
-    expect(readme).toContain('全球市场雷达');
+    expect(readme).toContain('四大指数行情');
     expect(readme).toContain('金融资产搜索');
     expect(readme).toContain('养基宝式账本能力');
     expect(readme).toContain('多平台导入助手');
@@ -30,7 +30,7 @@ describe('README content reconstruction', () => {
     expect(readmeEn).toContain('the root path `/` redirects directly to the `/app` workspace');
     expect(readmeEn).toContain('`/settings` currently provides a basic information entry');
     expect(readmeEn).toContain('`/app/portfolio`');
-    expect(readmeEn).toContain('Global market radar');
+    expect(readmeEn).toContain('Core index market');
     expect(readmeEn).toContain('Financial asset search');
     expect(readmeEn).toContain('Yangjibao-style portfolio ledger');
     expect(readmeEn).toContain('Multi-platform import assistant');
