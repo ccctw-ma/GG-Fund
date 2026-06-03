@@ -3,7 +3,7 @@
 import { BellRing, Check, ChevronDown, ClipboardList, Info, LineChart, Pencil, PieChart, Radar, Repeat2, Trash2, WalletCards, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
-import type { FundHistoryPoint, PortfolioItem, PortfolioSignal, PortfolioSummary, WatchItem } from '../types';
+import type { FundHistoryPoint, FundHoldings, PortfolioItem, PortfolioSignal, PortfolioSummary, WatchItem } from '../types';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -53,12 +53,18 @@ export function PortfolioPanel({
   const [expandedId, setExpandedId] = useState<string>();
   const [detailId, setDetailId] = useState<string>();
   const [historyMap, setHistoryMap] = useState<Record<string, FundHistoryPoint[]>>({});
+  const [holdingsMap, setHoldingsMap] = useState<Record<string, FundHoldings>>({});
   const sortedItems = useMemo(() => sortItems(summary.items, sortKey), [summary.items, sortKey]);
 
   const expandedItem = useMemo(() => summary.items.find((item) => item.id === expandedId), [summary.items, expandedId]);
   const expandedCode = expandedItem && /^\d{6}$/.test(expandedItem.fundCode) ? expandedItem.fundCode : undefined;
   const expandedHistory = expandedCode ? historyMap[expandedCode] ?? [] : [];
   const expandedLoading = Boolean(expandedCode) && historyMap[expandedCode ?? ''] === undefined;
+
+  const detailItem = useMemo(() => summary.items.find((item) => item.id === detailId), [summary.items, detailId]);
+  const detailCode = detailItem && /^\d{6}$/.test(detailItem.fundCode) ? detailItem.fundCode : undefined;
+  const detailHoldings = detailCode ? holdingsMap[detailCode] : undefined;
+  const detailHoldingsLoading = Boolean(detailCode) && holdingsMap[detailCode ?? ''] === undefined;
 
   useEffect(() => {
     if (!expandedCode || historyMap[expandedCode] !== undefined) return;
@@ -74,6 +80,21 @@ export function PortfolioPanel({
       cancelled = true;
     };
   }, [expandedCode, historyMap]);
+
+  useEffect(() => {
+    if (!detailCode || holdingsMap[detailCode] !== undefined) return;
+    let cancelled = false;
+    api.getFundHoldings(detailCode)
+      .then((holdings) => {
+        if (!cancelled) setHoldingsMap((current) => ({ ...current, [detailCode]: holdings }));
+      })
+      .catch(() => {
+        if (!cancelled) setHoldingsMap((current) => ({ ...current, [detailCode]: { stocks: [] } }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detailCode, holdingsMap]);
 
   function toggleExpand(id: string) {
     setExpandedId((current) => (current === id ? undefined : id));
@@ -244,6 +265,7 @@ export function PortfolioPanel({
                 )}
               </article>
               {isDetail && (
+                <>
                 <div className="yb-holding-detail" data-testid="holding-detail">
                   <div><span>基金代码</span><strong>{hasCode ? item.fundCode : '待补全'}</strong></div>
                   <div><span>最新净值</span><strong>{item.quote?.netValue ? item.quote.netValue.toFixed(4) : '自填估值'}</strong></div>
@@ -255,6 +277,35 @@ export function PortfolioPanel({
                   <div><span>账本来源</span><strong>{item.accountName ?? '默认账本'}</strong></div>
                   {item.holdingDays !== undefined && <div><span>持有天数</span><strong>{item.holdingDays} 天</strong></div>}
                 </div>
+                {hasCode && (
+                  <div className="fund-holdings" data-testid="holding-positions">
+                    <div className="fund-holdings-head">
+                      <span><PieChart className="h-4 w-4" /> 持仓组成 / 占净值比</span>
+                      {detailHoldings?.reportDate && <small>报告期 {detailHoldings.reportDate}</small>}
+                    </div>
+                    {detailHoldingsLoading ? (
+                      <p className="yb-empty-copy">正在加载持仓组成…</p>
+                    ) : (detailHoldings?.stocks.length ?? 0) === 0 ? (
+                      <p className="yb-empty-copy">暂无该基金的持仓组成数据（指数/货币型基金或未披露）。</p>
+                    ) : (
+                      <ul>
+                        {detailHoldings?.stocks.map((stock) => (
+                          <li key={stock.code}>
+                            <span className="fund-holdings-name">
+                              <strong>{stock.name}</strong>
+                              <small>{stock.code}{stock.industry ? ` · ${stock.industry}` : ''}{stock.changeType ? ` · ${stock.changeType}` : ''}</small>
+                            </span>
+                            <span className="fund-holdings-weight">
+                              <em>{stock.weight.toFixed(2)}%</em>
+                              <i style={{ width: `${Math.min(100, stock.weight * 4)}%` }} />
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+                </>
               )}
               {isExpanded && hasCode && (
                 <FundTrendChart

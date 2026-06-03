@@ -180,6 +180,8 @@ describe('dashboard components', () => {
     expect(detail).not.toBeNull();
     expect(detail?.textContent).toContain('最新净值');
     expect(detail?.textContent).toContain('累计盈亏');
+    expect(portfolio.container.querySelector('[data-testid="holding-positions"]')).not.toBeNull();
+    expect(portfolio.container.querySelector('[data-testid="holding-positions"]')?.textContent).toContain('持仓组成');
   });
 
   it('edits a holding code and name through the inline editor', () => {
