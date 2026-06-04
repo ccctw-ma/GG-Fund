@@ -1,10 +1,9 @@
 'use client';
 
-import { FileJson, ScanText, ServerCog, UploadCloud } from 'lucide-react';
+import { ScanText } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { isImageFile, recognizeImageText, type OcrProgress } from '../ocr';
-import { Badge } from './ui/badge';
-import { Card, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card } from './ui/card';
 
 export type ImageOcrReader = (file: File, onProgress?: OcrProgress) => Promise<string>;
 
@@ -177,17 +176,14 @@ export function buildRecognizedImport(text: string, preferredPlatform = 'manual'
 }
 
 export function SettingsPanel({
-  exportText,
   importError,
   onImport,
   ocrReader = recognizeImageText,
 }: {
-  exportText: string;
   importError?: string;
   onImport: (text: string) => void;
   ocrReader?: ImageOcrReader;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
   const alipayInputRef = useRef<HTMLInputElement>(null);
   const [recognizedText, setRecognizedText] = useState('');
   const [alipayUploadNotice, setAlipayUploadNotice] = useState<string>();
@@ -225,51 +221,18 @@ export function SettingsPanel({
 
   return (
     <Card id="settings" className="lg:col-span-2">
-      <CardHeader>
-        <div>
-          <Badge tone="violet" className="mb-2"><ServerCog className="h-3 w-3" /> Settings</Badge>
-          <CardTitle>数据与部署说明</CardTitle>
-          <CardDescription>浏览器本地数据、Resend 邮箱登录、Cloudflare D1 与 Worker 部署方案。</CardDescription>
-        </div>
-      </CardHeader>
-      <div className="grid gap-5 md:grid-cols-2">
-        <div className="settings-data-card">
-          <h3><FileJson className="h-5 w-5" />本地数据导出</h3>
-          <textarea className="settings-export-area" aria-label="导出的本地数据" readOnly value={exportText} />
-        </div>
-        <div className="settings-data-card settings-data-card-muted">
-          <h3><UploadCloud className="h-5 w-5" />导入 JSON 备份</h3>
-          <input
-            ref={inputRef}
-            className="settings-file-input"
-            aria-label="导入 JSON 备份"
-            type="file"
-            accept="application/json"
-            onChange={async (event) => {
-              const file = event.target.files?.[0];
-              if (file) onImport(await file.text());
-              if (inputRef.current) inputRef.current.value = '';
-            }}
-          />
-          {importError && <p className="mt-3 rounded-3xl bg-red-50 p-3 text-sm font-semibold text-red-700">{importError}</p>}
-          <div className="settings-help-copy">
-            <p>持仓和自选默认只保存在当前浏览器，不上传服务端。</p>
-            <p>线上 API 统一运行在 Cloudflare Worker / OpenNext；云端组合接口使用 D1，登录验证码由 Resend 发送，KV 行情缓存为部署路线图能力。</p>
-          </div>
-        </div>
-      </div>
-      <div className="mt-5 settings-data-card settings-import-assistant">
+      <div className="settings-data-card settings-import-assistant">
         <h3><ScanText className="h-5 w-5" />多平台导入助手</h3>
-        <p>支持把支付宝、理财通、天天基金、雪球的持仓文字粘贴进来识别；也可以上传支付宝导出的文本、CSV、JSON，或直接上传支付宝持仓截图，由浏览器本地 OCR 识别成文字后导入。</p>
+        <p>支持把支付宝、理财通、天天基金、雪球的持仓文字粘贴进来识别；也可以上传支付宝导出的文本、CSV、JSON，或直接上传支付宝持仓截图图片，由浏览器本地 OCR 识别成文字后导入。</p>
         <div className="settings-upload-strip">
           <label>
-            <span>{ocrPending ? '截图识别中…' : '上传支付宝持仓文件或截图'}</span>
+            <span>{ocrPending ? '图片识别中…' : '上传支付宝持仓文件或图片'}</span>
             <input
               ref={alipayInputRef}
-              aria-label="上传支付宝持仓文件"
+              aria-label="上传支付宝持仓文件或图片"
               type="file"
               disabled={ocrPending}
-              accept=".txt,.csv,.json,text/plain,text/csv,application/json,image/png,image/jpeg,image/webp,image/bmp"
+              accept=".txt,.csv,.json,.png,.jpg,.jpeg,.webp,.bmp,text/plain,text/csv,application/json,image/png,image/jpeg,image/webp,image/bmp"
               onChange={async (event) => {
                 const file = event.target.files?.[0];
                 if (file) await handleAlipayFile(file);
@@ -277,7 +240,7 @@ export function SettingsPanel({
               }}
             />
           </label>
-          <small>支持文本、CSV、JSON 与截图（PNG/JPG/WebP）；截图 OCR 在浏览器本地完成，数据不上传服务端。</small>
+          <small>支持文本、CSV、JSON 与图片（PNG/JPG/JPEG/WebP/BMP）；图片 OCR 在浏览器本地完成，数据不上传服务端。</small>
         </div>
         <textarea
           className="settings-export-area"
@@ -294,6 +257,7 @@ export function SettingsPanel({
         >
           识别并导入本地账本
         </button>
+        {importError && <p className="mt-3 rounded-3xl bg-red-50 p-3 text-sm font-semibold text-red-700">{importError}</p>}
         {alipayUploadNotice && <p className="settings-import-notice">{alipayUploadNotice}</p>}
       </div>
       <p className="settings-disclaimer">免责声明：本网站展示的数据仅用于学习和参考，不构成投资建议、收益承诺或交易依据。</p>

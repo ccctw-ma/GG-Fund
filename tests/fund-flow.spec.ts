@@ -59,29 +59,6 @@ const indexHistoryFixture = [
   { date: '2026-05-29', netValue: 3128.42 },
 ];
 
-const validImportData = {
-  holdings: [
-    {
-      id: 'imported-holding-1',
-      fundCode: '110022',
-      fundName: '易方达消费行业股票',
-      shares: 200,
-      costAmount: 300,
-      accountName: '支付宝账本',
-      platform: 'alipay',
-      createdAt: '2026-05-29T00:00:00.000Z',
-      updatedAt: '2026-05-29T00:00:00.000Z',
-    },
-  ],
-  watchlist: [
-    {
-      fundCode: '000001',
-      fundName: '华夏成长混合',
-      createdAt: '2026-05-29T00:00:00.000Z',
-    },
-  ],
-};
-
 let otpRequests: OtpRequest[] = [];
 
 async function expectDemoOtpRequest(loginCard: Locator) {
@@ -211,7 +188,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('searches realtime data, covers reconstructed content, uses deterministic Resend OTP, renders charts, adds a holding, and exports local data', async ({ page }) => {
+test('searches realtime data, covers reconstructed content, uses deterministic Resend OTP, renders charts, and adds a holding', async ({ page }) => {
   await page.goto('/');
 
   await expect(page.getByText('基金研究操作系统').first()).toBeVisible();
@@ -248,7 +225,7 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
   await page.getByRole('button', { name: '加入持仓' }).click();
 
   await page.getByRole('button', { name: /组合账户/ }).click();
-  await expect(page.getByLabel('导出的本地数据')).toContainText('000001');
+  await expect(page.getByRole('button', { name: '返回行情' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: '我的持仓分析' })).toBeVisible();
   await expect(page.locator('#portfolio')).toContainText('持仓明细');
   await expect(page.locator('#portfolio')).toContainText('今日估算收益');
@@ -257,52 +234,36 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
   await expect(page.locator('.profile-card')).toContainText('未登录');
 });
 
-test('imports, exports, and deletes local portfolio data', async ({ page }) => {
+test('imports and deletes local portfolio data', async ({ page }) => {
   await page.goto('/');
 
   await page.getByRole('button', { name: /组合账户/ }).click();
-  await page.getByLabel('上传支付宝持仓文件').setInputFiles({
+  await expect(page.locator('#settings')).not.toContainText('数据与部署说明');
+  await expect(page.locator('#settings')).not.toContainText('本地数据导出');
+  await expect(page.locator('#settings')).not.toContainText('导入 JSON 备份');
+  await page.getByLabel('上传支付宝持仓文件或图片').setInputFiles({
     name: 'alipay-holdings.csv',
     mimeType: 'text/csv',
     buffer: Buffer.from('支付宝 000001 华夏成长混合 1000 1235 默认账本\n支付宝 110022 易方达消费行业股票 200 300 家庭账本'),
   });
 
-  await expect(page.getByLabel('导出的本地数据')).toContainText('alipay');
-  await expect(page.getByLabel('导出的本地数据')).toContainText('000001');
   await expect(page.locator('#settings')).toContainText('已读取 alipay-holdings.csv');
   await expect(page.locator('#portfolio')).toContainText('支付宝');
   await expect(page.locator('#portfolio')).toContainText('家庭账本');
-
-  await page.getByLabel('导入 JSON 备份').setInputFiles({
-    name: 'portfolio.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(JSON.stringify(validImportData)),
-  });
-
-  await expect(page.getByLabel('导出的本地数据')).toContainText('110022');
+  await expect(page.locator('#portfolio')).toContainText('默认账本');
   await expect(page.locator('.yb-holding-row').filter({ hasText: '易方达消费行业股票' })).toBeVisible();
-  await expect(page.locator('#portfolio')).toContainText('支付宝账本');
-  await expect(page.getByText('华夏成长混合 000001')).toBeVisible();
 
-  await page.getByRole('button', { name: '删除' }).click();
+  await page.getByRole('button', { name: '删除' }).first().click();
+  await page.getByRole('button', { name: '删除' }).first().click();
   await expect(page.getByText('还没有持仓。搜索基金后点击“加入持仓”即可开始分析。')).toBeVisible();
 });
 
-test('shows import and fund search errors without breaking the dashboard', async ({ page }) => {
+test('shows fund search errors without breaking the dashboard', async ({ page }) => {
   await page.route('**/api/funds/search?q=bad-query', async (route) => {
     await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { message: '基金查询服务暂不可用' } }) });
   });
 
   await page.goto('/');
-
-  await page.getByRole('button', { name: /组合账户/ }).click();
-  await page.getByLabel('导入 JSON 备份').setInputFiles({
-    name: 'broken.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from('{bad json'),
-  });
-  await expect(page.getByText('导入文件不是有效 JSON')).toBeVisible();
-
   await page.getByRole('button', { name: /行情工作台/ }).click();
   await page.getByLabel('基金、股票代码或名称').fill('bad-query');
   await page.getByRole('button', { name: '搜索' }).click();

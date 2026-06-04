@@ -145,19 +145,18 @@ describe('dashboard components', () => {
     );
     roots.push(portfolio.root);
 
-    const settings = render(<SettingsPanel exportText="{}" onImport={() => undefined} />);
+    const settings = render(<SettingsPanel onImport={() => undefined} />);
     roots.push(settings.root);
 
     expect(portfolio.container.textContent).toContain('还没有持仓');
     expect(portfolio.container.textContent).toContain('多平台账本');
     expect(portfolio.container.textContent).toContain('智能定投 / 目标止盈');
     expect(settings.container.textContent).toContain('多平台导入助手');
-    expect(settings.container.textContent).toContain('上传支付宝持仓文件或截图');
+    expect(settings.container.textContent).toContain('上传支付宝持仓文件或图片');
     expect(settings.container.textContent).toContain('浏览器本地 OCR');
-    expect(settings.container.textContent).toContain('Cloudflare Worker / OpenNext');
-    expect(settings.container.textContent).toContain('Resend');
-    expect(settings.container.textContent).toContain('D1');
-    expect(settings.container.textContent).toContain('KV 行情缓存为部署路线图能力');
+    expect(settings.container.textContent).not.toContain('数据与部署说明');
+    expect(settings.container.textContent).not.toContain('本地数据导出');
+    expect(settings.container.textContent).not.toContain('导入 JSON 备份');
   });
 
   it('renders error and populated portfolio branches', () => {
@@ -203,21 +202,25 @@ describe('dashboard components', () => {
     expect(portfolio.container.textContent).toContain('支付宝账本');
     expect(portfolio.container.textContent).toContain('易方达消费行业股票');
 
-    const holdingsButton = portfolio.container.querySelector<HTMLButtonElement>('[aria-controls="portfolio-holdings-detail"]');
+    const holdingsButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('.yb-metric-card')).find((button) => button.textContent?.includes('持仓'));
     expect(holdingsButton).not.toBeNull();
     expect(holdingsButton?.getAttribute('aria-pressed')).toBe('true');
+    expect(holdingsButton?.getAttribute('aria-controls')).toBeNull();
     expect(portfolio.container.querySelector('[data-testid="portfolio-holdings-detail"]')?.textContent).toContain('持仓明细');
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')).toBeNull();
     const dailyButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-controls="portfolio-insight-detail"]')).find((button) => button.textContent?.includes('今日估算收益'));
     expect(dailyButton).not.toBeNull();
     act(() => dailyButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('今日收益拆解');
+    expect(portfolio.container.querySelector('[aria-label="今日收益排序"]')?.textContent).toContain('按涨跌率');
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('华夏成长混合');
+    expect(portfolio.container.querySelector('.yb-tone-down, .yb-tone-up')).not.toBeNull();
     expect(portfolio.container.textContent).not.toContain('点击看明细');
     expect(portfolio.container.textContent).not.toContain('持仓市值拆解');
     const profitButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-controls="portfolio-insight-detail"]')).find((button) => button.textContent?.includes('累计盈亏'));
     act(() => profitButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('累计盈亏拆解');
+    expect(portfolio.container.querySelector('[aria-label="累计盈亏排序"]')?.textContent).toContain('按盈亏');
     act(() => holdingsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(holdingsButton?.getAttribute('aria-pressed')).toBe('true');
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')).toBeNull();
@@ -340,14 +343,13 @@ describe('dashboard components', () => {
     const ocrText = '支付宝 161725 招商中证白酒指数 500 420 默认账本';
     const settings = render(
       <SettingsPanel
-        exportText="{}"
         onImport={(text) => { imported = text; }}
         ocrReader={async () => ocrText}
       />,
     );
     roots.push(settings.root);
 
-    const input = settings.container.querySelector('input[aria-label="上传支付宝持仓文件"]') as HTMLInputElement;
+    const input = settings.container.querySelector('input[aria-label="上传支付宝持仓文件或图片"]') as HTMLInputElement;
     const file = new File([new Uint8Array([1, 2, 3])], 'alipay.png', { type: 'image/png' });
     Object.defineProperty(input, 'files', { value: [file], configurable: true });
 

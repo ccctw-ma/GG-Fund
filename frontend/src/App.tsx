@@ -22,7 +22,7 @@ import { SettingsPanel } from './components/SettingsPanel';
 import type { WorkspacePage } from './components/Header';
 import { calculatePortfolioSummary } from './portfolio';
 import { backfillHoldingCodes } from './holdingCodes';
-import { exportLocalData, loadHoldings, loadWatchlist, parseImportedData, saveHoldings, saveWatchlist } from './storage';
+import { loadHoldings, loadWatchlist, parseImportedData, saveHoldings, saveWatchlist } from './storage';
 import type { FundHistoryPoint, FundHoldings, FundQuote, Holding, IndexQuote, WatchItem } from './types';
 
 const nowIso = () => new Date().toISOString();
@@ -194,7 +194,6 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
   }, [holdings, watchlist, storageReady, session]);
 
   const summary = useMemo(() => calculatePortfolioSummary(holdings, quotes, holdingHistories), [holdings, quotes, holdingHistories]);
-  const exportText = useMemo(() => exportLocalData({ holdings, watchlist }), [holdings, watchlist]);
   const positive = summary.totalProfit >= 0;
   const leadingIndex = indices[0];
 
@@ -504,10 +503,7 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
 
           {activePage === 'portfolio' && (
             <section className="workspace-section" id="portfolio-page" aria-labelledby="portfolio-page-title">
-              <div className="workspace-heading workspace-heading-compact">
-                <h2 id="portfolio-page-title" className="sr-only">组合账户</h2>
-                <button type="button" className="ghost-cta" onClick={() => changePage('workspace')}><BarChart3 className="h-4 w-4" /> 返回行情</button>
-              </div>
+              <h2 id="portfolio-page-title" className="sr-only">组合账户</h2>
               <div className="banking-grid single-page-grid">
                 <PortfolioPanel
                   summary={summary}
@@ -520,7 +516,7 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
                   onUpdateHolding={updateHolding}
                   onEditIdentity={editHoldingIdentity}
                 />
-                <SettingsPanel exportText={exportText} importError={importError} onImport={importData} />
+                <SettingsPanel importError={importError} onImport={importData} />
               </div>
             </section>
           )}

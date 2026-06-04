@@ -15,8 +15,8 @@
   --gold-soft: #ffe2a0;
   --mint: #7de2b8;
   --blue: #8cc8ff;
-  --bull: #ff8a80;
-  --bear: #7de2b8;
+  --bull: #ff5d52;
+  --bear: #3fd6a0;
   --ink: var(--text-main);
   --ink-muted: var(--text-muted);
   --cream: var(--text-strong);
@@ -245,8 +245,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .overview-grid article { border-radius: 28px; padding: 22px; }
 .overview-grid strong { display: block; margin-top: 8px; color: var(--text-strong); font-size: clamp(1.8rem, 3vw, 3.2rem); line-height: 1; letter-spacing: -.06em; }
 .overview-primary-card { background: linear-gradient(135deg, rgba(244,183,64,.2), rgba(125,226,184,.08)) !important; }
-.profit-up { color: #fecaca !important; }
-.profit-down { color: var(--mint) !important; }
+.profit-up { color: var(--bull) !important; }
+.profit-down { color: var(--bear) !important; }
 
 .feature-grid { display: grid; gap: 14px; }
 @media (min-width: 760px) { .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -376,6 +376,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   justify-content: space-between;
   gap: 10px;
 }
+.yb-insight-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.yb-insight-sort { max-width: 100%; }
+.yb-insight-sort .yb-sort-chip { padding-inline: 10px; font-size: .76rem; }
 .yb-metric-refresh small { margin-top: 0; }
 .yb-metric-refresh button,
 .yb-daily-profit-head button {
@@ -454,6 +463,19 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   font-size: .76rem;
   font-weight: 800;
 }
+.yb-value-line {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.yb-value-line em {
+  color: var(--text-muted);
+  font-style: normal;
+}
+.yb-tone-up { color: var(--bull) !important; }
+.yb-tone-down { color: var(--bear) !important; }
+.yb-tone-muted { color: var(--text-muted) !important; }
 .yb-module, .yb-signal-panel {
   border-radius: 1.7rem;
   padding: 18px;
@@ -552,8 +574,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .yb-code-tag-pending { color: #f0b86c; background: rgba(240, 184, 108, .14); border: 1px solid rgba(240, 184, 108, .3); }
 .yb-holding-value { display: block; color: var(--text-strong); font-size: 1.12rem; font-weight: 950; letter-spacing: -.02em; }
 .yb-holding-weight { display: block; color: var(--text-strong); font-size: 1rem; font-weight: 900; }
-.yb-holding-profit-up { display: block; margin-top: 4px; color: #ff9d8f; font-size: .86rem; font-weight: 900; }
-.yb-holding-profit-down { display: block; margin-top: 4px; color: var(--mint); font-size: .86rem; font-weight: 900; }
+.yb-holding-performance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 4px;
+  font-size: .86rem;
+  font-weight: 900;
+}
+.yb-holding-profit-up { display: block; margin-top: 4px; color: var(--bull); font-size: .86rem; font-weight: 900; }
+.yb-holding-profit-down { display: block; margin-top: 4px; color: var(--bear); font-size: .86rem; font-weight: 900; }
 .yb-holding-edit { display: grid; gap: 8px; }
 .yb-holding-edit label { display: grid; gap: 3px; }
 .yb-holding-edit span { color: var(--text-muted); font-size: .72rem; font-weight: 850; }

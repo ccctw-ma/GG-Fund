@@ -20,10 +20,26 @@ function signalClass(signal: PortfolioSignal) {
 
 type SortKey = 'marketValue' | 'returnRate' | 'name';
 type InsightKey = 'holdings' | 'daily' | 'profit';
+type DailySortKey = 'dailyProfit' | 'dailyChange' | 'marketValue' | 'name';
+type ProfitSortKey = 'profit' | 'returnRate' | 'marketValue' | 'name';
 
 const sortOptions: Array<{ key: SortKey; label: string }> = [
   { key: 'marketValue', label: '按市值' },
   { key: 'returnRate', label: '按收益率' },
+  { key: 'name', label: '按名称' },
+];
+
+const dailySortOptions: Array<{ key: DailySortKey; label: string }> = [
+  { key: 'dailyProfit', label: '按收益' },
+  { key: 'dailyChange', label: '按涨跌率' },
+  { key: 'marketValue', label: '按市值' },
+  { key: 'name', label: '按名称' },
+];
+
+const profitSortOptions: Array<{ key: ProfitSortKey; label: string }> = [
+  { key: 'profit', label: '按盈亏' },
+  { key: 'returnRate', label: '按收益率' },
+  { key: 'marketValue', label: '按市值' },
   { key: 'name', label: '按名称' },
 ];
 
@@ -32,6 +48,31 @@ function sortItems(items: PortfolioItem[], key: SortKey) {
   if (key === 'marketValue') return next.sort((a, b) => b.marketValue - a.marketValue);
   if (key === 'returnRate') return next.sort((a, b) => b.returnRate - a.returnRate);
   return next.sort((a, b) => a.fundName.localeCompare(b.fundName, 'zh-Hans-CN'));
+}
+
+function sortDailyItems(items: PortfolioItem[], key: DailySortKey) {
+  const next = [...items];
+  if (key === 'dailyProfit') return next.sort((a, b) => a.estimatedDailyProfit - b.estimatedDailyProfit);
+  if (key === 'dailyChange') return next.sort((a, b) => (a.quote?.dailyChangePercent ?? -Infinity) - (b.quote?.dailyChangePercent ?? -Infinity));
+  if (key === 'marketValue') return next.sort((a, b) => b.marketValue - a.marketValue);
+  return next.sort((a, b) => a.fundName.localeCompare(b.fundName, 'zh-Hans-CN'));
+}
+
+function sortProfitItems(items: PortfolioItem[], key: ProfitSortKey) {
+  const next = [...items];
+  if (key === 'profit') return next.sort((a, b) => a.profit - b.profit);
+  if (key === 'returnRate') return next.sort((a, b) => a.returnRate - b.returnRate);
+  if (key === 'marketValue') return next.sort((a, b) => b.marketValue - a.marketValue);
+  return next.sort((a, b) => a.fundName.localeCompare(b.fundName, 'zh-Hans-CN'));
+}
+
+function toneClass(value?: number) {
+  if (value === undefined) return 'yb-tone-muted';
+  return value >= 0 ? 'yb-tone-up' : 'yb-tone-down';
+}
+
+function signedMoney(value: number) {
+  return `${value >= 0 ? '+' : ''}${money.format(value)}`;
 }
 
 // 持仓组成里的标的既可能是股票，也可能是基金（FOF/联接），逐源查找并在失败时自动重试。
@@ -79,6 +120,8 @@ export function PortfolioPanel({
 }) {
   const positive = summary.totalProfit >= 0;
   const [sortKey, setSortKey] = useState<SortKey>('marketValue');
+  const [dailySortKey, setDailySortKey] = useState<DailySortKey>('dailyProfit');
+  const [profitSortKey, setProfitSortKey] = useState<ProfitSortKey>('profit');
   const [activeInsight, setActiveInsight] = useState<InsightKey>('holdings');
   const [editingId, setEditingId] = useState<string>();
   const [editValue, setEditValue] = useState('');
@@ -93,15 +136,15 @@ export function PortfolioPanel({
   const [stockQuoteMap, setStockQuoteMap] = useState<Record<string, FundQuote | null>>({});
   const [stockHistoryMap, setStockHistoryMap] = useState<Record<string, FundHistoryPoint[]>>({});
   const historyLoadingRef = useRef<Set<string>>(new Set());
-  const holdingsRef = useRef<HTMLDivElement>(null);
   const sortedItems = useMemo(() => sortItems(summary.items, sortKey), [summary.items, sortKey]);
   const dailyProfitItems = useMemo(
-    () => [...summary.items]
-      .filter((item) => item.quote || item.estimatedDailyProfit !== 0)
-      .sort((a, b) => a.estimatedDailyProfit - b.estimatedDailyProfit),
-    [summary.items],
+    () => sortDailyItems(
+      summary.items.filter((item) => item.quote || item.estimatedDailyProfit !== 0),
+      dailySortKey,
+    ),
+    [dailySortKey, summary.items],
   );
-  const cumulativeProfitItems = useMemo(() => [...summary.items].sort((a, b) => a.profit - b.profit), [summary.items]);
+  const cumulativeProfitItems = useMemo(() => sortProfitItems(summary.items, profitSortKey), [profitSortKey, summary.items]);
   const dailyLosers = dailyProfitItems.filter((item) => item.estimatedDailyProfit < 0);
   const dailyGainers = dailyProfitItems.filter((item) => item.estimatedDailyProfit > 0);
   const quoteRefreshLabel = quotesUpdatedAt ? `最近刷新 ${timeFormat.format(new Date(quotesUpdatedAt))}` : '等待行情刷新';
@@ -221,11 +264,6 @@ export function PortfolioPanel({
     setDetailId((current) => (current === id ? undefined : id));
   }
 
-  function showHoldingsDetail() {
-    setActiveInsight('holdings');
-    holdingsRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-  }
-
   function startEdit(item: PortfolioItem) {
     setEditingId(item.id);
     setEditValue(item.marketValue.toFixed(2));
@@ -271,8 +309,7 @@ export function PortfolioPanel({
           type="button"
           className={`yb-metric yb-metric-primary yb-metric-card ${activeInsight === 'holdings' ? 'is-active' : ''}`}
           aria-pressed={activeInsight === 'holdings'}
-          aria-controls="portfolio-holdings-detail"
-          onClick={showHoldingsDetail}
+          onClick={() => setActiveInsight('holdings')}
         >
           <span>持仓</span>
           <strong>{money.format(summary.totalMarketValue)}</strong>
@@ -319,10 +356,25 @@ export function PortfolioPanel({
               <strong>今日收益拆解</strong>
               <span>{dailyLosers.length} 只亏损 · {dailyGainers.length} 只盈利 · {quoteRefreshLabel}</span>
             </div>
-            <button type="button" onClick={() => void onRefreshQuotes?.()} disabled={quotesRefreshing}>
-              <RefreshCw className={`h-3.5 w-3.5 ${quotesRefreshing ? 'animate-spin' : ''}`} />
-              {quotesRefreshing ? '刷新中' : '刷新行情'}
-            </button>
+            <div className="yb-insight-actions">
+              <div className="yb-sort-group yb-insight-sort" role="group" aria-label="今日收益排序">
+                {dailySortOptions.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    className={option.key === dailySortKey ? 'yb-sort-chip is-active' : 'yb-sort-chip'}
+                    aria-pressed={option.key === dailySortKey}
+                    onClick={() => setDailySortKey(option.key)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <button type="button" onClick={() => void onRefreshQuotes?.()} disabled={quotesRefreshing}>
+                <RefreshCw className={`h-3.5 w-3.5 ${quotesRefreshing ? 'animate-spin' : ''}`} />
+                {quotesRefreshing ? '刷新中' : '刷新行情'}
+              </button>
+            </div>
           </div>
           {dailyProfitItems.length === 0 ? (
             <p className="yb-empty-copy">暂无可拆解的日涨跌数据，补齐基金代码或刷新行情后会显示每只持仓的今日贡献。</p>
@@ -332,10 +384,16 @@ export function PortfolioPanel({
                 <article key={item.id}>
                   <div>
                     <strong>{item.fundName}</strong>
-                    <span>{item.fundCode} · 日涨跌 {item.quote?.dailyChangePercent !== undefined ? `${item.quote.dailyChangePercent >= 0 ? '+' : ''}${item.quote.dailyChangePercent.toFixed(2)}%` : '--'} · 市值 {money.format(item.marketValue)}</span>
+                    <span className="yb-value-line">
+                      <em>{item.fundCode}</em>
+                      <em className={toneClass(item.quote?.dailyChangePercent)}>
+                        日涨跌 {item.quote?.dailyChangePercent !== undefined ? `${item.quote.dailyChangePercent >= 0 ? '+' : ''}${item.quote.dailyChangePercent.toFixed(2)}%` : '--'}
+                      </em>
+                      <em>市值 {money.format(item.marketValue)}</em>
+                    </span>
                   </div>
                   <strong className={item.estimatedDailyProfit >= 0 ? 'profit-up' : 'profit-down'}>
-                    {item.estimatedDailyProfit >= 0 ? '+' : ''}{money.format(item.estimatedDailyProfit)}
+                    {signedMoney(item.estimatedDailyProfit)}
                   </strong>
                 </article>
               ))}
@@ -348,7 +406,24 @@ export function PortfolioPanel({
           <div className="yb-daily-profit-head">
             <div>
               <strong>累计盈亏拆解</strong>
-              <span>投入 {money.format(summary.totalCost)} · 盈亏 {money.format(summary.totalProfit)} · 收益率 {summary.totalReturnRate.toFixed(2)}%</span>
+              <span className="yb-value-line">
+                <em>投入 {money.format(summary.totalCost)}</em>
+                <em className={toneClass(summary.totalProfit)}>盈亏 {signedMoney(summary.totalProfit)}</em>
+                <em className={toneClass(summary.totalReturnRate)}>收益率 {summary.totalReturnRate.toFixed(2)}%</em>
+              </span>
+            </div>
+            <div className="yb-sort-group yb-insight-sort" role="group" aria-label="累计盈亏排序">
+              {profitSortOptions.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  className={option.key === profitSortKey ? 'yb-sort-chip is-active' : 'yb-sort-chip'}
+                  aria-pressed={option.key === profitSortKey}
+                  onClick={() => setProfitSortKey(option.key)}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
           </div>
           {cumulativeProfitItems.length === 0 ? (
@@ -359,10 +434,14 @@ export function PortfolioPanel({
                 <article key={item.id}>
                   <div>
                     <strong>{item.fundName}</strong>
-                    <span>成本 {money.format(item.costAmount)} · 当前 {money.format(item.marketValue)} · 收益率 {item.returnRate.toFixed(2)}%</span>
+                    <span className="yb-value-line">
+                      <em>成本 {money.format(item.costAmount)}</em>
+                      <em>当前 {money.format(item.marketValue)}</em>
+                      <em className={toneClass(item.returnRate)}>收益率 {item.returnRate.toFixed(2)}%</em>
+                    </span>
                   </div>
                   <strong className={item.profit >= 0 ? 'profit-up' : 'profit-down'}>
-                    {item.profit >= 0 ? '+' : ''}{money.format(item.profit)}
+                    {signedMoney(item.profit)}
                   </strong>
                 </article>
               ))}
@@ -373,9 +452,9 @@ export function PortfolioPanel({
       </section>
       )}
       {summary.items.length === 0 ? (
-        <div id="portfolio-holdings-detail" ref={holdingsRef} className="mt-5 rounded-[1.7rem] border border-dashed border-[#10251f]/18 p-8 text-center font-semibold text-ink/50">还没有持仓。搜索基金后点击“加入持仓”即可开始分析。</div>
+        <div className="mt-5 rounded-[1.7rem] border border-dashed border-[#10251f]/18 p-8 text-center font-semibold text-ink/50">还没有持仓。搜索基金后点击“加入持仓”即可开始分析。</div>
       ) : (
-        <div id="portfolio-holdings-detail" ref={holdingsRef} data-testid="portfolio-holdings-detail">
+        <div data-testid="portfolio-holdings-detail">
           <div className="yb-holding-toolbar">
             <span>持仓明细</span>
             <div className="yb-sort-group" role="group" aria-label="持仓排序">
@@ -435,12 +514,22 @@ export function PortfolioPanel({
                 ) : (
                   <div>
                     <span className="yb-holding-value">{money.format(item.marketValue)}</span>
-                    <small className={item.profit >= 0 ? 'yb-holding-profit-up' : 'yb-holding-profit-down'}>{money.format(item.profit)} / {item.returnRate.toFixed(2)}%</small>
+                    <small className="yb-holding-performance">
+                      <span className={toneClass(item.profit)}>{signedMoney(item.profit)}</span>
+                      <span className={toneClass(item.returnRate)}>{item.returnRate.toFixed(2)}%</span>
+                    </small>
                   </div>
                 )}
                 <div>
                   <span className="yb-holding-weight"><PieChart className="mr-1 inline h-4 w-4" />{item.weight.toFixed(1)}%</span>
-                  <small className="yb-holding-meta">{item.quote ? `${item.quote.quoteDate} · 今日 ${money.format(item.estimatedDailyProfit)}` : ''}</small>
+                  <small className="yb-holding-meta yb-value-line">
+                    {item.quote && (
+                      <>
+                        <em>{item.quote.quoteDate}</em>
+                        <em className={toneClass(item.estimatedDailyProfit)}>今日 {signedMoney(item.estimatedDailyProfit)}</em>
+                      </>
+                    )}
+                  </small>
                 </div>
                 {editingId === item.id ? (
                   <div className="yb-holding-actions">
