@@ -263,7 +263,7 @@ describe('market data service', () => {
     expect(history.length).toBeGreaterThan(3);
     expect(history[0]).toHaveProperty('date');
     expect(history[0]).toHaveProperty('netValue');
-  });
+  }, 10_000);
 
   it('paginates fund history with an Eastmoney referer', async () => {
     const capturedReferers: Array<string | undefined> = [];

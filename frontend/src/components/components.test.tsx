@@ -176,13 +176,21 @@ describe('dashboard components', () => {
         createdAt: '2026-05-29T00:00:00.000Z',
         updatedAt: '2026-05-29T00:00:00.000Z',
       }],
-      {},
+      {
+        '000001': {
+          ...fund,
+          dailyChangePercent: -1,
+        },
+      },
     );
+    let refreshCount = 0;
 
     const portfolio = render(
       <PortfolioPanel
         summary={populatedSummary}
         watchlist={[{ fundCode: '110022', fundName: '易方达消费行业股票', createdAt: '2026-05-29T00:00:00.000Z' }]}
+        quotesUpdatedAt="2026-05-29T10:30:00.000Z"
+        onRefreshQuotes={() => { refreshCount += 1; }}
         onRemoveHolding={() => undefined}
         onUpdateHolding={() => undefined}
       />,
@@ -194,6 +202,15 @@ describe('dashboard components', () => {
     expect(portfolio.container.textContent).toContain('华夏成长混合');
     expect(portfolio.container.textContent).toContain('支付宝账本');
     expect(portfolio.container.textContent).toContain('易方达消费行业股票');
+
+    const dailyButton = portfolio.container.querySelector<HTMLButtonElement>('[aria-controls="daily-profit-detail"]');
+    expect(dailyButton).not.toBeNull();
+    act(() => dailyButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(portfolio.container.querySelector('[data-testid="daily-profit-detail"]')?.textContent).toContain('今日收益拆解');
+    expect(portfolio.container.querySelector('[data-testid="daily-profit-detail"]')?.textContent).toContain('华夏成长混合');
+    const refreshButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('刷新行情'));
+    act(() => refreshButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(refreshCount).toBe(1);
 
     const detailButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('详情'));
     expect(detailButton).toBeDefined();

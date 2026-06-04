@@ -1,6 +1,6 @@
 'use client';
 
-import { BellRing, Check, ChevronDown, ClipboardList, Info, LineChart, Pencil, PieChart, Radar, Repeat2, Trash2, WalletCards, X } from 'lucide-react';
+import { BellRing, Check, ChevronDown, ClipboardList, Info, LineChart, Pencil, PieChart, Radar, RefreshCw, Repeat2, Trash2, WalletCards, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import type { FundHistoryPoint, FundHoldings, FundQuote, PortfolioItem, PortfolioSignal, PortfolioSummary, WatchItem } from '../types';
@@ -11,6 +11,7 @@ import { FundTrendChart } from './FundTrendChart';
 
 const money = new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' });
 const numberFormat = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
+const timeFormat = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 const fixedPercent = (value: number) => value.toFixed(2);
 
 function signalClass(signal: PortfolioSignal) {
@@ -58,6 +59,9 @@ export function PortfolioPanel({
   summary,
   watchlist,
   benchmarkHistory = [],
+  quotesRefreshing = false,
+  quotesUpdatedAt,
+  onRefreshQuotes,
   onRemoveHolding,
   onUpdateHolding,
   onEditIdentity,
@@ -65,12 +69,16 @@ export function PortfolioPanel({
   summary: PortfolioSummary;
   watchlist: WatchItem[];
   benchmarkHistory?: FundHistoryPoint[];
+  quotesRefreshing?: boolean;
+  quotesUpdatedAt?: string;
+  onRefreshQuotes?: () => void | Promise<void>;
   onRemoveHolding: (id: string) => void;
   onUpdateHolding: (id: string, patch: { recordedMarketValue: number; costAmount: number }) => void;
   onEditIdentity?: (id: string, patch: { fundCode: string; fundName: string }) => void;
 }) {
   const positive = summary.totalProfit >= 0;
   const [sortKey, setSortKey] = useState<SortKey>('marketValue');
+  const [showDailyDetail, setShowDailyDetail] = useState(false);
   const [editingId, setEditingId] = useState<string>();
   const [editValue, setEditValue] = useState('');
   const [editCost, setEditCost] = useState('');
@@ -85,6 +93,15 @@ export function PortfolioPanel({
   const [stockHistoryMap, setStockHistoryMap] = useState<Record<string, FundHistoryPoint[]>>({});
   const historyLoadingRef = useRef<Set<string>>(new Set());
   const sortedItems = useMemo(() => sortItems(summary.items, sortKey), [summary.items, sortKey]);
+  const dailyProfitItems = useMemo(
+    () => [...summary.items]
+      .filter((item) => item.quote || item.estimatedDailyProfit !== 0)
+      .sort((a, b) => a.estimatedDailyProfit - b.estimatedDailyProfit),
+    [summary.items],
+  );
+  const dailyLosers = dailyProfitItems.filter((item) => item.estimatedDailyProfit < 0);
+  const dailyGainers = dailyProfitItems.filter((item) => item.estimatedDailyProfit > 0);
+  const quoteRefreshLabel = quotesUpdatedAt ? `最近刷新 ${timeFormat.format(new Date(quotesUpdatedAt))}` : '等待行情刷新';
 
   const expandedItem = useMemo(() => summary.items.find((item) => item.id === expandedId), [summary.items, expandedId]);
   const expandedCode = expandedItem && /^\d{6}$/.test(expandedItem.fundCode) ? expandedItem.fundCode : undefined;
@@ -243,9 +260,59 @@ export function PortfolioPanel({
       </CardHeader>
       <div className="yb-hero-grid">
         <div className="yb-metric yb-metric-primary"><span>当前市值</span><strong>{money.format(summary.totalMarketValue)}</strong><small>实时覆盖 {summary.liveQuoteRatio.toFixed(0)}%</small></div>
-        <div className="yb-metric"><span>今日估算收益</span><strong className={summary.estimatedDailyProfit >= 0 ? 'profit-up' : 'profit-down'}>{summary.estimatedDailyProfit >= 0 ? '+' : ''}{money.format(summary.estimatedDailyProfit)}</strong><small>按已返回日涨跌本地估算</small></div>
+        <div className="yb-metric yb-metric-daily">
+          <button
+            type="button"
+            className="yb-metric-trigger"
+            aria-expanded={showDailyDetail}
+            aria-controls="daily-profit-detail"
+            onClick={() => setShowDailyDetail((current) => !current)}
+          >
+            <span>今日估算收益</span>
+            <strong className={summary.estimatedDailyProfit >= 0 ? 'profit-up' : 'profit-down'}>{summary.estimatedDailyProfit >= 0 ? '+' : ''}{money.format(summary.estimatedDailyProfit)}</strong>
+            <small>按已返回日涨跌本地估算 · 点击看明细</small>
+          </button>
+          <div className="yb-metric-refresh">
+            <small>{quoteRefreshLabel} · 每 1 分钟自动刷新</small>
+            <button type="button" onClick={() => void onRefreshQuotes?.()} disabled={quotesRefreshing}>
+              <RefreshCw className={`h-3.5 w-3.5 ${quotesRefreshing ? 'animate-spin' : ''}`} />
+              {quotesRefreshing ? '刷新中' : '手动刷新'}
+            </button>
+          </div>
+        </div>
         <div className="yb-metric"><span>累计盈亏</span><strong className={positive ? 'profit-up' : 'profit-down'}>{money.format(summary.totalProfit)}</strong><small>{summary.totalReturnRate.toFixed(2)}% · 投入 {money.format(summary.totalCost)}</small></div>
       </div>
+      {showDailyDetail && (
+        <section className="yb-daily-profit-detail" id="daily-profit-detail" data-testid="daily-profit-detail">
+          <div className="yb-daily-profit-head">
+            <div>
+              <strong>今日收益拆解</strong>
+              <span>{dailyLosers.length} 只亏损 · {dailyGainers.length} 只盈利 · {quoteRefreshLabel}</span>
+            </div>
+            <button type="button" onClick={() => void onRefreshQuotes?.()} disabled={quotesRefreshing}>
+              <RefreshCw className={`h-3.5 w-3.5 ${quotesRefreshing ? 'animate-spin' : ''}`} />
+              {quotesRefreshing ? '刷新中' : '刷新行情'}
+            </button>
+          </div>
+          {dailyProfitItems.length === 0 ? (
+            <p className="yb-empty-copy">暂无可拆解的日涨跌数据，补齐基金代码或刷新行情后会显示每只持仓的今日贡献。</p>
+          ) : (
+            <div className="yb-daily-profit-list">
+              {dailyProfitItems.map((item) => (
+                <article key={item.id}>
+                  <div>
+                    <strong>{item.fundName}</strong>
+                    <span>{item.fundCode} · 日涨跌 {item.quote?.dailyChangePercent !== undefined ? `${item.quote.dailyChangePercent >= 0 ? '+' : ''}${item.quote.dailyChangePercent.toFixed(2)}%` : '--'} · 市值 {money.format(item.marketValue)}</span>
+                  </div>
+                  <strong className={item.estimatedDailyProfit >= 0 ? 'profit-up' : 'profit-down'}>
+                    {item.estimatedDailyProfit >= 0 ? '+' : ''}{money.format(item.estimatedDailyProfit)}
+                  </strong>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
       <div className="yb-module-grid">
         <section className="yb-module">
           <h3><ClipboardList className="h-4 w-4" /> 多平台账本</h3>

@@ -343,6 +343,44 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border-radius: 1.7rem;
   padding: 20px;
 }
+.yb-metric-daily { display: grid; gap: 12px; }
+.yb-metric-trigger {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.yb-metric-trigger:hover strong { filter: brightness(1.08); }
+.yb-metric-refresh,
+.yb-daily-profit-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.yb-metric-refresh small { margin-top: 0; }
+.yb-metric-refresh button,
+.yb-daily-profit-head button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 999px;
+  background: rgba(255,255,255,.07);
+  padding: 6px 10px;
+  color: var(--text-strong);
+  font-size: .76rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+.yb-metric-refresh button:disabled,
+.yb-daily-profit-head button:disabled {
+  cursor: progress;
+  opacity: .72;
+}
 .yb-metric-primary { background: linear-gradient(135deg, rgba(244,183,64,.22), rgba(125,226,184,.09)), rgba(5,18,32,.88); }
 .yb-metric span, .yb-ledger-list span, .yb-holding-row small, .yb-module small {
   color: var(--text-muted);
@@ -358,6 +396,48 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   letter-spacing: -.055em;
 }
 .yb-metric small { display: block; margin-top: 10px; color: var(--text-muted); font-weight: 800; }
+.yb-daily-profit-detail {
+  margin-top: 14px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 1.5rem;
+  background: linear-gradient(145deg, rgba(5,18,32,.9), rgba(12,35,50,.72));
+  padding: 16px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 18px 50px rgba(0,0,0,.14);
+}
+.yb-daily-profit-head strong,
+.yb-daily-profit-list strong:first-child {
+  color: var(--text-strong);
+  font-weight: 950;
+}
+.yb-daily-profit-head span {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: .78rem;
+  font-weight: 800;
+}
+.yb-daily-profit-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.yb-daily-profit-list article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 1.1rem;
+  background: rgba(255,255,255,.055);
+  padding: 12px;
+}
+.yb-daily-profit-list span {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: .76rem;
+  font-weight: 800;
+}
 .yb-module, .yb-signal-panel {
   border-radius: 1.7rem;
   padding: 18px;

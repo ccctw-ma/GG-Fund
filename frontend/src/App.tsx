@@ -12,7 +12,7 @@ import {
   WalletCards,
   Wifi,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, type AuthSessionResponse } from './api';
 import { Header } from './components/Header';
 import { FundSearch } from './components/FundSearch';
@@ -79,6 +79,8 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
   const [watchlist, setWatchlist] = useState<WatchItem[]>([]);
   const [quotes, setQuotes] = useState<Record<string, FundQuote>>({});
   const [holdingHistories, setHoldingHistories] = useState<Record<string, FundHistoryPoint[]>>({});
+  const [quotesRefreshing, setQuotesRefreshing] = useState(false);
+  const [quotesUpdatedAt, setQuotesUpdatedAt] = useState<string>();
   const [importError, setImportError] = useState<string>();
   const [session, setSession] = useState<AuthSessionResponse>();
   const [authPending, setAuthPending] = useState<'idle' | 'logout'>('idle');
@@ -123,25 +125,48 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
     return () => window.removeEventListener('hashchange', syncPageFromHash);
   }, []);
 
+  const holdingCodes = useMemo(() => Array.from(new Set(holdings.map((holding) => holding.fundCode))).filter((code) => /^\d{6}$/.test(code)), [holdings]);
+  const amountOnlyHoldingCodes = useMemo(
+    () => new Set(holdings.filter((holding) => /^\d{6}$/.test(holding.fundCode) && !holding.shares && holding.recordedMarketValue).map((holding) => holding.fundCode)),
+    [holdings],
+  );
+
+  const refreshHoldingQuotes = useCallback(async () => {
+    if (!storageReady || holdingCodes.length === 0) return;
+    setQuotesRefreshing(true);
+    try {
+      await Promise.all(holdingCodes.map(async (code) => {
+        const quote = await api.getFund(code);
+        setQuotes((current) => ({ ...current, [code]: quote }));
+        if (!amountOnlyHoldingCodes.has(code)) return;
+        const cachedHistory = api.getCachedFundHistory(code, 'all') ?? api.getCachedFundHistory(code, '1m');
+        if (cachedHistory?.length) setHoldingHistories((current) => (current[code]?.length ? current : { ...current, [code]: cachedHistory }));
+        const points = await api.getFundHistory(code, 'all');
+        if (points.length > 0) setHoldingHistories((current) => ({ ...current, [code]: points }));
+      }));
+      setQuotesUpdatedAt(nowIso());
+    } catch {
+      // 单只基金行情失败时不阻断页面，保留上一次可用估值。
+    } finally {
+      setQuotesRefreshing(false);
+    }
+  }, [amountOnlyHoldingCodes, holdingCodes, storageReady]);
+
   useEffect(() => {
     if (!storageReady) return;
     saveHoldings(holdings);
-    // 仅对真实的 6 位基金代码请求行情；截图导入的占位代码（如 ALIPAY001）按持有金额估值，无需拉行情。
-    const codes = Array.from(new Set(holdings.map((holding) => holding.fundCode))).filter((code) => /^\d{6}$/.test(code));
-    codes.forEach((code) => {
-      api.getFund(code).then((quote) => setQuotes((current) => ({ ...current, [code]: quote }))).catch(() => undefined);
-      const needsHistoryValuation = holdings.some((holding) => holding.fundCode === code && !holding.shares && holding.recordedMarketValue);
-      if (needsHistoryValuation) {
-        const cachedHistory = api.getCachedFundHistory(code, 'all') ?? api.getCachedFundHistory(code, '1m');
-        if (cachedHistory?.length) setHoldingHistories((current) => (current[code]?.length ? current : { ...current, [code]: cachedHistory }));
-        api.getFundHistory(code, 'all')
-          .then((points) => {
-            if (points.length > 0) setHoldingHistories((current) => ({ ...current, [code]: points }));
-          })
-          .catch(() => undefined);
-      }
+    queueMicrotask(() => {
+      void refreshHoldingQuotes();
     });
-  }, [holdings, storageReady]);
+  }, [holdings, refreshHoldingQuotes, storageReady]);
+
+  useEffect(() => {
+    if (!storageReady || holdingCodes.length === 0) return;
+    const handle = window.setInterval(() => {
+      void refreshHoldingQuotes();
+    }, 60_000);
+    return () => window.clearInterval(handle);
+  }, [holdingCodes.length, refreshHoldingQuotes, storageReady]);
 
   useEffect(() => {
     if (!storageReady) return;
@@ -472,7 +497,17 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
                 <button type="button" className="ghost-cta" onClick={() => changePage('workspace')}><BarChart3 className="h-4 w-4" /> 返回行情</button>
               </div>
               <div className="banking-grid single-page-grid">
-                <PortfolioPanel summary={summary} watchlist={watchlist} benchmarkHistory={benchmarkHistory} onRemoveHolding={(id) => setHoldings((current) => current.filter((holding) => holding.id !== id))} onUpdateHolding={updateHolding} onEditIdentity={editHoldingIdentity} />
+                <PortfolioPanel
+                  summary={summary}
+                  watchlist={watchlist}
+                  benchmarkHistory={benchmarkHistory}
+                  quotesRefreshing={quotesRefreshing}
+                  quotesUpdatedAt={quotesUpdatedAt}
+                  onRefreshQuotes={refreshHoldingQuotes}
+                  onRemoveHolding={(id) => setHoldings((current) => current.filter((holding) => holding.id !== id))}
+                  onUpdateHolding={updateHolding}
+                  onEditIdentity={editHoldingIdentity}
+                />
                 <SettingsPanel exportText={exportText} importError={importError} onImport={importData} />
               </div>
             </section>
