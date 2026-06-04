@@ -203,6 +203,7 @@ describe('dashboard components', () => {
     expect(portfolio.container.textContent).toContain('易方达消费行业股票');
     expect(portfolio.container.textContent).not.toContain('Yangjibao Layer');
     expect(portfolio.container.textContent).not.toContain('对标养基宝的账本');
+    expect(portfolio.container.querySelector('h2')?.parentElement?.parentElement?.querySelector('.inline-flex')).toBeNull();
 
     const holdingsButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('.yb-metric-card')).find((button) => button.textContent?.includes('持仓'));
     expect(holdingsButton).not.toBeNull();
@@ -218,6 +219,7 @@ describe('dashboard components', () => {
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('今日收益拆解');
     expect(portfolio.container.querySelector('[aria-label="今日收益排序"]')?.textContent).toContain('按涨跌率');
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('华夏成长混合');
+    expect(portfolio.container.querySelector('[data-testid="portfolio-holdings-detail"]')).toBeNull();
     expect(portfolio.container.querySelector('.yb-tone-down, .yb-tone-up')).not.toBeNull();
     expect(portfolio.container.textContent).not.toContain('点击看明细');
     expect(portfolio.container.textContent).not.toContain('持仓市值拆解');
@@ -225,9 +227,11 @@ describe('dashboard components', () => {
     act(() => profitButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('累计盈亏拆解');
     expect(portfolio.container.querySelector('[aria-label="累计盈亏排序"]')?.textContent).toContain('按盈亏');
+    expect(portfolio.container.querySelector('[data-testid="portfolio-holdings-detail"]')).toBeNull();
     act(() => holdingsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(holdingsButton?.getAttribute('aria-pressed')).toBe('true');
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')).toBeNull();
+    expect(portfolio.container.querySelector('[data-testid="portfolio-holdings-detail"]')?.textContent).toContain('持仓明细');
     const refreshButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('手动刷新'));
     act(() => refreshButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(refreshCount).toBe(1);

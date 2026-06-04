@@ -300,7 +300,6 @@ export function PortfolioPanel({
         <div>
           <CardTitle>我的持仓分析</CardTitle>
         </div>
-        <Badge tone={positive ? 'red' : 'green'}>{summary.totalReturnRate.toFixed(2)}%</Badge>
       </CardHeader>
       <div className="yb-hero-grid">
         <button
@@ -449,7 +448,7 @@ export function PortfolioPanel({
         )}
       </section>
       )}
-      {summary.items.length === 0 ? (
+      {activeInsight === 'holdings' && (summary.items.length === 0 ? (
         <section className="yb-daily-profit-detail yb-holdings-panel" data-testid="portfolio-holdings-detail">
           <div className="rounded-[1.7rem] border border-dashed border-white/15 p-8 text-center font-semibold text-white/55">还没有持仓。搜索基金后点击“加入持仓”即可开始分析。</div>
         </section>
@@ -665,7 +664,7 @@ export function PortfolioPanel({
             })}
           </div>
         </section>
-      )}
+      ))}
       <div className="mt-6 flex flex-wrap gap-2">
         <h3 className="mr-2 w-full text-lg font-black text-ink">自选基金</h3>
         {watchlist.length === 0 ? <p className="text-sm font-semibold text-ink/50">暂无自选基金。</p> : watchlist.map((item) => <Badge tone="slate" key={item.fundCode}>{item.fundName} {item.fundCode}</Badge>)}
