@@ -203,8 +203,14 @@ describe('dashboard components', () => {
     expect(portfolio.container.textContent).toContain('支付宝账本');
     expect(portfolio.container.textContent).toContain('易方达消费行业股票');
 
-    const dailyButton = portfolio.container.querySelector<HTMLButtonElement>('[aria-controls="portfolio-insight-detail"][aria-pressed="true"]');
+    const holdingsButton = portfolio.container.querySelector<HTMLButtonElement>('[aria-controls="portfolio-holdings-detail"]');
+    expect(holdingsButton).not.toBeNull();
+    expect(holdingsButton?.getAttribute('aria-pressed')).toBe('true');
+    expect(portfolio.container.querySelector('[data-testid="portfolio-holdings-detail"]')?.textContent).toContain('持仓明细');
+    expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')).toBeNull();
+    const dailyButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-controls="portfolio-insight-detail"]')).find((button) => button.textContent?.includes('今日估算收益'));
     expect(dailyButton).not.toBeNull();
+    act(() => dailyButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('今日收益拆解');
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('华夏成长混合');
     expect(portfolio.container.textContent).not.toContain('点击看明细');
@@ -212,6 +218,9 @@ describe('dashboard components', () => {
     const profitButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-controls="portfolio-insight-detail"]')).find((button) => button.textContent?.includes('累计盈亏'));
     act(() => profitButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('累计盈亏拆解');
+    act(() => holdingsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(holdingsButton?.getAttribute('aria-pressed')).toBe('true');
+    expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')).toBeNull();
     const refreshButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('手动刷新'));
     act(() => refreshButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(refreshCount).toBe(1);

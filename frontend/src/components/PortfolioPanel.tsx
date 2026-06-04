@@ -19,7 +19,7 @@ function signalClass(signal: PortfolioSignal) {
 }
 
 type SortKey = 'marketValue' | 'returnRate' | 'name';
-type InsightKey = 'daily' | 'profit';
+type InsightKey = 'holdings' | 'daily' | 'profit';
 
 const sortOptions: Array<{ key: SortKey; label: string }> = [
   { key: 'marketValue', label: '按市值' },
@@ -79,7 +79,7 @@ export function PortfolioPanel({
 }) {
   const positive = summary.totalProfit >= 0;
   const [sortKey, setSortKey] = useState<SortKey>('marketValue');
-  const [activeInsight, setActiveInsight] = useState<InsightKey>('daily');
+  const [activeInsight, setActiveInsight] = useState<InsightKey>('holdings');
   const [editingId, setEditingId] = useState<string>();
   const [editValue, setEditValue] = useState('');
   const [editCost, setEditCost] = useState('');
@@ -93,6 +93,7 @@ export function PortfolioPanel({
   const [stockQuoteMap, setStockQuoteMap] = useState<Record<string, FundQuote | null>>({});
   const [stockHistoryMap, setStockHistoryMap] = useState<Record<string, FundHistoryPoint[]>>({});
   const historyLoadingRef = useRef<Set<string>>(new Set());
+  const holdingsRef = useRef<HTMLDivElement>(null);
   const sortedItems = useMemo(() => sortItems(summary.items, sortKey), [summary.items, sortKey]);
   const dailyProfitItems = useMemo(
     () => [...summary.items]
@@ -220,6 +221,11 @@ export function PortfolioPanel({
     setDetailId((current) => (current === id ? undefined : id));
   }
 
+  function showHoldingsDetail() {
+    setActiveInsight('holdings');
+    holdingsRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  }
+
   function startEdit(item: PortfolioItem) {
     setEditingId(item.id);
     setEditValue(item.marketValue.toFixed(2));
@@ -261,11 +267,17 @@ export function PortfolioPanel({
         <Badge tone={positive ? 'red' : 'green'}>{summary.totalReturnRate.toFixed(2)}%</Badge>
       </CardHeader>
       <div className="yb-hero-grid">
-        <div className="yb-metric yb-metric-primary">
+        <button
+          type="button"
+          className={`yb-metric yb-metric-primary yb-metric-card ${activeInsight === 'holdings' ? 'is-active' : ''}`}
+          aria-pressed={activeInsight === 'holdings'}
+          aria-controls="portfolio-holdings-detail"
+          onClick={showHoldingsDetail}
+        >
           <span>持仓</span>
           <strong>{money.format(summary.totalMarketValue)}</strong>
           <small>实时覆盖 {summary.liveQuoteRatio.toFixed(0)}%</small>
-        </div>
+        </button>
         <div className="yb-metric yb-metric-daily">
           <button
             type="button"
@@ -298,6 +310,7 @@ export function PortfolioPanel({
           <small>{summary.totalReturnRate.toFixed(2)}% · 投入 {money.format(summary.totalCost)}</small>
         </button>
       </div>
+      {activeInsight !== 'holdings' && (
       <section className="yb-daily-profit-detail" id="portfolio-insight-detail" data-testid="portfolio-insight-detail">
         {activeInsight === 'daily' && (
           <>
@@ -358,10 +371,11 @@ export function PortfolioPanel({
           </>
         )}
       </section>
+      )}
       {summary.items.length === 0 ? (
-        <div className="mt-5 rounded-[1.7rem] border border-dashed border-[#10251f]/18 p-8 text-center font-semibold text-ink/50">还没有持仓。搜索基金后点击“加入持仓”即可开始分析。</div>
+        <div id="portfolio-holdings-detail" ref={holdingsRef} className="mt-5 rounded-[1.7rem] border border-dashed border-[#10251f]/18 p-8 text-center font-semibold text-ink/50">还没有持仓。搜索基金后点击“加入持仓”即可开始分析。</div>
       ) : (
-        <>
+        <div id="portfolio-holdings-detail" ref={holdingsRef} data-testid="portfolio-holdings-detail">
           <div className="yb-holding-toolbar">
             <span>持仓明细</span>
             <div className="yb-sort-group" role="group" aria-label="持仓排序">
@@ -561,7 +575,7 @@ export function PortfolioPanel({
               );
             })}
           </div>
-        </>
+        </div>
       )}
       <div className="mt-6 flex flex-wrap gap-2">
         <h3 className="mr-2 w-full text-lg font-black text-ink">自选基金</h3>
