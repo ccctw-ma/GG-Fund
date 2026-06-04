@@ -494,6 +494,12 @@ function tencentSymbolForIndex(code: string): string {
   return rawCode;
 }
 
+function tencentSymbolForStock(code: string): string {
+  if (code.startsWith('6') || code.startsWith('5')) return `sh${code}`;
+  if (code.startsWith('8') || code.startsWith('4')) return `bj${code}`;
+  return `sz${code}`;
+}
+
 function historyFromTencentKline(text: string): FundHistoryPoint[] {
   let payload: unknown;
   try {
@@ -524,6 +530,39 @@ function historyFromTencentKline(text: string): FundHistoryPoint[] {
       return { date, netValue };
     })
     .filter((item): item is FundHistoryPoint => Boolean(item));
+}
+
+function intradayFromTencentMinute(text: string): FundIntradayPoint[] {
+  let payload: unknown;
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    return [];
+  }
+  if (typeof payload !== 'object' || payload === null) return [];
+  const data = (payload as { data?: unknown }).data;
+  if (typeof data !== 'object' || data === null) return [];
+  const symbolEntry = Object.values(data as Record<string, unknown>)[0];
+  if (typeof symbolEntry !== 'object' || symbolEntry === null) return [];
+  const entryData = (symbolEntry as { data?: unknown }).data;
+  if (typeof entryData !== 'object' || entryData === null) return [];
+  const rows = (entryData as { data?: unknown }).data;
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map((row) => {
+      if (typeof row !== 'string') return undefined;
+      const [rawTime, price, volume] = row.trim().split(/\s+/);
+      const parsedPrice = toNumber(price);
+      if (!/^\d{4}$/.test(rawTime ?? '') || parsedPrice === undefined || parsedPrice <= 0) return undefined;
+      const point: FundIntradayPoint = {
+        time: `${rawTime.slice(0, 2)}:${rawTime.slice(2, 4)}`,
+        price: parsedPrice,
+      };
+      const parsedVolume = toNumber(volume);
+      if (parsedVolume !== undefined) point.volume = parsedVolume;
+      return point;
+    })
+    .filter((item): item is FundIntradayPoint => Boolean(item));
 }
 
 async function fetchWithTimeout(url: string, init: RequestInit = {}) {
@@ -631,8 +670,7 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
   }
 
   async function getTencentStock(code: string): Promise<FundQuote | undefined> {
-    const prefix = code.startsWith('6') ? 'sh' : 'sz';
-    return stockFromTencentLine(await fetchText(`https://qt.gtimg.cn/q=${prefix}${encodeURIComponent(code)}`));
+    return stockFromTencentLine(await fetchText(`https://qt.gtimg.cn/q=${encodeURIComponent(tencentSymbolForStock(code))}`));
   }
 
   async function getTiantianEstimate(code: string): Promise<FundQuote | undefined> {
@@ -699,8 +737,7 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
 
   // A 股个股日线：push2 在 Worker 出口被屏蔽，直接用腾讯前复权日 K（UTF-8 JSON，与指数同结构）。
   async function getTencentStockHistory(code: string, limit = 120): Promise<FundHistoryPoint[]> {
-    const prefix = code.startsWith('6') ? 'sh' : code.startsWith('8') || code.startsWith('4') ? 'bj' : 'sz';
-    const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${prefix}${encodeURIComponent(code)},day,,,${limit},qfq`;
+    const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${encodeURIComponent(tencentSymbolForStock(code))},day,,,${limit},qfq`;
     return historyFromTencentKline(await fetchText(url));
   }
 
@@ -715,6 +752,10 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     return intradayFromEastmoneyTrends(await fetchJson(url, headers));
   }
 
+  async function getTencentIntraday(code: string): Promise<FundIntradayPoint[]> {
+    const url = `https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=${encodeURIComponent(tencentSymbolForStock(code))}`;
+    return intradayFromTencentMinute(await fetchText(url));
+  }
 
   return {
     async getIndices(): Promise<IndexQuote[]> {
@@ -816,10 +857,18 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     async getFundIntraday(code: string): Promise<FundIntradayPoint[]> {
       return cached(`fund-intraday:${code}`, 60_000, async () => {
         try {
-          return await getEastmoneyIntraday(code);
+          const points = await getEastmoneyIntraday(code);
+          if (points.length > 0) return points;
         } catch {
-          return [];
+          // fall through to Tencent minute data
         }
+        try {
+          const points = await getTencentIntraday(code);
+          if (points.length > 0) return points;
+        } catch {
+          // fall through to explicit unavailable state
+        }
+        return [];
       });
     },
     async getFundHoldings(code: string): Promise<FundHoldings> {

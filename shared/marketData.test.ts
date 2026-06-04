@@ -344,6 +344,37 @@ describe('market data service', () => {
     ]);
   });
 
+  it('falls back to Tencent minute points when Eastmoney intraday is empty', async () => {
+    let tencentUrl = '';
+    const service = createMarketDataService({
+      fetchJson: async () => ({ data: { trends: [] } }),
+      fetchText: async (url) => {
+        tencentUrl = url;
+        return JSON.stringify({
+          code: 0,
+          data: {
+            sh510300: {
+              data: {
+                data: [
+                  '0930 4.919 56913 27995505.00',
+                  '0931 4.924 202677 99811906.00',
+                ],
+              },
+            },
+          },
+        });
+      },
+    });
+
+    const points = await service.getFundIntraday('510300');
+
+    expect(tencentUrl).toContain('minute/query?code=sh510300');
+    expect(points).toEqual([
+      { time: '09:30', price: 4.919, volume: 56913 },
+      { time: '09:31', price: 4.924, volume: 202677 },
+    ]);
+  });
+
   it('prefers Eastmoney F10 full disclosed stock holdings over the mobile top-10 endpoint', async () => {
     let capturedUrl = '';
     const service = createMarketDataService({
