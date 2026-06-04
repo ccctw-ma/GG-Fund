@@ -105,6 +105,7 @@ const marketData = {
   getIndexHistory: async () => [{ date: '2026-05-27', netValue: 4098.64 }],
   searchFunds: async () => [{ code: '000001', name: '华夏成长混合', netValue: 1.333, officialNetValue: 1.333, quoteDate: '2026-05-27', quoteType: 'official' as const, source: '东方财富搜索接口' }],
   getFundHistory: async () => [{ date: '2026-05-27', netValue: 1.333 }],
+  getFundIntraday: async () => [],
   getFundHoldings: async () => ({ reportDate: '2026-03-31', stocks: [{ code: '600519', name: '贵州茅台', weight: 18.33 }] }),
   getTrendingFunds: async () => [],
   getFund: async () => ({ code: '000001', name: '华夏成长混合', netValue: 1.3503, officialNetValue: 1.333, dailyChangePercent: 1.29, quoteDate: '2026-05-27', estimateTime: '2026-05-28 15:00', quoteType: 'estimate' as const, source: '天天基金实时估算' }),
@@ -401,6 +402,14 @@ describe('Cloudflare API', () => {
     const response = await api.fetch(new Request('https://example.com/api/funds/000001'), bindings);
 
     await expect(response.json()).resolves.toEqual(expect.objectContaining({ source: '东方财富搜索接口', quoteType: 'official' }));
+  });
+
+  it('returns intraday trend points from the compatibility API', async () => {
+    const api = createCloudflareApi({ marketData: { ...marketData, getFundIntraday: async () => [{ time: '09:30', price: 1.23 }] } });
+
+    const response = await api.fetch(new Request('https://example.com/api/funds/000001/intraday'), env());
+
+    await expect(response.json()).resolves.toEqual([{ time: '09:30', price: 1.23 }]);
   });
 
   it('analyzes a fund through an agent pipeline with server-side secret only', async () => {

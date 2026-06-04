@@ -1,4 +1,4 @@
-import type { FundHistoryPoint, FundHoldings, FundQuote, IndexQuote } from './types';
+import type { FundHistoryPoint, FundHoldings, FundIntradayPoint, FundQuote, IndexQuote } from './types';
 
 type CacheEntry<T> = { expiresAt: number; staleUntil: number; value: T; pending?: Promise<T> };
 
@@ -203,7 +203,7 @@ function marketFromEastmoneySecid(secid: string, code: string): FundQuote['marke
 }
 
 function eastmoneySecidForStock(code: string) {
-  if (code.startsWith('6')) return `1.${code}`;
+  if (code.startsWith('6') || code.startsWith('5')) return `1.${code}`;
   if (code.startsWith('8') || code.startsWith('4')) return `2.${code}`;
   return `0.${code}`;
 }
@@ -455,6 +455,31 @@ function historyFromEastmoneyKline(data: unknown): FundHistoryPoint[] {
     .filter((item): item is FundHistoryPoint => Boolean(item));
 }
 
+function intradayFromEastmoneyTrends(data: unknown): FundIntradayPoint[] {
+  if (typeof data !== 'object' || data === null) return [];
+  const root = data as { data?: unknown };
+  if (typeof root.data !== 'object' || root.data === null) return [];
+  const trends = (root.data as { trends?: unknown }).trends;
+  if (!Array.isArray(trends)) return [];
+  return trends
+    .map((line) => {
+      if (typeof line !== 'string') return undefined;
+      const [time, price, average, volume] = line.split(',');
+      const parsedPrice = toNumber(price);
+      if (!time || parsedPrice === undefined || parsedPrice <= 0) return undefined;
+      const point: FundIntradayPoint = {
+        time: time.includes(' ') ? time.slice(11, 16) : time,
+        price: parsedPrice,
+      };
+      const parsedAverage = toNumber(average);
+      const parsedVolume = toNumber(volume);
+      if (parsedAverage !== undefined) point.average = parsedAverage;
+      if (parsedVolume !== undefined) point.volume = parsedVolume;
+      return point;
+    })
+    .filter((item): item is FundIntradayPoint => Boolean(item));
+}
+
 function eastmoneySecidForIndex(code: string): string {
   const [rawCode, market] = code.split('.');
   if (market === 'SH') return `1.${rawCode}`;
@@ -679,6 +704,17 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     return historyFromTencentKline(await fetchText(url));
   }
 
+  async function getEastmoneyIntraday(code: string): Promise<FundIntradayPoint[]> {
+    const headers = {
+      'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+      referer: 'https://quote.eastmoney.com/',
+    };
+    const fields1 = 'f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13';
+    const fields2 = 'f51,f53,f54,f55,f56,f57,f58';
+    const url = `https://push2.eastmoney.com/api/qt/stock/trends2/get?secid=${eastmoneySecidForStock(code)}&fields1=${fields1}&fields2=${fields2}&ndays=1&iscr=0&iscca=0`;
+    return intradayFromEastmoneyTrends(await fetchJson(url, headers));
+  }
+
 
   return {
     async getIndices(): Promise<IndexQuote[]> {
@@ -775,6 +811,15 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
           // fall through to local fallback
         }
         return historyByCode[code] ?? [];
+      });
+    },
+    async getFundIntraday(code: string): Promise<FundIntradayPoint[]> {
+      return cached(`fund-intraday:${code}`, 60_000, async () => {
+        try {
+          return await getEastmoneyIntraday(code);
+        } catch {
+          return [];
+        }
       });
     },
     async getFundHoldings(code: string): Promise<FundHoldings> {

@@ -477,8 +477,9 @@ export function createCloudflareApi(options: Options = {}) {
             return json(await getPortfolioSnapshot(env.GG_FUND_DB, portfolio.id));
           }
 
-          const fundMatch = path.match(/^\/api\/funds\/(\d{6})(?:\/history)?$/);
+          const fundMatch = path.match(/^\/api\/funds\/(\d{6})(?:\/(history|intraday))?$/);
           if (fundMatch && path.endsWith('/history')) return json(await marketData.getFundHistory(fundMatch[1], url.searchParams.get('range') ?? '1m'));
+          if (fundMatch && path.endsWith('/intraday')) return json(await marketData.getFundIntraday(fundMatch[1]));
           if (fundMatch) {
             const fund = await resolveFundQuote(fundMatch[1], env, marketData);
             return fund ? json(fund) : error(404, 'FUND_NOT_FOUND', '未找到该基金');

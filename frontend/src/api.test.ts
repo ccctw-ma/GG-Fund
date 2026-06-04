@@ -97,4 +97,13 @@ describe('frontend api client', () => {
     await expect(api.getFundHistory('000001', '1m')).resolves.toEqual([{ date: '2026-05-29', netValue: 1.23 }]);
   });
 
+  it('fetches and caches intraday trend points', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify([{ time: '09:30', price: 1.23 }]), { status: 200, headers: { 'content-type': 'application/json' } }),
+    );
+
+    await expect(api.getFundIntraday('510300')).resolves.toEqual([{ time: '09:30', price: 1.23 }]);
+    expect(api.getCachedFundIntraday('510300')).toEqual([{ time: '09:30', price: 1.23 }]);
+  });
+
 });

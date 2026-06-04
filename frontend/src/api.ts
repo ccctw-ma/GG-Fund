@@ -1,4 +1,4 @@
-import type { FundHistoryPoint, FundHoldings, FundQuote, IndexQuote } from './types';
+import type { FundHistoryPoint, FundHoldings, FundIntradayPoint, FundQuote, IndexQuote } from './types';
 
 const SESSION_TOKEN_KEY = 'gg_fund_session_token';
 const CACHE_PREFIX = 'gg_fund_api_cache:';
@@ -22,6 +22,7 @@ const cacheTtl = {
   search: 30 * MINUTE,
   fund: 10 * MINUTE,
   fundHistory: 7 * DAY,
+  fundIntraday: 1 * MINUTE,
   holdings: 1 * DAY,
   trending: 1 * DAY,
 };
@@ -147,6 +148,7 @@ export const api = {
   getCachedSearchFunds: (query: string) => readCache<FundQuote[]>(`fund-search:${query.trim().toLowerCase()}`),
   getCachedFund: (code: string) => readCache<FundQuote>(`fund:${code}`),
   getCachedFundHistory: (code: string, range = '1y') => readCache<FundHistoryPoint[]>(`fund-history:${code}:${range}`),
+  getCachedFundIntraday: (code: string) => readCache<FundIntradayPoint[]>(`fund-intraday:${code}`),
   getCachedFundHoldings: (code: string) => readCache<FundHoldings>(`fund-holdings:${code}`),
   getCachedTrendingFunds: () => readCache<FundQuote[]>('funds-trending'),
   getIndices: () => getCachedJson<IndexQuote[]>('/api/market/indices', 'indices', cacheTtl.indices),
@@ -154,6 +156,7 @@ export const api = {
   searchFunds: (query: string) => getCachedJson<FundQuote[]>(`/api/funds/search?q=${encodeURIComponent(query)}`, `fund-search:${query.trim().toLowerCase()}`, cacheTtl.search),
   getFund: (code: string) => getCachedJson<FundQuote>(`/api/funds/${code}`, `fund:${code}`, cacheTtl.fund),
   getFundHistory: (code: string, range = '1y') => getCachedJson<FundHistoryPoint[]>(`/api/funds/${code}/history?range=${encodeURIComponent(range)}`, `fund-history:${code}:${range}`, cacheTtl.fundHistory),
+  getFundIntraday: (code: string) => getCachedJson<FundIntradayPoint[]>(`/api/funds/${code}/intraday`, `fund-intraday:${code}`, cacheTtl.fundIntraday),
   getFundHoldings: (code: string) => getCachedJson<FundHoldings>(`/api/funds/${code}/holdings`, `fund-holdings:${code}`, cacheTtl.holdings),
   getTrendingFunds: () => getCachedJson<FundQuote[]>('/api/funds/trending', 'funds-trending', cacheTtl.trending),
   syncPortfolio: (holdings: unknown[], watchlist: unknown[]) =>

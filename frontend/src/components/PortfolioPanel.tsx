@@ -3,11 +3,12 @@
 import { BellRing, Check, ChevronDown, ClipboardList, Info, LineChart, Pencil, PieChart, Radar, RefreshCw, Repeat2, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
-import type { FundHistoryPoint, FundHoldings, FundQuote, PortfolioItem, PortfolioSignal, PortfolioSummary, WatchItem } from '../types';
+import type { FundHistoryPoint, FundHoldings, FundIntradayPoint, FundQuote, PortfolioItem, PortfolioSignal, PortfolioSummary, WatchItem } from '../types';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardHeader, CardTitle } from './ui/card';
 import { FundTrendChart } from './FundTrendChart';
+import { IntradayTrendChart } from './IntradayTrendChart';
 
 const money = new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' });
 const numberFormat = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
@@ -132,6 +133,8 @@ export function PortfolioPanel({
   const [detailId, setDetailId] = useState<string>();
   const [historyMap, setHistoryMap] = useState<Record<string, FundHistoryPoint[]>>({});
   const [holdingsMap, setHoldingsMap] = useState<Record<string, FundHoldings>>({});
+  const [intradayCode, setIntradayCode] = useState<string>();
+  const [intradayMap, setIntradayMap] = useState<Record<string, FundIntradayPoint[]>>({});
   const [stockId, setStockId] = useState<string>();
   const [stockQuoteMap, setStockQuoteMap] = useState<Record<string, FundQuote | null>>({});
   const [stockHistoryMap, setStockHistoryMap] = useState<Record<string, FundHistoryPoint[]>>({});
@@ -158,6 +161,34 @@ export function PortfolioPanel({
   const detailCode = detailItem && /^\d{6}$/.test(detailItem.fundCode) ? detailItem.fundCode : undefined;
   const detailHoldings = detailCode ? holdingsMap[detailCode] : undefined;
   const detailHoldingsLoading = Boolean(detailCode) && holdingsMap[detailCode ?? ''] === undefined;
+  const intradayItem = useMemo(() => summary.items.find((item) => item.fundCode === intradayCode), [intradayCode, summary.items]);
+  const intradayPoints = intradayCode ? intradayMap[intradayCode] ?? [] : [];
+  const intradayLoading = Boolean(intradayCode) && intradayMap[intradayCode ?? ''] === undefined;
+
+  useEffect(() => {
+    if (activeInsight !== 'daily' || intradayCode) return;
+    const firstCode = dailyProfitItems.find((item) => /^\d{6}$/.test(item.fundCode))?.fundCode;
+    if (firstCode) queueMicrotask(() => setIntradayCode(firstCode));
+  }, [activeInsight, dailyProfitItems, intradayCode]);
+
+  useEffect(() => {
+    if (!intradayCode || intradayMap[intradayCode] !== undefined) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      const cached = api.getCachedFundIntraday(intradayCode);
+      if (!cancelled && cached) setIntradayMap((current) => (current[intradayCode] ? current : { ...current, [intradayCode]: cached }));
+    });
+    api.getFundIntraday(intradayCode)
+      .then((points) => {
+        if (!cancelled) setIntradayMap((current) => ({ ...current, [intradayCode]: points }));
+      })
+      .catch(() => {
+        if (!cancelled) setIntradayMap((current) => ({ ...current, [intradayCode]: [] }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [intradayCode, intradayMap]);
 
   useEffect(() => {
     if (!expandedCode || historyLoadingRef.current.has(expandedCode)) return;
@@ -376,6 +407,7 @@ export function PortfolioPanel({
           {dailyProfitItems.length === 0 ? (
             <p className="yb-empty-copy">暂无可拆解的日涨跌数据，补齐基金代码或刷新行情后会显示每只持仓的今日贡献。</p>
           ) : (
+            <>
             <div className="yb-daily-profit-list">
               {dailyProfitItems.map((item) => (
                 <article key={item.id}>
@@ -389,12 +421,28 @@ export function PortfolioPanel({
                       <em>市值 {money.format(item.marketValue)}</em>
                     </span>
                   </div>
+                  <button
+                    type="button"
+                    className={intradayCode === item.fundCode ? 'yb-mini-action is-active' : 'yb-mini-action'}
+                    aria-pressed={intradayCode === item.fundCode}
+                    onClick={() => setIntradayCode(item.fundCode)}
+                  >
+                    当日走势
+                  </button>
                   <strong className={item.estimatedDailyProfit >= 0 ? 'profit-up' : 'profit-down'}>
                     {signedMoney(item.estimatedDailyProfit)}
                   </strong>
                 </article>
               ))}
             </div>
+            {intradayCode && (
+              <IntradayTrendChart
+                points={intradayPoints}
+                title={`${intradayItem?.fundName ?? intradayCode} 当日行情走势`}
+                loading={intradayLoading}
+              />
+            )}
+            </>
           )}
           </>
         )}

@@ -11,6 +11,7 @@ const {
     searchFunds: vi.fn(),
     getFund: vi.fn(),
     getFundHistory: vi.fn(),
+    getFundIntraday: vi.fn(),
     getFundHoldings: vi.fn(),
     getTrendingFunds: vi.fn(),
   },
@@ -38,6 +39,7 @@ import { GET as getAuth, POST as postAuth } from '../app/api/auth/[action]/route
 import { POST as analyzeFund } from '../app/api/ai/analyze-fund/route';
 import { GET as getFund } from '../app/api/funds/[code]/route';
 import { GET as getFundHistory } from '../app/api/funds/[code]/history/route';
+import { GET as getFundIntraday } from '../app/api/funds/[code]/intraday/route';
 import { GET as getFundHoldings } from '../app/api/funds/[code]/holdings/route';
 import { GET as searchFunds } from '../app/api/funds/search/route';
 import { GET as getTrendingFunds } from '../app/api/funds/trending/route';
@@ -188,6 +190,7 @@ function resetMarketServiceMocks() {
   marketService.searchFunds.mockReset();
   marketService.getFund.mockReset();
   marketService.getFundHistory.mockReset();
+  marketService.getFundIntraday.mockReset();
   marketService.getFundHoldings.mockReset();
   marketService.getTrendingFunds.mockReset();
 }
@@ -417,6 +420,24 @@ describe('app api routes', () => {
     await expect(response.json()).resolves.toEqual({
       error: { code: 'FUND_NOT_FOUND', message: '未找到该基金' },
     });
+  });
+
+  it('returns intraday fund trend points with short edge cache', async () => {
+    marketService.getFundIntraday.mockResolvedValueOnce([
+      { time: '09:30', price: 1.23, average: 1.22 },
+      { time: '10:00', price: 1.25, average: 1.23 },
+    ]);
+
+    const response = await getFundIntraday(new Request('https://example.com/api/funds/000001/intraday'), {
+      params: Promise.resolve({ code: '000001' }),
+    });
+
+    expect(marketService.getFundIntraday).toHaveBeenCalledWith('000001');
+    expect(response.headers.get('cache-control')).toContain('s-maxage=60');
+    await expect(response.json()).resolves.toEqual([
+      { time: '09:30', price: 1.23, average: 1.22 },
+      { time: '10:00', price: 1.25, average: 1.23 },
+    ]);
   });
 
   it('reads the code param before returning fund holdings', async () => {

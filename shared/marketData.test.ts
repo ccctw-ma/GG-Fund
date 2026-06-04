@@ -315,6 +315,35 @@ describe('market data service', () => {
     ]);
   });
 
+  it('parses Eastmoney intraday trend points for tradable symbols', async () => {
+    let capturedUrl = '';
+    const service = createMarketDataService({
+      fetchText: async () => {
+        throw new Error('not used');
+      },
+      fetchJson: async (url) => {
+        capturedUrl = url;
+        return {
+          data: {
+            trends: [
+              '2026-06-04 09:30,1.230,1.229,1000',
+              '2026-06-04 10:00,1.250,1.235,1500',
+            ],
+          },
+        };
+      },
+    });
+
+    const points = await service.getFundIntraday('510300');
+
+    expect(capturedUrl).toContain('trends2/get');
+    expect(capturedUrl).toContain('secid=1.510300');
+    expect(points).toEqual([
+      { time: '09:30', price: 1.23, average: 1.229, volume: 1000 },
+      { time: '10:00', price: 1.25, average: 1.235, volume: 1500 },
+    ]);
+  });
+
   it('prefers Eastmoney F10 full disclosed stock holdings over the mobile top-10 endpoint', async () => {
     let capturedUrl = '';
     const service = createMarketDataService({

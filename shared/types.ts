@@ -33,6 +33,13 @@ export type FundHistoryPoint = {
   netValue: number;
 };
 
+export type FundIntradayPoint = {
+  time: string;
+  price: number;
+  average?: number;
+  volume?: number;
+};
+
 export type FundHolding = {
   code: string;
   name: string;

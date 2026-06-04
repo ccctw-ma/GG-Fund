@@ -1,7 +1,7 @@
 import { act } from 'react';
 import type { ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { calculatePortfolioSummary } from '../portfolio';
 import { decisionSteps } from '../decisionSteps';
 import { BeginnerGuide } from './BeginnerGuide';
@@ -9,6 +9,23 @@ import { FundSearch } from './FundSearch';
 import { MarketOverview } from './MarketOverview';
 import { PortfolioPanel } from './PortfolioPanel';
 import { SettingsPanel, buildRecognizedImport } from './SettingsPanel';
+
+const mockApi = vi.hoisted(() => ({
+  getCachedIndexHistory: vi.fn(),
+  getIndexHistory: vi.fn(async () => []),
+  getCachedFundHistory: vi.fn(),
+  getFundHistory: vi.fn(async () => []),
+  getCachedFundHoldings: vi.fn(),
+  getFundHoldings: vi.fn(async () => ({ stocks: [] })),
+  getCachedFundIntraday: vi.fn(),
+  getFundIntraday: vi.fn(async () => [
+    { time: '09:30', price: 1.23, average: 1.22 },
+    { time: '10:00', price: 1.25, average: 1.23 },
+  ]),
+  getFund: vi.fn(async () => null),
+}));
+
+vi.mock('../api', () => ({ api: mockApi }));
 
 const fund = { code: '000001', name: '华夏成长混合', netValue: 1.35, quoteDate: '2026-05-29', quoteType: 'estimate' as const, source: 'test' };
 const emptySummary = calculatePortfolioSummary([], {});
@@ -27,6 +44,7 @@ describe('dashboard components', () => {
   afterEach(() => {
     act(() => roots.splice(0).forEach((root) => root.unmount()));
     document.body.replaceChildren();
+    vi.clearAllMocks();
   });
 
   it('renders market and fund sections with selected quote state', () => {
@@ -159,7 +177,7 @@ describe('dashboard components', () => {
     expect(settings.container.textContent).not.toContain('导入 JSON 备份');
   });
 
-  it('renders error and populated portfolio branches', () => {
+  it('renders error and populated portfolio branches', async () => {
     const market = render(<MarketOverview indices={[]} loading={false} error="行情暂不可用" />);
     roots.push(market.root);
     const populatedSummary = calculatePortfolioSummary(
@@ -221,6 +239,10 @@ describe('dashboard components', () => {
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('华夏成长混合');
     expect(portfolio.container.querySelector('[data-testid="portfolio-holdings-detail"]')).toBeNull();
     expect(portfolio.container.querySelector('.yb-tone-down, .yb-tone-up')).not.toBeNull();
+    expect(portfolio.container.textContent).toContain('当日走势');
+    await act(async () => { await Promise.resolve(); });
+    expect(mockApi.getFundIntraday).toHaveBeenCalledWith('000001');
+    expect(portfolio.container.querySelector('[data-testid="intraday-trend-chart"]')?.textContent).toContain('当日行情走势');
     expect(portfolio.container.textContent).not.toContain('点击看明细');
     expect(portfolio.container.textContent).not.toContain('持仓市值拆解');
     const profitButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-controls="portfolio-insight-detail"]')).find((button) => button.textContent?.includes('累计盈亏'));

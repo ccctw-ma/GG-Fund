@@ -16,6 +16,7 @@ const buildService = () =>
           ? { code, name: '华夏成长混合', netValue: 1.35, officialNetValue: 1.33, dailyChangePercent: 1.2, quoteDate: '2026-05-30', estimateTime: '2026-05-30 14:30', quoteType: 'estimate' as const, source: 'test-fund' }
           : undefined,
       getFundHistory: async (_code: string, range: string) => [{ date: `range:${range}`, netValue: 1.1 }],
+      getFundIntraday: async (code: string) => [{ time: '09:30', price: code === '000001' ? 1.2 : 1.1 }],
       getFundHoldings: async (code: string) => ({ reportDate: '2026-03-31', stocks: [{ code: '600519', name: '贵州茅台', weight: 18.33, industry: '食品饮料', changeType: '增持' }, { code, name: '基金占位', weight: 1 }] }),
       getTrendingFunds: async () => [
         { code: '110022', name: '易方达消费行业股票', netValue: 1.66, quoteDate: '2026-05-30', quoteType: 'official' as const, source: 'test-trending' },
@@ -45,6 +46,9 @@ describe('market service', () => {
     ]);
     await expect(service.getFundHistory('000001', '6m')).resolves.toEqual([
       { date: 'range:6m', netValue: 1.1 },
+    ]);
+    await expect(service.getFundIntraday('000001')).resolves.toEqual([
+      { time: '09:30', price: 1.2 },
     ]);
     await expect(service.getTrendingFunds()).resolves.toEqual([
       expect.objectContaining({ code: '110022' }),
@@ -84,6 +88,7 @@ describe('market service', () => {
           throw new Error('should not call upstream');
         },
         getFundHistory: async () => [],
+        getFundIntraday: async () => [],
         getFundHoldings: async () => ({ stocks: [] }),
         getTrendingFunds: async () => [],
       },
