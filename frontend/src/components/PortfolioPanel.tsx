@@ -162,12 +162,6 @@ export function PortfolioPanel({
   const detailHoldings = detailCode ? holdingsMap[detailCode] : undefined;
   const detailHoldingsLoading = Boolean(detailCode) && holdingsMap[detailCode ?? ''] === undefined;
   useEffect(() => {
-    if (activeInsight !== 'daily' || intradayCode) return;
-    const firstCode = dailyProfitItems.find((item) => /^\d{6}$/.test(item.fundCode))?.fundCode;
-    if (firstCode) queueMicrotask(() => setIntradayCode(firstCode));
-  }, [activeInsight, dailyProfitItems, intradayCode]);
-
-  useEffect(() => {
     if (!intradayCode || intradayMap[intradayCode] !== undefined) return;
     let cancelled = false;
     queueMicrotask(() => {
@@ -407,7 +401,18 @@ export function PortfolioPanel({
             <div className="yb-daily-profit-list">
               {dailyProfitItems.map((item) => (
                 <div key={item.id} className="yb-daily-profit-item">
-                  <article className="yb-daily-profit-row">
+                  <article
+                    className={intradayCode === item.fundCode ? 'yb-daily-profit-row is-active' : 'yb-daily-profit-row'}
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={intradayCode === item.fundCode}
+                    onClick={() => setIntradayCode((current) => (current === item.fundCode ? undefined : item.fundCode))}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Enter' && event.key !== ' ') return;
+                      event.preventDefault();
+                      setIntradayCode((current) => (current === item.fundCode ? undefined : item.fundCode));
+                    }}
+                  >
                     <div>
                       <strong>{item.fundName}</strong>
                       <span className="yb-value-line">
@@ -418,14 +423,6 @@ export function PortfolioPanel({
                         <em>市值 {money.format(item.marketValue)}</em>
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      className={intradayCode === item.fundCode ? 'yb-mini-action is-active' : 'yb-mini-action'}
-                      aria-pressed={intradayCode === item.fundCode}
-                      onClick={() => setIntradayCode(item.fundCode)}
-                    >
-                      当日走势
-                    </button>
                     <strong className={`yb-daily-profit-amount ${item.estimatedDailyProfit >= 0 ? 'profit-up' : 'profit-down'}`}>
                       {signedMoney(item.estimatedDailyProfit)}
                     </strong>

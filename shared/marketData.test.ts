@@ -423,6 +423,49 @@ describe('market data service', () => {
     expect(requestedUrls.some((url) => url.includes('code=sz000001'))).toBe(false);
   });
 
+  it('prefers a linked ETF minute line for ETF feeder funds', async () => {
+    const requestedTextUrls: string[] = [];
+    const service = createMarketDataService({
+      fetchText: async (url) => {
+        requestedTextUrls.push(url);
+        if (url.includes('fundgz')) {
+          return 'jsonpgz({"fundcode":"016186","name":"广发电力ETF联接C","jzrq":"2026-06-03","dwjz":"1.2911","gsz":"1.2724","gszzl":"-1.45","gztime":"2026-06-04 15:00"});';
+        }
+        if (url.includes('code=sz159611')) {
+          return JSON.stringify({
+            code: 0,
+            data: {
+              sz159611: {
+                data: { data: ['0930 1.000 100 100.00', '0931 1.020 200 200.00'] },
+              },
+            },
+          });
+        }
+        throw new Error(`unexpected text url: ${url}`);
+      },
+      fetchJson: async (url) => {
+        if (url.includes('FundMNInverstPosition')) {
+          return {
+            Datas: {
+              fundStocks: [],
+              ETFCODE: '159611',
+              ETFSHORTNAME: '电力ETF广发',
+            },
+            Expansion: '2026-03-31',
+          };
+        }
+        throw new Error(`unexpected json url: ${url}`);
+      },
+    });
+
+    await expect(service.getFundIntraday('016186')).resolves.toEqual([
+      { time: '09:30', price: 100, volume: 100, source: '跟踪 ETF 电力ETF广发(159611) 分时近似（东方财富关联标的 + 腾讯分钟线）', sourceType: 'estimated' },
+      { time: '09:31', price: 98.55, volume: 200, source: '跟踪 ETF 电力ETF广发(159611) 分时近似（东方财富关联标的 + 腾讯分钟线）', sourceType: 'estimated' },
+    ]);
+    expect(requestedTextUrls.some((url) => url.includes('code=sz159611'))).toBe(true);
+    expect(requestedTextUrls.some((url) => url.includes('code=sh000300'))).toBe(false);
+  });
+
   it('falls back to CSI 300 minute points when an OTC fund has no usable disclosed holdings', async () => {
     const service = createMarketDataService({
       fetchText: async (url) => {

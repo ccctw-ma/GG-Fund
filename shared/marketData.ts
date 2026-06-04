@@ -373,8 +373,10 @@ function holdingsFromEastmoney(data: unknown): FundHoldings {
   const datas = root.Datas;
   const reportDate = typeof root.Expansion === 'string' ? root.Expansion : undefined;
   if (typeof datas !== 'object' || datas === null) return empty;
+  const linkedEtfCode = String((datas as { ETFCODE?: unknown }).ETFCODE ?? '').trim() || undefined;
+  const linkedEtfName = String((datas as { ETFSHORTNAME?: unknown }).ETFSHORTNAME ?? '').trim() || undefined;
   const list = (datas as { fundStocks?: unknown }).fundStocks;
-  if (!Array.isArray(list)) return { reportDate, stocks: [] };
+  if (!Array.isArray(list)) return { reportDate, source: EASTMONEY_SOURCE, linkedEtfCode, linkedEtfName, stocks: [] };
   const stocks = list
     .map((item, index) => {
       if (typeof item !== 'object' || item === null) return undefined;
@@ -389,7 +391,7 @@ function holdingsFromEastmoney(data: unknown): FundHoldings {
       return { code, name, weight, rank, isTopTen: rank <= 10, changeType, industry };
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
-  return { reportDate, source: EASTMONEY_SOURCE, stocks };
+  return { reportDate, source: EASTMONEY_SOURCE, linkedEtfCode, linkedEtfName, stocks };
 }
 
 function holdingsFromEastmoneyF10(text: string): FundHoldings {
@@ -829,9 +831,19 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
   }
 
   async function getApproximateFundIntraday(code: string, quote: FundQuote): Promise<FundIntradayPoint[]> {
-    const holdings = await getEastmoneyF10FundHoldings(code)
-      .catch(() => getEastmoneyFundHoldings(code))
-      .catch(() => ({ stocks: [] }));
+    const mobileHoldings = await getEastmoneyFundHoldings(code)
+      .catch((): FundHoldings => ({ stocks: [] }));
+    if (mobileHoldings.linkedEtfCode) {
+      const etfPoints = await getTencentIntraday(mobileHoldings.linkedEtfCode).catch(() => []);
+      const linkedEtfPoints = withIntradaySource(
+        anchorEstimatedIntradayToDailyChange(etfPoints, quote.dailyChangePercent),
+        `跟踪 ETF ${mobileHoldings.linkedEtfName ?? mobileHoldings.linkedEtfCode}(${mobileHoldings.linkedEtfCode}) 分时近似（东方财富关联标的 + 腾讯分钟线）`,
+        'estimated',
+      );
+      if (linkedEtfPoints.length > 0) return linkedEtfPoints;
+    }
+    const f10Holdings = await getEastmoneyF10FundHoldings(code).catch((): FundHoldings => ({ stocks: [] }));
+    const holdings = f10Holdings.stocks.length > 0 ? f10Holdings : mobileHoldings;
     const weightedSeries = await Promise.all(
       holdings.stocks
         .filter((stock) => /^\d{6}$/.test(stock.code) && stock.weight > 0)

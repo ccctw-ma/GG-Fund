@@ -83,6 +83,8 @@ export type FundHolding = {
 export type FundHoldings = {
   reportDate?: string;
   source?: string;
+  linkedEtfCode?: string;
+  linkedEtfName?: string;
   stocks: FundHolding[];
 };
 

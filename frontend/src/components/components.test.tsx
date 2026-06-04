@@ -239,7 +239,10 @@ describe('dashboard components', () => {
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('华夏成长混合');
     expect(portfolio.container.querySelector('[data-testid="portfolio-holdings-detail"]')).toBeNull();
     expect(portfolio.container.querySelector('.yb-tone-down, .yb-tone-up')).not.toBeNull();
-    expect(portfolio.container.textContent).toContain('当日走势');
+    expect(portfolio.container.textContent).not.toContain('当日走势');
+    const dailyRow = portfolio.container.querySelector<HTMLElement>('.yb-daily-profit-row');
+    expect(dailyRow?.getAttribute('role')).toBe('button');
+    act(() => dailyRow?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     await act(async () => { await Promise.resolve(); });
     expect(mockApi.getFundIntraday).toHaveBeenCalledWith('000001');
     const intradayChart = portfolio.container.querySelector('[data-testid="intraday-trend-chart"]');

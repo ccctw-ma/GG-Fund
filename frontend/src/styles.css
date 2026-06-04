@@ -465,35 +465,22 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .yb-daily-profit-list article.yb-daily-profit-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 112px minmax(96px, auto);
+  grid-template-columns: minmax(0, 1fr) minmax(96px, auto);
   align-items: center;
+  cursor: pointer;
+  transition: border-color .2s ease, background .2s ease, transform .2s ease;
 }
-.yb-daily-profit-row .yb-mini-action {
-  justify-self: center;
+.yb-daily-profit-list article.yb-daily-profit-row:hover,
+.yb-daily-profit-list article.yb-daily-profit-row:focus-visible,
+.yb-daily-profit-list article.yb-daily-profit-row.is-active {
+  border-color: rgba(255,93,82,.32);
+  background: rgba(255,93,82,.09);
+  outline: none;
 }
 .yb-daily-profit-amount {
   justify-self: end;
   text-align: right;
   white-space: nowrap;
-}
-.yb-mini-action {
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 999px;
-  background: rgba(255,255,255,.06);
-  color: var(--text-muted);
-  padding: 6px 10px;
-  font-size: .74rem;
-  font-weight: 900;
-  white-space: nowrap;
-  cursor: pointer;
-  min-width: 74px;
-  text-align: center;
-}
-.yb-mini-action:hover,
-.yb-mini-action.is-active {
-  border-color: rgba(255,93,82,.34);
-  color: var(--text-strong);
-  background: rgba(255,93,82,.12);
 }
 .yb-daily-profit-list span {
   display: block;
@@ -1327,7 +1314,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .bank-nav { grid-template-columns: 1fr; }
   .section-heading h2, .workspace-heading h2 { font-size: 2.4rem; }
   .yb-daily-profit-list article.yb-daily-profit-row { grid-template-columns: minmax(0, 1fr) auto; }
-  .yb-daily-profit-row .yb-mini-action { justify-self: end; }
   .yb-daily-profit-amount { grid-column: 1 / -1; justify-self: start; text-align: left; }
 }
 
