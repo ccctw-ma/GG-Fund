@@ -375,31 +375,80 @@ describe('market data service', () => {
     ]);
   });
 
-  it('does not show same-code stock minute points for OTC fund codes', async () => {
-    let stockIntradayCalled = false;
+  it('uses disclosed holdings to approximate intraday points for OTC fund codes', async () => {
+    const requestedUrls: string[] = [];
     const service = createMarketDataService({
       fetchText: async (url) => {
+        requestedUrls.push(url);
         if (url.includes('fundgz')) {
           return 'jsonpgz({"fundcode":"000001","name":"华夏成长混合","jzrq":"2026-06-03","dwjz":"1.318","gsz":"1.332","gszzl":"1.07","gztime":"2026-06-04 15:00"});';
         }
-        stockIntradayCalled = true;
-        return JSON.stringify({
-          code: 0,
-          data: {
-            sz000001: {
-              data: { data: ['0930 10.91 1000 1000.00'] },
+        if (url.includes('FundArchivesDatas')) {
+          return `var apidata={ content:"<table><tbody>
+            <tr><td>1</td><td><a>600519</a></td><td class='tol'><a>贵州茅台</a></td><td></td><td></td><td></td><td>60.00%</td><td>1</td><td>100</td></tr>
+            <tr><td>2</td><td><a>000858</a></td><td class='tol'><a>五粮液</a></td><td></td><td></td><td></td><td>40.00%</td><td>1</td><td>100</td></tr>
+          </tbody></table>"}`;
+        }
+        if (url.includes('code=sh600519')) {
+          return JSON.stringify({
+            code: 0,
+            data: {
+              sh600519: {
+                data: { data: ['0930 100.00 10 1000.00', '0931 102.00 20 2000.00'] },
+              },
             },
-          },
-        });
+          });
+        }
+        if (url.includes('code=sz000858')) {
+          return JSON.stringify({
+            code: 0,
+            data: {
+              sz000858: {
+                data: { data: ['0930 50.00 30 1500.00', '0931 51.00 40 2500.00'] },
+              },
+            },
+          });
+        }
+        throw new Error(`unexpected text url: ${url}`);
       },
       fetchJson: async () => {
-        stockIntradayCalled = true;
-        return { data: { trends: ['2026-06-04 09:30,10.91,10.91,1000'] } };
+        throw new Error('same-code stock intraday should not be used for OTC funds');
       },
     });
 
-    await expect(service.getFundIntraday('000001')).resolves.toEqual([]);
-    expect(stockIntradayCalled).toBe(false);
+    await expect(service.getFundIntraday('000001')).resolves.toEqual([
+      { time: '09:30', price: 100, volume: 40 },
+      { time: '09:31', price: 102, volume: 60 },
+    ]);
+    expect(requestedUrls.some((url) => url.includes('code=sz000001'))).toBe(false);
+  });
+
+  it('falls back to CSI 300 minute points when an OTC fund has no usable disclosed holdings', async () => {
+    const service = createMarketDataService({
+      fetchText: async (url) => {
+        if (url.includes('fundgz')) {
+          return 'jsonpgz({"fundcode":"016874","name":"广发远见智选混合C","jzrq":"2026-06-03","dwjz":"1.000","gsz":"1.010","gszzl":"1.00","gztime":"2026-06-04 15:00"});';
+        }
+        if (url.includes('FundArchivesDatas')) return 'var apidata={ content:"" }';
+        if (url.includes('code=sh000300')) {
+          return JSON.stringify({
+            code: 0,
+            data: {
+              sh000300: {
+                data: { data: ['0930 4897.32 100 1000.00', '0931 4894.09 120 1200.00'] },
+              },
+            },
+          });
+        }
+        throw new Error(`unexpected text url: ${url}`);
+      },
+      fetchJson: async () => ({ Datas: { fundStocks: [] } }),
+    });
+
+    await expect(service.getFundIntraday('016874')).resolves.toEqual([
+      { time: '09:30', price: 4897.32, volume: 100 },
+      { time: '09:31', price: 4894.09, volume: 120 },
+    ]);
   });
 
   it('prefers Eastmoney F10 full disclosed stock holdings over the mobile top-10 endpoint', async () => {

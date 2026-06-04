@@ -569,6 +569,30 @@ function intradayFromTencentMinute(text: string): FundIntradayPoint[] {
     .filter((item): item is FundIntradayPoint => Boolean(item));
 }
 
+function aggregateIntradayFromWeightedHoldings(series: Array<{ points: FundIntradayPoint[]; weight: number }>): FundIntradayPoint[] {
+  const buckets = new Map<string, { value: number; weight: number; volume: number }>();
+  for (const item of series) {
+    const firstPrice = item.points.find((point) => point.price > 0)?.price;
+    if (!firstPrice || item.weight <= 0) continue;
+    for (const point of item.points) {
+      const normalizedPrice = (point.price / firstPrice) * 100;
+      const current = buckets.get(point.time) ?? { value: 0, weight: 0, volume: 0 };
+      current.value += normalizedPrice * item.weight;
+      current.weight += item.weight;
+      current.volume += point.volume ?? 0;
+      buckets.set(point.time, current);
+    }
+  }
+  return Array.from(buckets.entries())
+    .sort(([timeA], [timeB]) => timeA.localeCompare(timeB))
+    .map(([time, bucket]) => ({
+      time,
+      price: Number((bucket.value / bucket.weight).toFixed(4)),
+      volume: bucket.volume,
+    }))
+    .filter((point) => Number.isFinite(point.price) && point.price > 0);
+}
+
 async function fetchWithTimeout(url: string, init: RequestInit = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -761,6 +785,11 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     return intradayFromTencentMinute(await fetchText(url));
   }
 
+  async function getTencentIntradayBySymbol(symbol: string): Promise<FundIntradayPoint[]> {
+    const url = `https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=${encodeURIComponent(symbol)}`;
+    return intradayFromTencentMinute(await fetchText(url));
+  }
+
   async function hasOtcFundQuote(code: string): Promise<boolean> {
     if (isUnambiguousTradableCode(code)) return false;
     try {
@@ -774,6 +803,24 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
       // fall through to tradable minute sources
     }
     return false;
+  }
+
+  async function getApproximateFundIntraday(code: string): Promise<FundIntradayPoint[]> {
+    const holdings = await getEastmoneyF10FundHoldings(code)
+      .catch(() => getEastmoneyFundHoldings(code))
+      .catch(() => ({ stocks: [] }));
+    const weightedSeries = await Promise.all(
+      holdings.stocks
+        .filter((stock) => /^\d{6}$/.test(stock.code) && stock.weight > 0)
+        .slice(0, 8)
+        .map(async (stock) => ({
+          weight: stock.weight,
+          points: await getTencentIntraday(stock.code).catch(() => []),
+        })),
+    );
+    const approximated = aggregateIntradayFromWeightedHoldings(weightedSeries);
+    if (approximated.length > 0) return approximated;
+    return getTencentIntradayBySymbol('sh000300').catch(() => getTencentIntradayBySymbol('sh000001')).catch(() => []);
   }
 
   return {
@@ -875,7 +922,7 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     },
     async getFundIntraday(code: string): Promise<FundIntradayPoint[]> {
       return cached(`fund-intraday:${code}`, 60_000, async () => {
-        if (await hasOtcFundQuote(code)) return [];
+        if (await hasOtcFundQuote(code)) return getApproximateFundIntraday(code);
         try {
           const points = await getEastmoneyIntraday(code);
           if (points.length > 0) return points;

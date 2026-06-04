@@ -242,7 +242,9 @@ describe('dashboard components', () => {
     expect(portfolio.container.textContent).toContain('当日走势');
     await act(async () => { await Promise.resolve(); });
     expect(mockApi.getFundIntraday).toHaveBeenCalledWith('000001');
-    expect(portfolio.container.querySelector('[data-testid="intraday-trend-chart"]')?.textContent).toContain('当日行情走势');
+    const intradayChart = portfolio.container.querySelector('[data-testid="intraday-trend-chart"]');
+    expect(intradayChart?.textContent).toContain('当日行情走势');
+    expect(intradayChart?.closest('.yb-daily-profit-item')?.textContent).toContain('华夏成长混合');
     expect(portfolio.container.textContent).not.toContain('点击看明细');
     expect(portfolio.container.textContent).not.toContain('持仓市值拆解');
     const profitButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-controls="portfolio-insight-detail"]')).find((button) => button.textContent?.includes('累计盈亏'));

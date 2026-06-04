@@ -449,6 +449,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   gap: 10px;
   margin-top: 12px;
 }
+.yb-daily-profit-item {
+  display: grid;
+  gap: 10px;
+}
 .yb-daily-profit-list article {
   display: flex;
   align-items: center;
@@ -458,6 +462,19 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border-radius: 1.1rem;
   background: rgba(255,255,255,.055);
   padding: 12px;
+}
+.yb-daily-profit-list article.yb-daily-profit-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px minmax(96px, auto);
+  align-items: center;
+}
+.yb-daily-profit-row .yb-mini-action {
+  justify-self: center;
+}
+.yb-daily-profit-amount {
+  justify-self: end;
+  text-align: right;
+  white-space: nowrap;
 }
 .yb-mini-action {
   border: 1px solid rgba(255,255,255,.12);
@@ -469,6 +486,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   font-weight: 900;
   white-space: nowrap;
   cursor: pointer;
+  min-width: 74px;
+  text-align: center;
 }
 .yb-mini-action:hover,
 .yb-mini-action.is-active {
@@ -1279,6 +1298,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .phone-frame { border-radius: 34px; }
   .bank-nav { grid-template-columns: 1fr; }
   .section-heading h2, .workspace-heading h2 { font-size: 2.4rem; }
+  .yb-daily-profit-list article.yb-daily-profit-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .yb-daily-profit-row .yb-mini-action { justify-self: end; }
+  .yb-daily-profit-amount { grid-column: 1 / -1; justify-self: start; text-align: left; }
 }
 
 @media (max-width: 520px) {

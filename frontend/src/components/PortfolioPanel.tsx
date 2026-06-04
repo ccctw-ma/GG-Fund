@@ -161,10 +161,6 @@ export function PortfolioPanel({
   const detailCode = detailItem && /^\d{6}$/.test(detailItem.fundCode) ? detailItem.fundCode : undefined;
   const detailHoldings = detailCode ? holdingsMap[detailCode] : undefined;
   const detailHoldingsLoading = Boolean(detailCode) && holdingsMap[detailCode ?? ''] === undefined;
-  const intradayItem = useMemo(() => summary.items.find((item) => item.fundCode === intradayCode), [intradayCode, summary.items]);
-  const intradayPoints = intradayCode ? intradayMap[intradayCode] ?? [] : [];
-  const intradayLoading = Boolean(intradayCode) && intradayMap[intradayCode ?? ''] === undefined;
-
   useEffect(() => {
     if (activeInsight !== 'daily' || intradayCode) return;
     const firstCode = dailyProfitItems.find((item) => /^\d{6}$/.test(item.fundCode))?.fundCode;
@@ -410,38 +406,40 @@ export function PortfolioPanel({
             <>
             <div className="yb-daily-profit-list">
               {dailyProfitItems.map((item) => (
-                <article key={item.id}>
-                  <div>
-                    <strong>{item.fundName}</strong>
-                    <span className="yb-value-line">
-                      <em>{item.fundCode}</em>
-                      <em className={toneClass(item.quote?.dailyChangePercent)}>
-                        日涨跌 {item.quote?.dailyChangePercent !== undefined ? `${item.quote.dailyChangePercent >= 0 ? '+' : ''}${item.quote.dailyChangePercent.toFixed(2)}%` : '--'}
-                      </em>
-                      <em>市值 {money.format(item.marketValue)}</em>
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    className={intradayCode === item.fundCode ? 'yb-mini-action is-active' : 'yb-mini-action'}
-                    aria-pressed={intradayCode === item.fundCode}
-                    onClick={() => setIntradayCode(item.fundCode)}
-                  >
-                    当日走势
-                  </button>
-                  <strong className={item.estimatedDailyProfit >= 0 ? 'profit-up' : 'profit-down'}>
-                    {signedMoney(item.estimatedDailyProfit)}
-                  </strong>
-                </article>
+                <div key={item.id} className="yb-daily-profit-item">
+                  <article className="yb-daily-profit-row">
+                    <div>
+                      <strong>{item.fundName}</strong>
+                      <span className="yb-value-line">
+                        <em>{item.fundCode}</em>
+                        <em className={toneClass(item.quote?.dailyChangePercent)}>
+                          日涨跌 {item.quote?.dailyChangePercent !== undefined ? `${item.quote.dailyChangePercent >= 0 ? '+' : ''}${item.quote.dailyChangePercent.toFixed(2)}%` : '--'}
+                        </em>
+                        <em>市值 {money.format(item.marketValue)}</em>
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className={intradayCode === item.fundCode ? 'yb-mini-action is-active' : 'yb-mini-action'}
+                      aria-pressed={intradayCode === item.fundCode}
+                      onClick={() => setIntradayCode(item.fundCode)}
+                    >
+                      当日走势
+                    </button>
+                    <strong className={`yb-daily-profit-amount ${item.estimatedDailyProfit >= 0 ? 'profit-up' : 'profit-down'}`}>
+                      {signedMoney(item.estimatedDailyProfit)}
+                    </strong>
+                  </article>
+                  {intradayCode === item.fundCode && (
+                    <IntradayTrendChart
+                      points={intradayMap[item.fundCode] ?? []}
+                      title={`${item.fundName} 当日行情走势`}
+                      loading={intradayMap[item.fundCode] === undefined}
+                    />
+                  )}
+                </div>
               ))}
             </div>
-            {intradayCode && (
-              <IntradayTrendChart
-                points={intradayPoints}
-                title={`${intradayItem?.fundName ?? intradayCode} 当日行情走势`}
-                loading={intradayLoading}
-              />
-            )}
             </>
           )}
           </>
