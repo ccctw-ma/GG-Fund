@@ -203,12 +203,17 @@ describe('dashboard components', () => {
     expect(portfolio.container.textContent).toContain('支付宝账本');
     expect(portfolio.container.textContent).toContain('易方达消费行业股票');
 
-    const dailyButton = portfolio.container.querySelector<HTMLButtonElement>('[aria-controls="daily-profit-detail"]');
+    const dailyButton = portfolio.container.querySelector<HTMLButtonElement>('[aria-controls="portfolio-insight-detail"][aria-pressed="true"]');
     expect(dailyButton).not.toBeNull();
-    act(() => dailyButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-    expect(portfolio.container.querySelector('[data-testid="daily-profit-detail"]')?.textContent).toContain('今日收益拆解');
-    expect(portfolio.container.querySelector('[data-testid="daily-profit-detail"]')?.textContent).toContain('华夏成长混合');
-    const refreshButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('刷新行情'));
+    expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('今日收益拆解');
+    expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('华夏成长混合');
+    const holdingsButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-controls="portfolio-insight-detail"]')).find((button) => button.textContent?.includes('持仓'));
+    act(() => holdingsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('持仓市值拆解');
+    const profitButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-controls="portfolio-insight-detail"]')).find((button) => button.textContent?.includes('累计盈亏'));
+    act(() => profitButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('累计盈亏拆解');
+    const refreshButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('手动刷新'));
     act(() => refreshButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(refreshCount).toBe(1);
 
@@ -221,6 +226,10 @@ describe('dashboard components', () => {
     expect(detail?.textContent).toContain('累计盈亏');
     expect(portfolio.container.querySelector('[data-testid="holding-positions"]')).not.toBeNull();
     expect(portfolio.container.querySelector('[data-testid="holding-positions"]')?.textContent).toContain('已披露股票持仓');
+    const bottomModules = portfolio.container.querySelector('[data-testid="portfolio-bottom-modules"]');
+    expect(bottomModules).not.toBeNull();
+    expect(portfolio.container.textContent).toContain('多平台账本');
+    expect(portfolio.container.textContent).toContain('风险诊断');
   });
 
   it('edits a holding code and name through the inline editor', () => {

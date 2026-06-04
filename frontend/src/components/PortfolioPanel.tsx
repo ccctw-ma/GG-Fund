@@ -19,6 +19,7 @@ function signalClass(signal: PortfolioSignal) {
 }
 
 type SortKey = 'marketValue' | 'returnRate' | 'name';
+type InsightKey = 'holdings' | 'daily' | 'profit';
 
 const sortOptions: Array<{ key: SortKey; label: string }> = [
   { key: 'marketValue', label: '按市值' },
@@ -78,7 +79,7 @@ export function PortfolioPanel({
 }) {
   const positive = summary.totalProfit >= 0;
   const [sortKey, setSortKey] = useState<SortKey>('marketValue');
-  const [showDailyDetail, setShowDailyDetail] = useState(false);
+  const [activeInsight, setActiveInsight] = useState<InsightKey>('daily');
   const [editingId, setEditingId] = useState<string>();
   const [editValue, setEditValue] = useState('');
   const [editCost, setEditCost] = useState('');
@@ -93,12 +94,14 @@ export function PortfolioPanel({
   const [stockHistoryMap, setStockHistoryMap] = useState<Record<string, FundHistoryPoint[]>>({});
   const historyLoadingRef = useRef<Set<string>>(new Set());
   const sortedItems = useMemo(() => sortItems(summary.items, sortKey), [summary.items, sortKey]);
+  const marketValueItems = useMemo(() => [...summary.items].sort((a, b) => b.marketValue - a.marketValue), [summary.items]);
   const dailyProfitItems = useMemo(
     () => [...summary.items]
       .filter((item) => item.quote || item.estimatedDailyProfit !== 0)
       .sort((a, b) => a.estimatedDailyProfit - b.estimatedDailyProfit),
     [summary.items],
   );
+  const cumulativeProfitItems = useMemo(() => [...summary.items].sort((a, b) => a.profit - b.profit), [summary.items]);
   const dailyLosers = dailyProfitItems.filter((item) => item.estimatedDailyProfit < 0);
   const dailyGainers = dailyProfitItems.filter((item) => item.estimatedDailyProfit > 0);
   const quoteRefreshLabel = quotesUpdatedAt ? `最近刷新 ${timeFormat.format(new Date(quotesUpdatedAt))}` : '等待行情刷新';
@@ -259,14 +262,24 @@ export function PortfolioPanel({
         <Badge tone={positive ? 'red' : 'green'}>{summary.totalReturnRate.toFixed(2)}%</Badge>
       </CardHeader>
       <div className="yb-hero-grid">
-        <div className="yb-metric yb-metric-primary"><span>当前市值</span><strong>{money.format(summary.totalMarketValue)}</strong><small>实时覆盖 {summary.liveQuoteRatio.toFixed(0)}%</small></div>
+        <button
+          type="button"
+          className={`yb-metric yb-metric-primary yb-metric-card ${activeInsight === 'holdings' ? 'is-active' : ''}`}
+          aria-pressed={activeInsight === 'holdings'}
+          aria-controls="portfolio-insight-detail"
+          onClick={() => setActiveInsight('holdings')}
+        >
+          <span>持仓</span>
+          <strong>{money.format(summary.totalMarketValue)}</strong>
+          <small>实时覆盖 {summary.liveQuoteRatio.toFixed(0)}% · 点击看明细</small>
+        </button>
         <div className="yb-metric yb-metric-daily">
           <button
             type="button"
             className="yb-metric-trigger"
-            aria-expanded={showDailyDetail}
-            aria-controls="daily-profit-detail"
-            onClick={() => setShowDailyDetail((current) => !current)}
+            aria-pressed={activeInsight === 'daily'}
+            aria-controls="portfolio-insight-detail"
+            onClick={() => setActiveInsight('daily')}
           >
             <span>今日估算收益</span>
             <strong className={summary.estimatedDailyProfit >= 0 ? 'profit-up' : 'profit-down'}>{summary.estimatedDailyProfit >= 0 ? '+' : ''}{money.format(summary.estimatedDailyProfit)}</strong>
@@ -280,10 +293,46 @@ export function PortfolioPanel({
             </button>
           </div>
         </div>
-        <div className="yb-metric"><span>累计盈亏</span><strong className={positive ? 'profit-up' : 'profit-down'}>{money.format(summary.totalProfit)}</strong><small>{summary.totalReturnRate.toFixed(2)}% · 投入 {money.format(summary.totalCost)}</small></div>
+        <button
+          type="button"
+          className={`yb-metric yb-metric-card ${activeInsight === 'profit' ? 'is-active' : ''}`}
+          aria-pressed={activeInsight === 'profit'}
+          aria-controls="portfolio-insight-detail"
+          onClick={() => setActiveInsight('profit')}
+        >
+          <span>累计盈亏</span>
+          <strong className={positive ? 'profit-up' : 'profit-down'}>{money.format(summary.totalProfit)}</strong>
+          <small>{summary.totalReturnRate.toFixed(2)}% · 投入 {money.format(summary.totalCost)} · 点击看明细</small>
+        </button>
       </div>
-      {showDailyDetail && (
-        <section className="yb-daily-profit-detail" id="daily-profit-detail" data-testid="daily-profit-detail">
+      <section className="yb-daily-profit-detail" id="portfolio-insight-detail" data-testid="portfolio-insight-detail">
+        {activeInsight === 'holdings' && (
+          <>
+          <div className="yb-daily-profit-head">
+            <div>
+              <strong>持仓市值拆解</strong>
+              <span>{summary.items.length} 只持仓 · 总市值 {money.format(summary.totalMarketValue)} · 实时覆盖 {summary.liveQuoteRatio.toFixed(0)}%</span>
+            </div>
+          </div>
+          {marketValueItems.length === 0 ? (
+            <p className="yb-empty-copy">暂无持仓数据，添加基金后会显示每只持仓的市值和组合权重。</p>
+          ) : (
+            <div className="yb-daily-profit-list">
+              {marketValueItems.map((item) => (
+                <article key={item.id}>
+                  <div>
+                    <strong>{item.fundName}</strong>
+                    <span>{item.fundCode} · 权重 {item.weight.toFixed(1)}% · 账本 {item.accountName ?? '默认账本'}</span>
+                  </div>
+                  <strong>{money.format(item.marketValue)}</strong>
+                </article>
+              ))}
+            </div>
+          )}
+          </>
+        )}
+        {activeInsight === 'daily' && (
+          <>
           <div className="yb-daily-profit-head">
             <div>
               <strong>今日收益拆解</strong>
@@ -311,42 +360,36 @@ export function PortfolioPanel({
               ))}
             </div>
           )}
-        </section>
-      )}
-      <div className="yb-module-grid">
-        <section className="yb-module">
-          <h3><ClipboardList className="h-4 w-4" /> 多平台账本</h3>
-          {summary.ledgers.length === 0 ? (
-            <p className="yb-empty-copy">导入或添加持仓后，自动按支付宝、理财通、天天基金、雪球等来源分账本汇总。</p>
+          </>
+        )}
+        {activeInsight === 'profit' && (
+          <>
+          <div className="yb-daily-profit-head">
+            <div>
+              <strong>累计盈亏拆解</strong>
+              <span>投入 {money.format(summary.totalCost)} · 盈亏 {money.format(summary.totalProfit)} · 收益率 {summary.totalReturnRate.toFixed(2)}%</span>
+            </div>
+          </div>
+          {cumulativeProfitItems.length === 0 ? (
+            <p className="yb-empty-copy">暂无可拆解的累计盈亏，添加持仓后会按单只基金展示成本、当前市值和累计收益。</p>
           ) : (
-            <div className="yb-ledger-list">
-              {summary.ledgers.map((ledger) => (
-                <article key={`${ledger.accountName}-${ledger.platform}`}>
-                  <span>{ledger.accountName} · {ledger.platform}</span>
-                  <strong>{money.format(ledger.marketValue)}</strong>
-                  <small>{ledger.holdingCount} 只 · 盈亏 {money.format(ledger.profit)}</small>
+            <div className="yb-daily-profit-list">
+              {cumulativeProfitItems.map((item) => (
+                <article key={item.id}>
+                  <div>
+                    <strong>{item.fundName}</strong>
+                    <span>成本 {money.format(item.costAmount)} · 当前 {money.format(item.marketValue)} · 收益率 {item.returnRate.toFixed(2)}%</span>
+                  </div>
+                  <strong className={item.profit >= 0 ? 'profit-up' : 'profit-down'}>
+                    {item.profit >= 0 ? '+' : ''}{money.format(item.profit)}
+                  </strong>
                 </article>
               ))}
             </div>
           )}
-        </section>
-        <section className="yb-module yb-module-glow">
-          <h3><Repeat2 className="h-4 w-4" /> 智能定投 / 目标止盈</h3>
-          <strong className="yb-plan-amount">{money.format(summary.plan.amount)}</strong>
-          <p>{summary.plan.title} · {summary.plan.cadence}</p>
-          <small>{summary.plan.detail}</small>
-        </section>
-      </div>
-      <div className="yb-signal-grid">
-        <section className="yb-signal-panel">
-          <h3><Radar className="h-4 w-4" /> 风险诊断</h3>
-          {summary.riskSignals.map((signal) => <article className={signalClass(signal)} key={signal.title}><strong>{signal.title}</strong><span>{signal.detail}</span></article>)}
-        </section>
-        <section className="yb-signal-panel">
-          <h3><BellRing className="h-4 w-4" /> 盈亏报告与提醒</h3>
-          {[...summary.reportSignals, ...summary.actionSignals].map((signal) => <article className={signalClass(signal)} key={signal.title}><strong>{signal.title}</strong><span>{signal.detail}</span></article>)}
-        </section>
-      </div>
+          </>
+        )}
+      </section>
       {summary.items.length === 0 ? (
         <div className="mt-5 rounded-[1.7rem] border border-dashed border-[#10251f]/18 p-8 text-center font-semibold text-ink/50">还没有持仓。搜索基金后点击“加入持仓”即可开始分析。</div>
       ) : (
@@ -555,6 +598,42 @@ export function PortfolioPanel({
       <div className="mt-6 flex flex-wrap gap-2">
         <h3 className="mr-2 w-full text-lg font-black text-ink">自选基金</h3>
         {watchlist.length === 0 ? <p className="text-sm font-semibold text-ink/50">暂无自选基金。</p> : watchlist.map((item) => <Badge tone="slate" key={item.fundCode}>{item.fundName} {item.fundCode}</Badge>)}
+      </div>
+      <div className="yb-bottom-modules" data-testid="portfolio-bottom-modules">
+        <div className="yb-module-grid">
+          <section className="yb-module">
+            <h3><ClipboardList className="h-4 w-4" /> 多平台账本</h3>
+            {summary.ledgers.length === 0 ? (
+              <p className="yb-empty-copy">导入或添加持仓后，自动按支付宝、理财通、天天基金、雪球等来源分账本汇总。</p>
+            ) : (
+              <div className="yb-ledger-list">
+                {summary.ledgers.map((ledger) => (
+                  <article key={`${ledger.accountName}-${ledger.platform}`}>
+                    <span>{ledger.accountName} · {ledger.platform}</span>
+                    <strong>{money.format(ledger.marketValue)}</strong>
+                    <small>{ledger.holdingCount} 只 · 盈亏 {money.format(ledger.profit)}</small>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+          <section className="yb-module yb-module-glow">
+            <h3><Repeat2 className="h-4 w-4" /> 智能定投 / 目标止盈</h3>
+            <strong className="yb-plan-amount">{money.format(summary.plan.amount)}</strong>
+            <p>{summary.plan.title} · {summary.plan.cadence}</p>
+            <small>{summary.plan.detail}</small>
+          </section>
+        </div>
+        <div className="yb-signal-grid">
+          <section className="yb-signal-panel">
+            <h3><Radar className="h-4 w-4" /> 风险诊断</h3>
+            {summary.riskSignals.map((signal) => <article className={signalClass(signal)} key={signal.title}><strong>{signal.title}</strong><span>{signal.detail}</span></article>)}
+          </section>
+          <section className="yb-signal-panel">
+            <h3><BellRing className="h-4 w-4" /> 盈亏报告与提醒</h3>
+            {[...summary.reportSignals, ...summary.actionSignals].map((signal) => <article className={signalClass(signal)} key={signal.title}><strong>{signal.title}</strong><span>{signal.detail}</span></article>)}
+          </section>
+        </div>
       </div>
     </Card>
   );

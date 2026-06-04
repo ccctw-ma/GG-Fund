@@ -343,6 +343,21 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border-radius: 1.7rem;
   padding: 20px;
 }
+.yb-metric-card {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease;
+}
+.yb-metric-card:hover,
+.yb-metric-card.is-active,
+.yb-metric-daily:has(.yb-metric-trigger[aria-pressed="true"]) {
+  border-color: rgba(125,226,184,.44);
+  background: linear-gradient(145deg, rgba(12,35,50,.9), rgba(19,55,72,.76));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 20px 58px rgba(0,0,0,.18), 0 0 0 1px rgba(125,226,184,.12);
+}
+.yb-metric-card:hover { transform: translateY(-1px); }
 .yb-metric-daily { display: grid; gap: 12px; }
 .yb-metric-trigger {
   border: 0;
@@ -396,6 +411,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   letter-spacing: -.055em;
 }
 .yb-metric small { display: block; margin-top: 10px; color: var(--text-muted); font-weight: 800; }
+.yb-bottom-modules { margin-top: 18px; }
 .yb-daily-profit-detail {
   margin-top: 14px;
   border: 1px solid rgba(255,255,255,.12);
