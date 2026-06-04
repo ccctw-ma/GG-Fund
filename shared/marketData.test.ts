@@ -339,8 +339,8 @@ describe('market data service', () => {
     expect(capturedUrl).toContain('trends2/get');
     expect(capturedUrl).toContain('secid=1.510300');
     expect(points).toEqual([
-      { time: '09:30', price: 1.23, average: 1.229, volume: 1000 },
-      { time: '10:00', price: 1.25, average: 1.235, volume: 1500 },
+      { time: '09:30', price: 1.23, average: 1.229, volume: 1000, source: '东方财富分钟线', sourceType: 'direct' },
+      { time: '10:00', price: 1.25, average: 1.235, volume: 1500, source: '东方财富分钟线', sourceType: 'direct' },
     ]);
   });
 
@@ -370,8 +370,8 @@ describe('market data service', () => {
 
     expect(tencentUrl).toContain('minute/query?code=sh510300');
     expect(points).toEqual([
-      { time: '09:30', price: 4.919, volume: 56913 },
-      { time: '09:31', price: 4.924, volume: 202677 },
+      { time: '09:30', price: 4.919, volume: 56913, source: '腾讯证券分钟线', sourceType: 'direct' },
+      { time: '09:31', price: 4.924, volume: 202677, source: '腾讯证券分钟线', sourceType: 'direct' },
     ]);
   });
 
@@ -417,8 +417,8 @@ describe('market data service', () => {
     });
 
     await expect(service.getFundIntraday('000001')).resolves.toEqual([
-      { time: '09:30', price: 100, volume: 40 },
-      { time: '09:31', price: 102, volume: 60 },
+      { time: '09:30', price: 100, volume: 40, source: '主要持仓加权近似（东方财富持仓 + 腾讯分钟线）', sourceType: 'estimated' },
+      { time: '09:31', price: 102, volume: 60, source: '主要持仓加权近似（东方财富持仓 + 腾讯分钟线）', sourceType: 'estimated' },
     ]);
     expect(requestedUrls.some((url) => url.includes('code=sz000001'))).toBe(false);
   });
@@ -446,8 +446,8 @@ describe('market data service', () => {
     });
 
     await expect(service.getFundIntraday('016874')).resolves.toEqual([
-      { time: '09:30', price: 4897.32, volume: 100 },
-      { time: '09:31', price: 4894.09, volume: 120 },
+      { time: '09:30', price: 4897.32, volume: 100, source: '沪深300分时近似（腾讯证券）', sourceType: 'estimated' },
+      { time: '09:31', price: 4894.09, volume: 120, source: '沪深300分时近似（腾讯证券）', sourceType: 'estimated' },
     ]);
   });
 

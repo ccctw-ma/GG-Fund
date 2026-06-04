@@ -19,8 +19,8 @@ const mockApi = vi.hoisted(() => ({
   getFundHoldings: vi.fn(async () => ({ stocks: [] })),
   getCachedFundIntraday: vi.fn(),
   getFundIntraday: vi.fn(async () => [
-    { time: '09:30', price: 1.23, average: 1.22 },
-    { time: '10:00', price: 1.25, average: 1.23 },
+    { time: '09:30', price: 1.23, average: 1.22, source: '主要持仓加权近似（东方财富持仓 + 腾讯分钟线）', sourceType: 'estimated' },
+    { time: '10:00', price: 1.25, average: 1.23, source: '主要持仓加权近似（东方财富持仓 + 腾讯分钟线）', sourceType: 'estimated' },
   ]),
   getFund: vi.fn(async () => null),
 }));
@@ -244,6 +244,8 @@ describe('dashboard components', () => {
     expect(mockApi.getFundIntraday).toHaveBeenCalledWith('000001');
     const intradayChart = portfolio.container.querySelector('[data-testid="intraday-trend-chart"]');
     expect(intradayChart?.textContent).toContain('当日行情走势');
+    expect(intradayChart?.textContent).toContain('近似走势');
+    expect(intradayChart?.textContent).toContain('数据来源：主要持仓加权近似');
     expect(intradayChart?.closest('.yb-daily-profit-item')?.textContent).toContain('华夏成长混合');
     expect(portfolio.container.textContent).not.toContain('点击看明细');
     expect(portfolio.container.textContent).not.toContain('持仓市值拆解');

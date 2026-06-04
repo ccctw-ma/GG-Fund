@@ -64,6 +64,8 @@ export type FundIntradayPoint = {
   price: number;
   average?: number;
   volume?: number;
+  source?: string;
+  sourceType?: 'direct' | 'estimated';
 };
 
 export type FundHolding = {

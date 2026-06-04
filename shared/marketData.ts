@@ -569,6 +569,10 @@ function intradayFromTencentMinute(text: string): FundIntradayPoint[] {
     .filter((item): item is FundIntradayPoint => Boolean(item));
 }
 
+function withIntradaySource(points: FundIntradayPoint[], source: string, sourceType: FundIntradayPoint['sourceType']): FundIntradayPoint[] {
+  return points.map((point) => ({ ...point, source, sourceType }));
+}
+
 function aggregateIntradayFromWeightedHoldings(series: Array<{ points: FundIntradayPoint[]; weight: number }>): FundIntradayPoint[] {
   const buckets = new Map<string, { value: number; weight: number; volume: number }>();
   for (const item of series) {
@@ -777,17 +781,17 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     const fields1 = 'f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13';
     const fields2 = 'f51,f53,f54,f55,f56,f57,f58';
     const url = `https://push2.eastmoney.com/api/qt/stock/trends2/get?secid=${eastmoneySecidForStock(code)}&fields1=${fields1}&fields2=${fields2}&ndays=1&iscr=0&iscca=0`;
-    return intradayFromEastmoneyTrends(await fetchJson(url, headers));
+    return withIntradaySource(intradayFromEastmoneyTrends(await fetchJson(url, headers)), '东方财富分钟线', 'direct');
   }
 
   async function getTencentIntraday(code: string): Promise<FundIntradayPoint[]> {
     const url = `https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=${encodeURIComponent(tencentSymbolForStock(code))}`;
-    return intradayFromTencentMinute(await fetchText(url));
+    return withIntradaySource(intradayFromTencentMinute(await fetchText(url)), '腾讯证券分钟线', 'direct');
   }
 
-  async function getTencentIntradayBySymbol(symbol: string): Promise<FundIntradayPoint[]> {
+  async function getTencentIntradayBySymbol(symbol: string, source = '腾讯证券分钟线', sourceType: FundIntradayPoint['sourceType'] = 'direct'): Promise<FundIntradayPoint[]> {
     const url = `https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=${encodeURIComponent(symbol)}`;
-    return intradayFromTencentMinute(await fetchText(url));
+    return withIntradaySource(intradayFromTencentMinute(await fetchText(url)), source, sourceType);
   }
 
   async function hasOtcFundQuote(code: string): Promise<boolean> {
@@ -818,9 +822,15 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
           points: await getTencentIntraday(stock.code).catch(() => []),
         })),
     );
-    const approximated = aggregateIntradayFromWeightedHoldings(weightedSeries);
+    const approximated = withIntradaySource(
+      aggregateIntradayFromWeightedHoldings(weightedSeries),
+      '主要持仓加权近似（东方财富持仓 + 腾讯分钟线）',
+      'estimated',
+    );
     if (approximated.length > 0) return approximated;
-    return getTencentIntradayBySymbol('sh000300').catch(() => getTencentIntradayBySymbol('sh000001')).catch(() => []);
+    return getTencentIntradayBySymbol('sh000300', '沪深300分时近似（腾讯证券）', 'estimated')
+      .catch(() => getTencentIntradayBySymbol('sh000001', '上证指数分时近似（腾讯证券）', 'estimated'))
+      .catch(() => []);
   }
 
   return {

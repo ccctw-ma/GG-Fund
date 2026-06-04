@@ -515,6 +515,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   justify-content: space-between;
   gap: 12px;
 }
+.intraday-title-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
 .intraday-chart-head strong {
   display: block;
   color: var(--text-strong);
@@ -526,6 +532,25 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   color: var(--text-muted);
   font-size: .76rem;
   font-weight: 800;
+}
+.intraday-chart-head .intraday-source-line {
+  color: #f7c96b;
+}
+.intraday-source-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(63,216,160,.32);
+  border-radius: 999px;
+  background: rgba(63,216,160,.12);
+  color: #8af0c8;
+  padding: 3px 8px;
+  font-size: .68rem;
+  font-weight: 950;
+}
+.intraday-source-badge.is-estimated {
+  border-color: rgba(247,201,107,.36);
+  background: rgba(247,201,107,.13);
+  color: #f7c96b;
 }
 .intraday-chart-head em { font-style: normal; font-weight: 950; }
 .intraday-empty {

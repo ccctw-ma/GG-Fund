@@ -23,6 +23,8 @@ export function IntradayTrendChart({
   const latest = points.at(-1);
   const first = points[0];
   const change = latest && first ? latest.price - first.price : 0;
+  const source = latest?.source ?? first?.source ?? '公开行情接口';
+  const sourceType = latest?.sourceType ?? first?.sourceType ?? 'direct';
   const option = {
     backgroundColor: 'transparent',
     color: ['#ff5d52', '#f7c96b'],
@@ -77,8 +79,12 @@ export function IntradayTrendChart({
     <div className="intraday-chart-card" data-testid="intraday-trend-chart">
       <div className="intraday-chart-head">
         <div>
-          <strong>{title}</strong>
+          <div className="intraday-title-line">
+            <strong>{title}</strong>
+            <small className={sourceType === 'estimated' ? 'intraday-source-badge is-estimated' : 'intraday-source-badge'}>{sourceType === 'estimated' ? '近似走势' : '真实分时'}</small>
+          </div>
           <span>{points[0]?.time} - {latest?.time} · {points.length} 个分时点</span>
+          <span className="intraday-source-line">数据来源：{source}</span>
         </div>
         <em className={change >= 0 ? 'profit-up' : 'profit-down'}>{change >= 0 ? '+' : ''}{change.toFixed(4)}</em>
       </div>
