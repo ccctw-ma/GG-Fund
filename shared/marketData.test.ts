@@ -375,6 +375,33 @@ describe('market data service', () => {
     ]);
   });
 
+  it('does not show same-code stock minute points for OTC fund codes', async () => {
+    let stockIntradayCalled = false;
+    const service = createMarketDataService({
+      fetchText: async (url) => {
+        if (url.includes('fundgz')) {
+          return 'jsonpgz({"fundcode":"000001","name":"华夏成长混合","jzrq":"2026-06-03","dwjz":"1.318","gsz":"1.332","gszzl":"1.07","gztime":"2026-06-04 15:00"});';
+        }
+        stockIntradayCalled = true;
+        return JSON.stringify({
+          code: 0,
+          data: {
+            sz000001: {
+              data: { data: ['0930 10.91 1000 1000.00'] },
+            },
+          },
+        });
+      },
+      fetchJson: async () => {
+        stockIntradayCalled = true;
+        return { data: { trends: ['2026-06-04 09:30,10.91,10.91,1000'] } };
+      },
+    });
+
+    await expect(service.getFundIntraday('000001')).resolves.toEqual([]);
+    expect(stockIntradayCalled).toBe(false);
+  });
+
   it('prefers Eastmoney F10 full disclosed stock holdings over the mobile top-10 endpoint', async () => {
     let capturedUrl = '';
     const service = createMarketDataService({

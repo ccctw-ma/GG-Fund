@@ -500,6 +500,10 @@ function tencentSymbolForStock(code: string): string {
   return `sz${code}`;
 }
 
+function isUnambiguousTradableCode(code: string): boolean {
+  return code.startsWith('5') || code.startsWith('6') || code.startsWith('8') || code.startsWith('4') || code.startsWith('159');
+}
+
 function historyFromTencentKline(text: string): FundHistoryPoint[] {
   let payload: unknown;
   try {
@@ -757,6 +761,21 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     return intradayFromTencentMinute(await fetchText(url));
   }
 
+  async function hasOtcFundQuote(code: string): Promise<boolean> {
+    if (isUnambiguousTradableCode(code)) return false;
+    try {
+      if (await getTiantianEstimate(code)) return true;
+    } catch {
+      // fall through to official fund quote
+    }
+    try {
+      if (await getEastmoneyFund(code)) return true;
+    } catch {
+      // fall through to tradable minute sources
+    }
+    return false;
+  }
+
   return {
     async getIndices(): Promise<IndexQuote[]> {
       return cached('indices', 60_000, async () => {
@@ -856,6 +875,7 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     },
     async getFundIntraday(code: string): Promise<FundIntradayPoint[]> {
       return cached(`fund-intraday:${code}`, 60_000, async () => {
+        if (await hasOtcFundQuote(code)) return [];
         try {
           const points = await getEastmoneyIntraday(code);
           if (points.length > 0) return points;
