@@ -138,6 +138,18 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
       await Promise.all(holdingCodes.map(async (code) => {
         const quote = await api.getFund(code);
         setQuotes((current) => ({ ...current, [code]: quote }));
+        const officialName = quote.name?.trim();
+        if (officialName) {
+          setHoldings((current) => {
+            let changed = false;
+            const next = current.map((holding) => {
+              if (holding.fundCode !== code || holding.fundName === officialName) return holding;
+              changed = true;
+              return { ...holding, fundName: officialName, updatedAt: nowIso() };
+            });
+            return changed ? next : current;
+          });
+        }
         if (!amountOnlyHoldingCodes.has(code)) return;
         const cachedHistory = api.getCachedFundHistory(code, 'all') ?? api.getCachedFundHistory(code, '1m');
         if (cachedHistory?.length) setHoldingHistories((current) => (current[code]?.length ? current : { ...current, [code]: cachedHistory }));

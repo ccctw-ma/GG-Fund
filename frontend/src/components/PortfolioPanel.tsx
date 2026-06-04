@@ -19,7 +19,7 @@ function signalClass(signal: PortfolioSignal) {
 }
 
 type SortKey = 'marketValue' | 'returnRate' | 'name';
-type InsightKey = 'holdings' | 'daily' | 'profit';
+type InsightKey = 'daily' | 'profit';
 
 const sortOptions: Array<{ key: SortKey; label: string }> = [
   { key: 'marketValue', label: '按市值' },
@@ -94,7 +94,6 @@ export function PortfolioPanel({
   const [stockHistoryMap, setStockHistoryMap] = useState<Record<string, FundHistoryPoint[]>>({});
   const historyLoadingRef = useRef<Set<string>>(new Set());
   const sortedItems = useMemo(() => sortItems(summary.items, sortKey), [summary.items, sortKey]);
-  const marketValueItems = useMemo(() => [...summary.items].sort((a, b) => b.marketValue - a.marketValue), [summary.items]);
   const dailyProfitItems = useMemo(
     () => [...summary.items]
       .filter((item) => item.quote || item.estimatedDailyProfit !== 0)
@@ -262,17 +261,11 @@ export function PortfolioPanel({
         <Badge tone={positive ? 'red' : 'green'}>{summary.totalReturnRate.toFixed(2)}%</Badge>
       </CardHeader>
       <div className="yb-hero-grid">
-        <button
-          type="button"
-          className={`yb-metric yb-metric-primary yb-metric-card ${activeInsight === 'holdings' ? 'is-active' : ''}`}
-          aria-pressed={activeInsight === 'holdings'}
-          aria-controls="portfolio-insight-detail"
-          onClick={() => setActiveInsight('holdings')}
-        >
+        <div className="yb-metric yb-metric-primary">
           <span>持仓</span>
           <strong>{money.format(summary.totalMarketValue)}</strong>
-          <small>实时覆盖 {summary.liveQuoteRatio.toFixed(0)}% · 点击看明细</small>
-        </button>
+          <small>实时覆盖 {summary.liveQuoteRatio.toFixed(0)}%</small>
+        </div>
         <div className="yb-metric yb-metric-daily">
           <button
             type="button"
@@ -283,7 +276,7 @@ export function PortfolioPanel({
           >
             <span>今日估算收益</span>
             <strong className={summary.estimatedDailyProfit >= 0 ? 'profit-up' : 'profit-down'}>{summary.estimatedDailyProfit >= 0 ? '+' : ''}{money.format(summary.estimatedDailyProfit)}</strong>
-            <small>按已返回日涨跌本地估算 · 点击看明细</small>
+            <small>按已返回日涨跌本地估算</small>
           </button>
           <div className="yb-metric-refresh">
             <small>{quoteRefreshLabel} · 每 1 分钟自动刷新</small>
@@ -302,35 +295,10 @@ export function PortfolioPanel({
         >
           <span>累计盈亏</span>
           <strong className={positive ? 'profit-up' : 'profit-down'}>{money.format(summary.totalProfit)}</strong>
-          <small>{summary.totalReturnRate.toFixed(2)}% · 投入 {money.format(summary.totalCost)} · 点击看明细</small>
+          <small>{summary.totalReturnRate.toFixed(2)}% · 投入 {money.format(summary.totalCost)}</small>
         </button>
       </div>
       <section className="yb-daily-profit-detail" id="portfolio-insight-detail" data-testid="portfolio-insight-detail">
-        {activeInsight === 'holdings' && (
-          <>
-          <div className="yb-daily-profit-head">
-            <div>
-              <strong>持仓市值拆解</strong>
-              <span>{summary.items.length} 只持仓 · 总市值 {money.format(summary.totalMarketValue)} · 实时覆盖 {summary.liveQuoteRatio.toFixed(0)}%</span>
-            </div>
-          </div>
-          {marketValueItems.length === 0 ? (
-            <p className="yb-empty-copy">暂无持仓数据，添加基金后会显示每只持仓的市值和组合权重。</p>
-          ) : (
-            <div className="yb-daily-profit-list">
-              {marketValueItems.map((item) => (
-                <article key={item.id}>
-                  <div>
-                    <strong>{item.fundName}</strong>
-                    <span>{item.fundCode} · 权重 {item.weight.toFixed(1)}% · 账本 {item.accountName ?? '默认账本'}</span>
-                  </div>
-                  <strong>{money.format(item.marketValue)}</strong>
-                </article>
-              ))}
-            </div>
-          )}
-          </>
-        )}
         {activeInsight === 'daily' && (
           <>
           <div className="yb-daily-profit-head">

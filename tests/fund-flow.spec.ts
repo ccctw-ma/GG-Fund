@@ -250,7 +250,7 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
   await page.getByRole('button', { name: /组合账户/ }).click();
   await expect(page.getByLabel('导出的本地数据')).toContainText('000001');
   await expect(page.getByRole('heading', { name: '我的持仓分析' })).toBeVisible();
-  await expect(page.locator('#portfolio [aria-controls="portfolio-insight-detail"]').filter({ hasText: '持仓' })).toBeVisible();
+  await expect(page.locator('#portfolio')).toContainText('持仓明细');
   await expect(page.locator('#portfolio')).toContainText('今日估算收益');
   await expect(page.locator('#portfolio')).toContainText('累计盈亏');
   await expect(page.locator('#portfolio')).toContainText('风险诊断');

@@ -207,9 +207,8 @@ describe('dashboard components', () => {
     expect(dailyButton).not.toBeNull();
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('今日收益拆解');
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('华夏成长混合');
-    const holdingsButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-controls="portfolio-insight-detail"]')).find((button) => button.textContent?.includes('持仓'));
-    act(() => holdingsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-    expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('持仓市值拆解');
+    expect(portfolio.container.textContent).not.toContain('点击看明细');
+    expect(portfolio.container.textContent).not.toContain('持仓市值拆解');
     const profitButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-controls="portfolio-insight-detail"]')).find((button) => button.textContent?.includes('累计盈亏'));
     act(() => profitButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('累计盈亏拆解');

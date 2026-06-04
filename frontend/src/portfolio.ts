@@ -72,6 +72,11 @@ function hasValuation(holding: Holding, quote?: FundQuote, history?: FundHistory
   return Boolean(holding.recordedMarketValue);
 }
 
+function canonicalFundName(holding: Holding, quote?: FundQuote) {
+  if (/^\d{6}$/.test(holding.fundCode) && quote?.name?.trim()) return quote.name.trim();
+  return holding.fundName;
+}
+
 function buildLedgers(items: PortfolioSummary['items']): PortfolioLedger[] {
   const ledgers = new Map<string, PortfolioLedger>();
   items.forEach((item) => {
@@ -191,6 +196,7 @@ export function calculatePortfolioSummary(
 
     return {
       ...holding,
+      fundName: canonicalFundName(holding, quote),
       quote,
       marketValue,
       profit,

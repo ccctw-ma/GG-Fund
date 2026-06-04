@@ -74,6 +74,21 @@ describe('calculatePortfolioSummary', () => {
     expect(summary.plan.amount).toBe(100);
   });
 
+  it('uses the fund name returned by the code quote as the canonical holding name', () => {
+    const summary = calculatePortfolioSummary(
+      [{ ...holdings[0], fundName: '人到指数基金多他广发电力公用事业ETF' }],
+      {
+        '000001': {
+          ...quotes['000001'],
+          name: '华夏成长混合',
+        },
+      },
+    );
+
+    expect(summary.items[0].fundName).toBe('华夏成长混合');
+    expect(summary.reportSignals.find((signal) => signal.title === '贡献拆解')?.detail).toContain('华夏成长混合');
+  });
+
   it('keeps holdings with missing quotes visible and marks their quote status', () => {
     const summary = calculatePortfolioSummary(holdings, { '000001': quotes['000001'] });
 
