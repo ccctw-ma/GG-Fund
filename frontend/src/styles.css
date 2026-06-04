@@ -536,6 +536,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .intraday-chart-head .intraday-source-line {
   color: #f7c96b;
 }
+.intraday-chart-head .intraday-basis-line {
+  color: var(--text-strong);
+}
 .intraday-source-badge {
   display: inline-flex;
   align-items: center;

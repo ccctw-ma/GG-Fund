@@ -597,6 +597,23 @@ function aggregateIntradayFromWeightedHoldings(series: Array<{ points: FundIntra
     .filter((point) => Number.isFinite(point.price) && point.price > 0);
 }
 
+function anchorEstimatedIntradayToDailyChange(points: FundIntradayPoint[], dailyChangePercent?: number): FundIntradayPoint[] {
+  if (points.length === 0 || dailyChangePercent === undefined || !Number.isFinite(dailyChangePercent)) return points;
+  const basePrice = points.find((point) => point.price > 0)?.price;
+  if (!basePrice) return points;
+  const normalized = points.map((point) => ({ ...point, price: (point.price / basePrice) * 100 }));
+  const firstPrice = normalized[0]?.price;
+  const latestPrice = normalized.at(-1)?.price;
+  if (firstPrice === undefined || latestPrice === undefined) return points;
+  const shapeDelta = latestPrice - firstPrice;
+  const targetDelta = dailyChangePercent;
+  const denominator = Math.max(normalized.length - 1, 1);
+  return normalized.map((point, index) => ({
+    ...point,
+    price: Number((point.price + (targetDelta - shapeDelta) * (index / denominator)).toFixed(4)),
+  }));
+}
+
 async function fetchWithTimeout(url: string, init: RequestInit = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -794,22 +811,24 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     return withIntradaySource(intradayFromTencentMinute(await fetchText(url)), source, sourceType);
   }
 
-  async function hasOtcFundQuote(code: string): Promise<boolean> {
-    if (isUnambiguousTradableCode(code)) return false;
+  async function getOtcFundQuote(code: string): Promise<FundQuote | undefined> {
+    if (isUnambiguousTradableCode(code)) return undefined;
     try {
-      if (await getTiantianEstimate(code)) return true;
+      const quote = await getTiantianEstimate(code);
+      if (quote) return quote;
     } catch {
       // fall through to official fund quote
     }
     try {
-      if (await getEastmoneyFund(code)) return true;
+      const quote = await getEastmoneyFund(code);
+      if (quote) return quote;
     } catch {
       // fall through to tradable minute sources
     }
-    return false;
+    return undefined;
   }
 
-  async function getApproximateFundIntraday(code: string): Promise<FundIntradayPoint[]> {
+  async function getApproximateFundIntraday(code: string, quote: FundQuote): Promise<FundIntradayPoint[]> {
     const holdings = await getEastmoneyF10FundHoldings(code)
       .catch(() => getEastmoneyFundHoldings(code))
       .catch(() => ({ stocks: [] }));
@@ -823,13 +842,15 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
         })),
     );
     const approximated = withIntradaySource(
-      aggregateIntradayFromWeightedHoldings(weightedSeries),
+      anchorEstimatedIntradayToDailyChange(aggregateIntradayFromWeightedHoldings(weightedSeries), quote.dailyChangePercent),
       '主要持仓加权近似（东方财富持仓 + 腾讯分钟线）',
       'estimated',
     );
     if (approximated.length > 0) return approximated;
     return getTencentIntradayBySymbol('sh000300', '沪深300分时近似（腾讯证券）', 'estimated')
-      .catch(() => getTencentIntradayBySymbol('sh000001', '上证指数分时近似（腾讯证券）', 'estimated'))
+      .then((points) => anchorEstimatedIntradayToDailyChange(points, quote.dailyChangePercent))
+      .catch(() => getTencentIntradayBySymbol('sh000001', '上证指数分时近似（腾讯证券）', 'estimated')
+        .then((points) => anchorEstimatedIntradayToDailyChange(points, quote.dailyChangePercent)))
       .catch(() => []);
   }
 
@@ -932,7 +953,8 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     },
     async getFundIntraday(code: string): Promise<FundIntradayPoint[]> {
       return cached(`fund-intraday:${code}`, 60_000, async () => {
-        if (await hasOtcFundQuote(code)) return getApproximateFundIntraday(code);
+        const otcQuote = await getOtcFundQuote(code);
+        if (otcQuote) return getApproximateFundIntraday(code, otcQuote);
         try {
           const points = await getEastmoneyIntraday(code);
           if (points.length > 0) return points;

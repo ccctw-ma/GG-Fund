@@ -434,6 +434,7 @@ export function PortfolioPanel({
                     <IntradayTrendChart
                       points={intradayMap[item.fundCode] ?? []}
                       title={`${item.fundName} 当日行情走势`}
+                      dailyChangePercent={item.quote?.dailyChangePercent}
                       loading={intradayMap[item.fundCode] === undefined}
                     />
                   )}

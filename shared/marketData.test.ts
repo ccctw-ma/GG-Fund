@@ -418,7 +418,7 @@ describe('market data service', () => {
 
     await expect(service.getFundIntraday('000001')).resolves.toEqual([
       { time: '09:30', price: 100, volume: 40, source: '主要持仓加权近似（东方财富持仓 + 腾讯分钟线）', sourceType: 'estimated' },
-      { time: '09:31', price: 102, volume: 60, source: '主要持仓加权近似（东方财富持仓 + 腾讯分钟线）', sourceType: 'estimated' },
+      { time: '09:31', price: 101.07, volume: 60, source: '主要持仓加权近似（东方财富持仓 + 腾讯分钟线）', sourceType: 'estimated' },
     ]);
     expect(requestedUrls.some((url) => url.includes('code=sz000001'))).toBe(false);
   });
@@ -446,8 +446,8 @@ describe('market data service', () => {
     });
 
     await expect(service.getFundIntraday('016874')).resolves.toEqual([
-      { time: '09:30', price: 4897.32, volume: 100, source: '沪深300分时近似（腾讯证券）', sourceType: 'estimated' },
-      { time: '09:31', price: 4894.09, volume: 120, source: '沪深300分时近似（腾讯证券）', sourceType: 'estimated' },
+      { time: '09:30', price: 100, volume: 100, source: '沪深300分时近似（腾讯证券）', sourceType: 'estimated' },
+      { time: '09:31', price: 101, volume: 120, source: '沪深300分时近似（腾讯证券）', sourceType: 'estimated' },
     ]);
   });
 

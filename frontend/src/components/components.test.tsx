@@ -245,6 +245,7 @@ describe('dashboard components', () => {
     const intradayChart = portfolio.container.querySelector('[data-testid="intraday-trend-chart"]');
     expect(intradayChart?.textContent).toContain('当日行情走势');
     expect(intradayChart?.textContent).toContain('近似走势');
+    expect(intradayChart?.textContent).toContain('收益口径：按日涨跌 -1.00%');
     expect(intradayChart?.textContent).toContain('数据来源：主要持仓加权近似');
     expect(intradayChart?.closest('.yb-daily-profit-item')?.textContent).toContain('华夏成长混合');
     expect(portfolio.container.textContent).not.toContain('点击看明细');
