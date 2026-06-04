@@ -1,12 +1,12 @@
 'use client';
 
-import { BellRing, Check, ChevronDown, ClipboardList, Info, LineChart, Pencil, PieChart, Radar, RefreshCw, Repeat2, Trash2, WalletCards, X } from 'lucide-react';
+import { BellRing, Check, ChevronDown, ClipboardList, Info, LineChart, Pencil, PieChart, Radar, RefreshCw, Repeat2, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import type { FundHistoryPoint, FundHoldings, FundQuote, PortfolioItem, PortfolioSignal, PortfolioSummary, WatchItem } from '../types';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Card, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardHeader, CardTitle } from './ui/card';
 import { FundTrendChart } from './FundTrendChart';
 
 const money = new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' });
@@ -298,9 +298,7 @@ export function PortfolioPanel({
     <Card id="portfolio" className="lg:col-span-2">
       <CardHeader>
         <div>
-          <Badge tone="amber" className="mb-2"><WalletCards className="h-3 w-3" /> Yangjibao Layer</Badge>
           <CardTitle>我的持仓分析</CardTitle>
-          <CardDescription>对标养基宝的账本、盈亏报告、风险提醒和定投路径；真实交易/OCR/全网用户行为暂不伪造。</CardDescription>
         </div>
         <Badge tone={positive ? 'red' : 'green'}>{summary.totalReturnRate.toFixed(2)}%</Badge>
       </CardHeader>
@@ -452,9 +450,11 @@ export function PortfolioPanel({
       </section>
       )}
       {summary.items.length === 0 ? (
-        <div className="mt-5 rounded-[1.7rem] border border-dashed border-[#10251f]/18 p-8 text-center font-semibold text-ink/50">还没有持仓。搜索基金后点击“加入持仓”即可开始分析。</div>
+        <section className="yb-daily-profit-detail yb-holdings-panel" data-testid="portfolio-holdings-detail">
+          <div className="rounded-[1.7rem] border border-dashed border-white/15 p-8 text-center font-semibold text-white/55">还没有持仓。搜索基金后点击“加入持仓”即可开始分析。</div>
+        </section>
       ) : (
-        <div data-testid="portfolio-holdings-detail">
+        <section className="yb-daily-profit-detail yb-holdings-panel" data-testid="portfolio-holdings-detail">
           <div className="yb-holding-toolbar">
             <span>持仓明细</span>
             <div className="yb-sort-group" role="group" aria-label="持仓排序">
@@ -664,7 +664,7 @@ export function PortfolioPanel({
               );
             })}
           </div>
-        </div>
+        </section>
       )}
       <div className="mt-6 flex flex-wrap gap-2">
         <h3 className="mr-2 w-full text-lg font-black text-ink">自选基金</h3>

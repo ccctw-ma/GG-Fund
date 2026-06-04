@@ -201,12 +201,16 @@ describe('dashboard components', () => {
     expect(portfolio.container.textContent).toContain('华夏成长混合');
     expect(portfolio.container.textContent).toContain('支付宝账本');
     expect(portfolio.container.textContent).toContain('易方达消费行业股票');
+    expect(portfolio.container.textContent).not.toContain('Yangjibao Layer');
+    expect(portfolio.container.textContent).not.toContain('对标养基宝的账本');
 
     const holdingsButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('.yb-metric-card')).find((button) => button.textContent?.includes('持仓'));
     expect(holdingsButton).not.toBeNull();
     expect(holdingsButton?.getAttribute('aria-pressed')).toBe('true');
     expect(holdingsButton?.getAttribute('aria-controls')).toBeNull();
-    expect(portfolio.container.querySelector('[data-testid="portfolio-holdings-detail"]')?.textContent).toContain('持仓明细');
+    const holdingsPanel = portfolio.container.querySelector('[data-testid="portfolio-holdings-detail"]');
+    expect(holdingsPanel?.textContent).toContain('持仓明细');
+    expect(holdingsPanel?.className).toContain('yb-holdings-panel');
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')).toBeNull();
     const dailyButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-controls="portfolio-insight-detail"]')).find((button) => button.textContent?.includes('今日估算收益'));
     expect(dailyButton).not.toBeNull();
