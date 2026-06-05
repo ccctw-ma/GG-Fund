@@ -646,6 +646,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .yb-holding-toolbar > span { color: var(--text-strong); font-size: 1rem; font-weight: 950; }
 .yb-sort-group { display: inline-flex; gap: 6px; padding: 4px; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; background: rgba(2,12,22,.5); }
 .yb-sort-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -656,6 +659,27 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   cursor: pointer;
   transition: background .15s ease, color .15s ease;
 }
+.yb-sort-arrows {
+  display: inline-grid;
+  grid-template-rows: repeat(2, .62rem);
+  align-items: center;
+  justify-items: center;
+  min-width: .78rem;
+  line-height: .62rem;
+}
+.yb-sort-arrow {
+  display: block;
+  height: .62rem;
+  color: currentColor;
+  font-size: .66rem;
+  font-style: normal;
+  font-weight: 950;
+  opacity: .34;
+  transform: translateY(-1px);
+}
+.yb-sort-arrow + .yb-sort-arrow { transform: translateY(1px); }
+.yb-sort-chip.is-active .yb-sort-arrow { opacity: .46; }
+.yb-sort-arrow.is-selected { opacity: 1 !important; }
 .yb-sort-chip:hover { color: var(--text-strong); }
 .yb-sort-chip.is-active { background: linear-gradient(135deg, rgba(244,183,64,.85), rgba(125,226,184,.7)); color: #042014; }
 .yb-holding-name { display: block; color: var(--text-strong); font-size: 1.02rem; font-weight: 950; letter-spacing: -.01em; }

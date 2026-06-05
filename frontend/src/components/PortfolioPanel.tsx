@@ -23,48 +23,85 @@ type SortKey = 'marketValue' | 'returnRate' | 'name';
 type InsightKey = 'holdings' | 'daily' | 'profit';
 type DailySortKey = 'dailyProfit' | 'dailyChange' | 'marketValue' | 'name';
 type ProfitSortKey = 'profit' | 'returnRate' | 'marketValue' | 'name';
+type SortDirection = 'asc' | 'desc';
+type SortState<Key extends string> = { key: Key; direction: SortDirection };
 
-const sortOptions: Array<{ key: SortKey; label: string }> = [
-  { key: 'marketValue', label: '按市值' },
-  { key: 'returnRate', label: '按收益率' },
-  { key: 'name', label: '按名称' },
+const sortOptions: Array<{ key: SortKey; label: string; defaultDirection: SortDirection }> = [
+  { key: 'marketValue', label: '按市值', defaultDirection: 'desc' },
+  { key: 'returnRate', label: '按收益率', defaultDirection: 'desc' },
+  { key: 'name', label: '按名称', defaultDirection: 'asc' },
 ];
 
-const dailySortOptions: Array<{ key: DailySortKey; label: string }> = [
-  { key: 'dailyProfit', label: '按收益' },
-  { key: 'dailyChange', label: '按涨跌率' },
-  { key: 'marketValue', label: '按市值' },
-  { key: 'name', label: '按名称' },
+const dailySortOptions: Array<{ key: DailySortKey; label: string; defaultDirection: SortDirection }> = [
+  { key: 'dailyProfit', label: '按收益', defaultDirection: 'asc' },
+  { key: 'dailyChange', label: '按涨跌率', defaultDirection: 'asc' },
+  { key: 'marketValue', label: '按市值', defaultDirection: 'desc' },
+  { key: 'name', label: '按名称', defaultDirection: 'asc' },
 ];
 
-const profitSortOptions: Array<{ key: ProfitSortKey; label: string }> = [
-  { key: 'profit', label: '按盈亏' },
-  { key: 'returnRate', label: '按收益率' },
-  { key: 'marketValue', label: '按市值' },
-  { key: 'name', label: '按名称' },
+const profitSortOptions: Array<{ key: ProfitSortKey; label: string; defaultDirection: SortDirection }> = [
+  { key: 'profit', label: '按盈亏', defaultDirection: 'asc' },
+  { key: 'returnRate', label: '按收益率', defaultDirection: 'asc' },
+  { key: 'marketValue', label: '按市值', defaultDirection: 'desc' },
+  { key: 'name', label: '按名称', defaultDirection: 'asc' },
 ];
 
-function sortItems(items: PortfolioItem[], key: SortKey) {
-  const next = [...items];
-  if (key === 'marketValue') return next.sort((a, b) => b.marketValue - a.marketValue);
-  if (key === 'returnRate') return next.sort((a, b) => b.returnRate - a.returnRate);
-  return next.sort((a, b) => a.fundName.localeCompare(b.fundName, 'zh-Hans-CN'));
+function applyDirection(value: number, direction: SortDirection) {
+  return direction === 'asc' ? value : -value;
 }
 
-function sortDailyItems(items: PortfolioItem[], key: DailySortKey) {
-  const next = [...items];
-  if (key === 'dailyProfit') return next.sort((a, b) => a.estimatedDailyProfit - b.estimatedDailyProfit);
-  if (key === 'dailyChange') return next.sort((a, b) => (a.quote?.dailyChangePercent ?? -Infinity) - (b.quote?.dailyChangePercent ?? -Infinity));
-  if (key === 'marketValue') return next.sort((a, b) => b.marketValue - a.marketValue);
-  return next.sort((a, b) => a.fundName.localeCompare(b.fundName, 'zh-Hans-CN'));
+function nextSortState<Key extends string>(
+  current: SortState<Key>,
+  key: Key,
+  defaultDirection: SortDirection,
+): SortState<Key> {
+  if (current.key !== key) return { key, direction: defaultDirection };
+  return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
 }
 
-function sortProfitItems(items: PortfolioItem[], key: ProfitSortKey) {
+function sortDirectionLabel(direction: SortDirection) {
+  return direction === 'asc' ? '正序' : '倒序';
+}
+
+function sortButtonLabel(label: string, isActive: boolean, direction: SortDirection, defaultDirection: SortDirection) {
+  const currentDirection = isActive ? direction : defaultDirection;
+  const nextDirection = isActive && direction === 'asc' ? '倒序' : '正序';
+  return `${label}，${isActive ? `当前${sortDirectionLabel(direction)}` : `默认${sortDirectionLabel(defaultDirection)}`}，点击${isActive ? `切换为${nextDirection}` : `按${sortDirectionLabel(currentDirection)}排序`}`;
+}
+
+function sortArrows(isActive: boolean, direction: SortDirection) {
+  return (
+    <span className="yb-sort-arrows" aria-hidden="true">
+      <span className={isActive && direction === 'asc' ? 'yb-sort-arrow is-selected' : 'yb-sort-arrow'}>↑</span>
+      <span className={isActive && direction === 'desc' ? 'yb-sort-arrow is-selected' : 'yb-sort-arrow'}>↓</span>
+    </span>
+  );
+}
+
+function sortItems(items: PortfolioItem[], sort: SortState<SortKey>) {
   const next = [...items];
-  if (key === 'profit') return next.sort((a, b) => a.profit - b.profit);
-  if (key === 'returnRate') return next.sort((a, b) => a.returnRate - b.returnRate);
-  if (key === 'marketValue') return next.sort((a, b) => b.marketValue - a.marketValue);
-  return next.sort((a, b) => a.fundName.localeCompare(b.fundName, 'zh-Hans-CN'));
+  const { key, direction } = sort;
+  if (key === 'marketValue') return next.sort((a, b) => applyDirection(a.marketValue - b.marketValue, direction));
+  if (key === 'returnRate') return next.sort((a, b) => applyDirection(a.returnRate - b.returnRate, direction));
+  return next.sort((a, b) => applyDirection(a.fundName.localeCompare(b.fundName, 'zh-Hans-CN'), direction));
+}
+
+function sortDailyItems(items: PortfolioItem[], sort: SortState<DailySortKey>) {
+  const next = [...items];
+  const { key, direction } = sort;
+  if (key === 'dailyProfit') return next.sort((a, b) => applyDirection(a.estimatedDailyProfit - b.estimatedDailyProfit, direction));
+  if (key === 'dailyChange') return next.sort((a, b) => applyDirection((a.quote?.dailyChangePercent ?? -Infinity) - (b.quote?.dailyChangePercent ?? -Infinity), direction));
+  if (key === 'marketValue') return next.sort((a, b) => applyDirection(a.marketValue - b.marketValue, direction));
+  return next.sort((a, b) => applyDirection(a.fundName.localeCompare(b.fundName, 'zh-Hans-CN'), direction));
+}
+
+function sortProfitItems(items: PortfolioItem[], sort: SortState<ProfitSortKey>) {
+  const next = [...items];
+  const { key, direction } = sort;
+  if (key === 'profit') return next.sort((a, b) => applyDirection(a.profit - b.profit, direction));
+  if (key === 'returnRate') return next.sort((a, b) => applyDirection(a.returnRate - b.returnRate, direction));
+  if (key === 'marketValue') return next.sort((a, b) => applyDirection(a.marketValue - b.marketValue, direction));
+  return next.sort((a, b) => applyDirection(a.fundName.localeCompare(b.fundName, 'zh-Hans-CN'), direction));
 }
 
 function toneClass(value?: number) {
@@ -120,9 +157,9 @@ export function PortfolioPanel({
   onEditIdentity?: (id: string, patch: { fundCode: string; fundName: string }) => void;
 }) {
   const positive = summary.totalProfit >= 0;
-  const [sortKey, setSortKey] = useState<SortKey>('marketValue');
-  const [dailySortKey, setDailySortKey] = useState<DailySortKey>('dailyProfit');
-  const [profitSortKey, setProfitSortKey] = useState<ProfitSortKey>('profit');
+  const [holdingSort, setHoldingSort] = useState<SortState<SortKey>>({ key: 'marketValue', direction: 'desc' });
+  const [dailySort, setDailySort] = useState<SortState<DailySortKey>>({ key: 'dailyProfit', direction: 'asc' });
+  const [profitSort, setProfitSort] = useState<SortState<ProfitSortKey>>({ key: 'profit', direction: 'asc' });
   const [activeInsight, setActiveInsight] = useState<InsightKey>('holdings');
   const [editingId, setEditingId] = useState<string>();
   const [editValue, setEditValue] = useState('');
@@ -139,15 +176,15 @@ export function PortfolioPanel({
   const [stockQuoteMap, setStockQuoteMap] = useState<Record<string, FundQuote | null>>({});
   const [stockHistoryMap, setStockHistoryMap] = useState<Record<string, FundHistoryPoint[]>>({});
   const historyLoadingRef = useRef<Set<string>>(new Set());
-  const sortedItems = useMemo(() => sortItems(summary.items, sortKey), [summary.items, sortKey]);
+  const sortedItems = useMemo(() => sortItems(summary.items, holdingSort), [holdingSort, summary.items]);
   const dailyProfitItems = useMemo(
     () => sortDailyItems(
       summary.items.filter((item) => item.quote || item.estimatedDailyProfit !== 0),
-      dailySortKey,
+      dailySort,
     ),
-    [dailySortKey, summary.items],
+    [dailySort, summary.items],
   );
-  const cumulativeProfitItems = useMemo(() => sortProfitItems(summary.items, profitSortKey), [profitSortKey, summary.items]);
+  const cumulativeProfitItems = useMemo(() => sortProfitItems(summary.items, profitSort), [profitSort, summary.items]);
   const dailyLosers = dailyProfitItems.filter((item) => item.estimatedDailyProfit < 0);
   const dailyGainers = dailyProfitItems.filter((item) => item.estimatedDailyProfit > 0);
   const quoteRefreshLabel = quotesUpdatedAt ? `最近刷新 ${timeFormat.format(new Date(quotesUpdatedAt))}` : '等待行情刷新';
@@ -380,11 +417,13 @@ export function PortfolioPanel({
                   <button
                     key={option.key}
                     type="button"
-                    className={option.key === dailySortKey ? 'yb-sort-chip is-active' : 'yb-sort-chip'}
-                    aria-pressed={option.key === dailySortKey}
-                    onClick={() => setDailySortKey(option.key)}
+                    className={option.key === dailySort.key ? 'yb-sort-chip is-active' : 'yb-sort-chip'}
+                    aria-label={sortButtonLabel(option.label, option.key === dailySort.key, dailySort.direction, option.defaultDirection)}
+                    aria-pressed={option.key === dailySort.key}
+                    onClick={() => setDailySort((current) => nextSortState(current, option.key, option.defaultDirection))}
                   >
-                    {option.label}
+                    <span>{option.label}</span>
+                    {sortArrows(option.key === dailySort.key, dailySort.direction)}
                   </button>
                 ))}
               </div>
@@ -459,11 +498,13 @@ export function PortfolioPanel({
                 <button
                   key={option.key}
                   type="button"
-                  className={option.key === profitSortKey ? 'yb-sort-chip is-active' : 'yb-sort-chip'}
-                  aria-pressed={option.key === profitSortKey}
-                  onClick={() => setProfitSortKey(option.key)}
+                  className={option.key === profitSort.key ? 'yb-sort-chip is-active' : 'yb-sort-chip'}
+                  aria-label={sortButtonLabel(option.label, option.key === profitSort.key, profitSort.direction, option.defaultDirection)}
+                  aria-pressed={option.key === profitSort.key}
+                  onClick={() => setProfitSort((current) => nextSortState(current, option.key, option.defaultDirection))}
                 >
-                  {option.label}
+                  <span>{option.label}</span>
+                  {sortArrows(option.key === profitSort.key, profitSort.direction)}
                 </button>
               ))}
             </div>
@@ -506,11 +547,13 @@ export function PortfolioPanel({
                 <button
                   key={option.key}
                   type="button"
-                  className={option.key === sortKey ? 'yb-sort-chip is-active' : 'yb-sort-chip'}
-                  aria-pressed={option.key === sortKey}
-                  onClick={() => setSortKey(option.key)}
+                  className={option.key === holdingSort.key ? 'yb-sort-chip is-active' : 'yb-sort-chip'}
+                  aria-label={sortButtonLabel(option.label, option.key === holdingSort.key, holdingSort.direction, option.defaultDirection)}
+                  aria-pressed={option.key === holdingSort.key}
+                  onClick={() => setHoldingSort((current) => nextSortState(current, option.key, option.defaultDirection))}
                 >
-                  {option.label}
+                  <span>{option.label}</span>
+                  {sortArrows(option.key === holdingSort.key, holdingSort.direction)}
                 </button>
               ))}
             </div>
