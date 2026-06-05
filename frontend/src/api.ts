@@ -2,7 +2,7 @@ import type { FundHistoryPoint, FundHoldings, FundIntradayPoint, FundQuote, Inde
 
 const SESSION_TOKEN_KEY = 'gg_fund_session_token';
 const CACHE_PREFIX = 'gg_fund_api_cache:';
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 const CACHE_MAX_STALE_MS = 30 * 24 * 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;

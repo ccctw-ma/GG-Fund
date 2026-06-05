@@ -106,4 +106,16 @@ describe('frontend api client', () => {
     expect(api.getCachedFundIntraday('510300')).toEqual([{ time: '09:30', price: 1.23 }]);
   });
 
+  it('ignores old intraday cache envelopes after cache version bumps', () => {
+    localStorage.setItem('gg_fund_api_cache:fund-intraday:025856', JSON.stringify({
+      version: 2,
+      savedAt: Date.now(),
+      expiresAt: Date.now() + 60_000,
+      value: [{ time: '15:00', price: 100 }],
+    }));
+
+    expect(api.getCachedFundIntraday('025856')).toBeUndefined();
+    expect(localStorage.getItem('gg_fund_api_cache:fund-intraday:025856')).toBeNull();
+  });
+
 });

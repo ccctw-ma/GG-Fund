@@ -3,18 +3,28 @@
 import ReactECharts from 'echarts-for-react';
 import type { FundIntradayPoint } from '../types';
 
+function cutoffTimeFromEstimate(estimateTime?: string) {
+  const match = estimateTime?.match(/(?:^|\s)(\d{2}):(\d{2})(?::\d{2})?/);
+  return match ? `${match[1]}:${match[2]}` : undefined;
+}
+
 export function IntradayTrendChart({
   points,
   title,
   dailyChangePercent,
+  estimateTime,
   loading = false,
 }: {
   points: FundIntradayPoint[];
   title: string;
   dailyChangePercent?: number;
+  estimateTime?: string;
   loading?: boolean;
 }) {
-  if (points.length === 0) {
+  const cutoffTime = cutoffTimeFromEstimate(estimateTime);
+  const visiblePoints = cutoffTime ? points.filter((point) => point.time <= cutoffTime) : points;
+
+  if (visiblePoints.length === 0) {
     return (
       <div className="intraday-empty">
         {loading ? '正在加载当日分时走势…' : '当前公开接口只返回单点实时估算，暂未拿到分钟级走势。ETF、股票类可交易标的一般可查看分时线。'}
@@ -22,8 +32,8 @@ export function IntradayTrendChart({
     );
   }
 
-  const latest = points.at(-1);
-  const first = points[0];
+  const latest = visiblePoints.at(-1);
+  const first = visiblePoints[0];
   const change = latest && first ? latest.price - first.price : 0;
   const displayedChange = dailyChangePercent ?? change;
   const source = latest?.source ?? first?.source ?? '公开行情接口';
@@ -46,7 +56,7 @@ export function IntradayTrendChart({
     grid: { left: 38, right: 18, top: 42, bottom: 30 },
     xAxis: {
       type: 'category',
-      data: points.map((point) => point.time),
+      data: visiblePoints.map((point) => point.time),
       axisLabel: { color: '#6f8095', fontWeight: 700 },
       axisLine: { lineStyle: { color: 'rgba(255,255,255,.12)' } },
       axisTick: { show: false },
@@ -65,15 +75,15 @@ export function IntradayTrendChart({
         showSymbol: false,
         lineStyle: { width: 3, shadowBlur: 12, shadowColor: 'rgba(255,93,82,.36)' },
         areaStyle: { opacity: 0.12 },
-        data: points.map((point) => point.price),
+        data: visiblePoints.map((point) => point.price),
       },
-      points.some((point) => point.average !== undefined) && {
+      visiblePoints.some((point) => point.average !== undefined) && {
         name: '均价',
         type: 'line',
         smooth: true,
         showSymbol: false,
         lineStyle: { width: 2, type: 'dashed', shadowBlur: 10, shadowColor: 'rgba(247,201,107,.28)' },
-        data: points.map((point) => point.average ?? null),
+        data: visiblePoints.map((point) => point.average ?? null),
       },
     ].filter(Boolean),
   };
@@ -86,7 +96,7 @@ export function IntradayTrendChart({
             <strong>{title}</strong>
             <small className={sourceType === 'estimated' ? 'intraday-source-badge is-estimated' : 'intraday-source-badge'}>{sourceType === 'estimated' ? '近似走势' : '真实分时'}</small>
           </div>
-          <span>{points[0]?.time} - {latest?.time} · {points.length} 个分时点</span>
+          <span>{visiblePoints[0]?.time} - {latest?.time} · {visiblePoints.length} 个分时点</span>
           {dailyChangePercent !== undefined && (
             <span className="intraday-basis-line">收益口径：按日涨跌 {dailyChangePercent >= 0 ? '+' : ''}{dailyChangePercent.toFixed(2)}%</span>
           )}
