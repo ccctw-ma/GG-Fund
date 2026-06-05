@@ -77,6 +77,7 @@ describe('dashboard components', () => {
   afterEach(() => {
     act(() => roots.splice(0).forEach((root) => root.unmount()));
     document.body.replaceChildren();
+    localStorage.clear();
     vi.clearAllMocks();
   });
 
@@ -145,6 +146,7 @@ describe('dashboard components', () => {
     expect(search.container.textContent).toContain('上涨原因来自持仓方向');
     expect(search.container.textContent).toContain('东方财富基金概况');
     expect(search.container.querySelector('.fund-ai-resize-handle.is-corner')).not.toBeNull();
+    expect(localStorage.getItem('gg-fund:analysis-panel-rect')).toContain('"x"');
     const holdingButton = search.container.querySelector<HTMLButtonElement>('[data-testid="fund-holdings"] button');
     expect(holdingButton).not.toBeNull();
     const annualizedButton = Array.from(search.container.querySelectorAll('button')).find((button) => button.textContent?.includes('年化收益'));
@@ -352,6 +354,7 @@ describe('dashboard components', () => {
     expect(portfolio.container.textContent).toContain('驱动');
     expect(portfolio.container.textContent).toContain('上涨原因来自持仓方向');
     expect(portfolio.container.querySelector('.fund-ai-links a')?.textContent).toContain('东方财富基金概况');
+    expect(localStorage.getItem('gg-fund:analysis-panel-rect')).toContain('"width"');
     const bottomModules = portfolio.container.querySelector('[data-testid="portfolio-bottom-modules"]');
     expect(bottomModules).not.toBeNull();
     expect(portfolio.container.textContent).toContain('多平台账本');

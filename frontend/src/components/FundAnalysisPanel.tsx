@@ -30,6 +30,7 @@ const MOBILE_BREAKPOINT = 720;
 const VIEWPORT_PADDING = 12;
 const MIN_PANEL_WIDTH = 320;
 const MIN_PANEL_HEIGHT = 280;
+const PANEL_STORAGE_KEY = 'gg-fund:analysis-panel-rect';
 
 function probabilityLabel(probability: 'low' | 'medium' | 'high') {
   if (probability === 'high') return '高概率';
@@ -38,11 +39,11 @@ function probabilityLabel(probability: 'low' | 'medium' | 'high') {
 }
 
 function computeInitialRect() {
-  const width = Math.min(420, window.innerWidth - 24);
-  const height = Math.min(560, window.innerHeight - 108);
+  const width = Math.min(420, Math.max(MIN_PANEL_WIDTH, window.innerWidth * 0.34));
+  const height = Math.min(560, Math.max(420, window.innerHeight - 132));
   return {
-    x: Math.max(VIEWPORT_PADDING, window.innerWidth - width - 20),
-    y: 82,
+    x: Math.max(VIEWPORT_PADDING, window.innerWidth - width - 28),
+    y: 96,
     width,
     height,
   };
@@ -56,6 +57,33 @@ function clampRect(rect: PanelRect) {
   const x = Math.min(window.innerWidth - width - VIEWPORT_PADDING, Math.max(VIEWPORT_PADDING, rect.x));
   const y = Math.min(window.innerHeight - height - VIEWPORT_PADDING, Math.max(VIEWPORT_PADDING, rect.y));
   return { x, y, width, height };
+}
+
+function loadStoredRect() {
+  try {
+    const raw = window.localStorage.getItem(PANEL_STORAGE_KEY);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as Partial<PanelRect>;
+    if (
+      typeof parsed.x !== 'number'
+      || typeof parsed.y !== 'number'
+      || typeof parsed.width !== 'number'
+      || typeof parsed.height !== 'number'
+    ) {
+      return undefined;
+    }
+    return parsed as PanelRect;
+  } catch {
+    return undefined;
+  }
+}
+
+function saveStoredRect(rect: PanelRect) {
+  try {
+    window.localStorage.setItem(PANEL_STORAGE_KEY, JSON.stringify(rect));
+  } catch {
+    // 忽略无痕模式或存储受限场景。
+  }
 }
 
 export function FundAnalysisPanel({ target, analysis, loadingCode, error, onClose }: Props) {
@@ -73,13 +101,21 @@ export function FundAnalysisPanel({ target, analysis, loadingCode, error, onClos
     const syncViewportState = () => {
       const mobile = window.innerWidth <= MOBILE_BREAKPOINT;
       setIsMobile(mobile);
-      if (mobile) return;
-      setRect((current) => clampRect(current ?? computeInitialRect()));
+      if (mobile) {
+        setRect(undefined);
+        return;
+      }
+      setRect((current) => clampRect(current ?? loadStoredRect() ?? computeInitialRect()));
     };
     syncViewportState();
     window.addEventListener('resize', syncViewportState);
     return () => window.removeEventListener('resize', syncViewportState);
-    }, [target]);
+  }, [target]);
+
+  useEffect(() => {
+    if (!target || isMobile || !rect) return;
+    saveStoredRect(rect);
+  }, [isMobile, rect, target]);
 
   useEffect(() => {
     if (!target || isMobile) return undefined;
@@ -138,7 +174,7 @@ export function FundAnalysisPanel({ target, analysis, loadingCode, error, onClos
     <aside
       className={`fund-ai-panel ${isMobile ? 'is-mobile' : 'is-floating'}`}
       aria-label={`${target.name} 智能分析面板`}
-      style={!isMobile && rect ? { left: rect.x, top: rect.y, width: rect.width, height: rect.height } : undefined}
+      style={!isMobile && rect ? { left: rect.x, top: rect.y, right: 'auto', width: rect.width, height: rect.height } : undefined}
     >
       <div className="fund-ai-panel-head" onPointerDown={(event) => startInteraction(event, 'move')}>
         <div>
