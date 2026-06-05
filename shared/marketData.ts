@@ -616,6 +616,21 @@ function anchorEstimatedIntradayToDailyChange(points: FundIntradayPoint[], daily
   }));
 }
 
+function intradayCutoffFromQuote(quote: FundQuote): string | undefined {
+  const match = quote.estimateTime?.match(/(?:^|\s)(\d{2}):(\d{2})(?::\d{2})?/);
+  if (!match) return undefined;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour < 9 || hour > 15 || minute < 0 || minute > 59) return undefined;
+  return `${match[1]}:${match[2]}`;
+}
+
+function alignEstimatedIntradayToQuote(points: FundIntradayPoint[], quote: FundQuote): FundIntradayPoint[] {
+  const cutoff = intradayCutoffFromQuote(quote);
+  const visiblePoints = cutoff ? points.filter((point) => point.time <= cutoff) : points;
+  return anchorEstimatedIntradayToDailyChange(visiblePoints, quote.dailyChangePercent);
+}
+
 async function fetchWithTimeout(url: string, init: RequestInit = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -836,7 +851,7 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     if (mobileHoldings.linkedEtfCode) {
       const etfPoints = await getTencentIntraday(mobileHoldings.linkedEtfCode).catch(() => []);
       const linkedEtfPoints = withIntradaySource(
-        anchorEstimatedIntradayToDailyChange(etfPoints, quote.dailyChangePercent),
+        alignEstimatedIntradayToQuote(etfPoints, quote),
         `跟踪 ETF ${mobileHoldings.linkedEtfName ?? mobileHoldings.linkedEtfCode}(${mobileHoldings.linkedEtfCode}) 分时近似（东方财富关联标的 + 腾讯分钟线）`,
         'estimated',
       );
@@ -854,15 +869,15 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
         })),
     );
     const approximated = withIntradaySource(
-      anchorEstimatedIntradayToDailyChange(aggregateIntradayFromWeightedHoldings(weightedSeries), quote.dailyChangePercent),
+      alignEstimatedIntradayToQuote(aggregateIntradayFromWeightedHoldings(weightedSeries), quote),
       '主要持仓加权近似（东方财富持仓 + 腾讯分钟线）',
       'estimated',
     );
     if (approximated.length > 0) return approximated;
     return getTencentIntradayBySymbol('sh000300', '沪深300分时近似（腾讯证券）', 'estimated')
-      .then((points) => anchorEstimatedIntradayToDailyChange(points, quote.dailyChangePercent))
+      .then((points) => alignEstimatedIntradayToQuote(points, quote))
       .catch(() => getTencentIntradayBySymbol('sh000001', '上证指数分时近似（腾讯证券）', 'estimated')
-        .then((points) => anchorEstimatedIntradayToDailyChange(points, quote.dailyChangePercent)))
+        .then((points) => alignEstimatedIntradayToQuote(points, quote)))
       .catch(() => []);
   }
 
