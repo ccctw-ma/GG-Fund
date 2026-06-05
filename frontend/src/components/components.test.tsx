@@ -340,6 +340,14 @@ describe('dashboard components', () => {
     expect(detail?.textContent).toContain('累计盈亏');
     expect(portfolio.container.querySelector('[data-testid="holding-positions"]')).not.toBeNull();
     expect(portfolio.container.querySelector('[data-testid="holding-positions"]')?.textContent).toContain('已披露股票持仓');
+    const aiButtons = Array.from(portfolio.container.querySelectorAll('button')).filter((button) => button.textContent?.includes('智能分析'));
+    expect(aiButtons.length).toBeGreaterThan(0);
+    act(() => aiButtons[0]?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await act(async () => { await Promise.resolve(); });
+    expect(mockApi.analyzeFund).toHaveBeenCalledWith('000001');
+    expect(portfolio.container.textContent).toContain('Deepseek Agent');
+    expect(portfolio.container.textContent).toContain('为什么涨 / 跌');
+    expect(portfolio.container.textContent).toContain('上涨原因来自持仓方向');
     const bottomModules = portfolio.container.querySelector('[data-testid="portfolio-bottom-modules"]');
     expect(bottomModules).not.toBeNull();
     expect(portfolio.container.textContent).toContain('多平台账本');
