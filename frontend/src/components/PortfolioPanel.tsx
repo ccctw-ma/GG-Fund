@@ -180,6 +180,8 @@ export function PortfolioPanel({
   const [analysisLoadingCode, setAnalysisLoadingCode] = useState<string>();
   const [analysisError, setAnalysisError] = useState('');
   const [analysisMap, setAnalysisMap] = useState<Record<string, FundAnalysisResponse>>({});
+  const [analysisStatusMap, setAnalysisStatusMap] = useState<Record<string, string>>({});
+  const [analysisDraftMap, setAnalysisDraftMap] = useState<Record<string, string>>({});
   const historyLoadingRef = useRef<Set<string>>(new Set());
   const sortedItems = useMemo(() => sortItems(summary.items, holdingSort), [holdingSort, summary.items]);
   const dailyProfitItems = useMemo(
@@ -278,8 +280,13 @@ export function PortfolioPanel({
     setAnalysisError('');
     if (analysisMap[item.fundCode]) return;
     setAnalysisLoadingCode(item.fundCode);
+    setAnalysisStatusMap((current) => ({ ...current, [item.fundCode]: '正在准备分析上下文...' }));
+    setAnalysisDraftMap((current) => ({ ...current, [item.fundCode]: '' }));
     try {
-      const analysis = await api.analyzeFund(item.fundCode);
+      const analysis = await api.analyzeFundStream(item.fundCode, {
+        onStatus: (message) => setAnalysisStatusMap((current) => ({ ...current, [item.fundCode]: message })),
+        onDelta: (delta) => setAnalysisDraftMap((current) => ({ ...current, [item.fundCode]: `${current[item.fundCode] ?? ''}${delta}` })),
+      });
       setAnalysisMap((current) => ({ ...current, [item.fundCode]: analysis }));
     } catch (caught) {
       setAnalysisError(caught instanceof Error ? caught.message : '智能分析暂不可用');
@@ -834,6 +841,8 @@ export function PortfolioPanel({
           target={analysisTarget}
           analysis={selectedAnalysis}
           loadingCode={analysisLoadingCode}
+          streamingStatus={analysisTarget ? analysisStatusMap[analysisTarget.code] : undefined}
+          streamingDraft={analysisTarget ? analysisDraftMap[analysisTarget.code] : undefined}
           error={analysisError}
           onClose={() => setAnalysisTarget(undefined)}
         />

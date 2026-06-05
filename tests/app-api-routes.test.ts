@@ -31,12 +31,14 @@ vi.mock('../features/ai/service', async (importOriginal) => {
   return {
     ...actual,
     buildAnalyzeFundResponse: vi.fn(),
+    streamAnalyzeFundResponse: vi.fn(),
   };
 });
 
-import { buildAnalyzeFundResponse } from '../features/ai/service';
+import { buildAnalyzeFundResponse, streamAnalyzeFundResponse } from '../features/ai/service';
 import { GET as getAuth, POST as postAuth } from '../app/api/auth/[action]/route';
 import { POST as analyzeFund } from '../app/api/ai/analyze-fund/route';
+import { POST as analyzeFundStream } from '../app/api/ai/analyze-fund/stream/route';
 import { GET as getFund } from '../app/api/funds/[code]/route';
 import { GET as getFundHistory } from '../app/api/funds/[code]/history/route';
 import { GET as getFundIntraday } from '../app/api/funds/[code]/intraday/route';
@@ -183,6 +185,7 @@ class FakeD1 {
 }
 
 const buildAnalyzeFundResponseMock = vi.mocked(buildAnalyzeFundResponse);
+const streamAnalyzeFundResponseMock = vi.mocked(streamAnalyzeFundResponse);
 
 function resetMarketServiceMocks() {
   marketService.getIndices.mockReset();
@@ -207,6 +210,7 @@ describe('app api routes', () => {
 
     resetMarketServiceMocks();
     buildAnalyzeFundResponseMock.mockReset();
+    streamAnalyzeFundResponseMock.mockReset();
     getCloudflareContextMock.mockReset().mockRejectedValue(new Error('Cloudflare context not available'));
     delete (globalThis as { GG_FUND_DB?: unknown }).GG_FUND_DB;
     process.env.DEEPSEEK_API_KEY = 'test-deepseek-key';
@@ -236,7 +240,24 @@ describe('app api routes', () => {
       runtime: 'edge',
       market: 'ready',
       portfolio: 'ready',
-      ai: 'ready',
+      ai: 'deepseek-ready',
+      auth: 'resend-email-otp',
+    });
+  });
+
+  it('returns fallback ai status when DeepSeek key is unavailable', async () => {
+    delete process.env.DEEPSEEK_API_KEY;
+
+    const response = await getHealth();
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      service: 'gg-fund-next-api',
+      runtime: 'edge',
+      market: 'ready',
+      portfolio: 'ready',
+      ai: 'local-fallback',
       auth: 'resend-email-otp',
     });
   });
@@ -855,6 +876,66 @@ describe('app api routes', () => {
     await expect(response.json()).resolves.toEqual({
       error: { code: 'FUND_NOT_FOUND', message: '未找到该基金' },
     });
+  });
+
+  it('streams AI analysis events with Cloudflare env fallback', async () => {
+    getCloudflareContextMock.mockResolvedValueOnce({
+      env: { DEEPSEEK_API_KEY: 'cf-deepseek-key' },
+      cf: undefined,
+      ctx: {},
+    });
+    streamAnalyzeFundResponseMock.mockImplementationOnce(async (_body, _deps, handlers) => {
+      handlers?.onStatus?.('正在连接 DeepSeek...');
+      handlers?.onDelta?.('【核心判断】\n基金基本面稳定。');
+      return {
+        fund: { code: '000001', name: '华夏成长混合', netValue: 1.35, quoteDate: '2026-05-30', quoteType: 'official', source: 'test' },
+        agent: {
+          model: 'deepseek-v4-flash',
+          steps: [{ name: 'call_deepseek', status: 'done', summary: 'streamed' }],
+          indicators: { totalReturn: 3.2, maxDrawdown: -1.1, volatility: 0.8, shortMomentum: 0.5, trendSlope: 0.2, sampleSize: 30 },
+        },
+        report: {
+          summary: '基金基本面稳定。',
+          trend: '短期趋势偏强。',
+          marketDrivers: '上涨原因来自持仓方向和市场风险偏好。',
+          outlook: '未来关注指数风格和回撤变化。',
+          risk: '注意回撤控制。',
+          beginnerGuide: {
+            riskLevel: 'R4',
+            riskExplanation: '波动中等偏高。',
+            netValueExplanation: '净值需要结合成本看。',
+            trendExplanation: '趋势偏强但不代表收益承诺。',
+            suggestedAction: '继续持有',
+            actionPath: ['确认期限', '观察回撤', '分批执行'],
+            suitableFor: ['三年以上闲钱'],
+            avoid: ['追涨杀跌'],
+          },
+          scenarios: [],
+          watchPoints: ['净值波动'],
+          sourceNotes: ['参考公开网页材料。'],
+          disclaimer: '不构成投资建议',
+        },
+        chartAnnotations: [{ label: '趋势改善', description: '净值回升', tone: 'positive' }],
+        researchSources: [{ title: '东方财富基金概况', url: 'https://example.com', summary: '基金公开材料' }],
+        analysis: '基金基本面稳定。',
+      };
+    });
+
+    const response = await analyzeFundStream(new Request('https://example.com/api/ai/analyze-fund/stream', {
+      method: 'POST',
+      body: JSON.stringify({ code: '000001' }),
+    }));
+    const text = await response.text();
+    const events = text.trim().split('\n').map((line) => JSON.parse(line) as { type: string; message?: string; delta?: string; data?: { agent: { model: string } } });
+
+    expect(streamAnalyzeFundResponseMock).toHaveBeenCalledWith(
+      { code: '000001' },
+      { marketService, deepSeekApiKey: 'cf-deepseek-key' },
+      expect.any(Object),
+    );
+    expect(events[0]).toEqual({ type: 'status', message: '正在连接 DeepSeek...' });
+    expect(events[1]?.delta).toContain('核心判断');
+    expect(events.at(-1)?.data?.agent.model).toBe('deepseek-v4-flash');
   });
 
   it('maps unexpected analysis upstream failures to 502', async () => {

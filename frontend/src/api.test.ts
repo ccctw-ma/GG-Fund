@@ -70,6 +70,32 @@ describe('frontend api client', () => {
     });
   });
 
+  it('streams fund analysis drafts before receiving the final result', async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(`${JSON.stringify({ type: 'status', message: '正在连接 DeepSeek...' })}\n`));
+        controller.enqueue(new TextEncoder().encode(`${JSON.stringify({ type: 'delta', delta: '【核心判断】\n' })}\n`));
+        controller.enqueue(new TextEncoder().encode(`${JSON.stringify({ type: 'delta', delta: '基金短期仍看风格轮动。' })}\n`));
+        controller.enqueue(new TextEncoder().encode(`${JSON.stringify({ type: 'result', data: { analysis: 'ok', fund: { code: '000001', name: '华夏成长混合', netValue: 1.2, quoteDate: '2026-06-05', source: 'test' }, agent: { model: 'deepseek-v4-flash', steps: [], indicators: { totalReturn: 1, maxDrawdown: -1, shortMomentum: 1, volatility: 1, trendSlope: 1, sampleSize: 10 } }, report: { summary: 'ok', trend: 'ok', marketDrivers: 'ok', outlook: 'ok', risk: 'ok', beginnerGuide: { riskLevel: 'R3', riskExplanation: 'ok', netValueExplanation: 'ok', trendExplanation: 'ok', suggestedAction: '观察等待', actionPath: [], suitableFor: [], avoid: [] }, scenarios: [], watchPoints: [], sourceNotes: [], disclaimer: 'ok' }, chartAnnotations: [], researchSources: [] } })}\n`));
+        controller.close();
+      },
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(stream, { status: 200, headers: { 'content-type': 'application/x-ndjson' } }),
+    );
+
+    const statuses: string[] = [];
+    const deltas: string[] = [];
+    const result = await api.analyzeFundStream('000001', {
+      onStatus: (message) => statuses.push(message),
+      onDelta: (delta) => deltas.push(delta),
+    });
+
+    expect(statuses).toEqual(['正在连接 DeepSeek...']);
+    expect(deltas.join('')).toContain('核心判断');
+    expect(result.agent.model).toBe('deepseek-v4-flash');
+  });
+
 
   it('builds OAuth metadata URL with provider and redirect', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(

@@ -41,6 +41,8 @@ export function FundSearch({ query, setQuery, results, selectedFund, history, be
   const [analysisLoadingCode, setAnalysisLoadingCode] = useState<string>();
   const [analysisError, setAnalysisError] = useState('');
   const [analysisMap, setAnalysisMap] = useState<Record<string, FundAnalysisResponse>>({});
+  const [analysisStatusMap, setAnalysisStatusMap] = useState<Record<string, string>>({});
+  const [analysisDraftMap, setAnalysisDraftMap] = useState<Record<string, string>>({});
   const selectedIsStock = selectedFund?.assetType === 'stock';
   const selectedAnalysis = selectedFund ? analysisMap[selectedFund.code] : undefined;
   const holdingStocks = holdings?.stocks ?? [];
@@ -54,8 +56,13 @@ export function FundSearch({ query, setQuery, results, selectedFund, history, be
     setAnalysisError('');
     if (analysisMap[fund.code]) return;
     setAnalysisLoadingCode(fund.code);
+    setAnalysisStatusMap((current) => ({ ...current, [fund.code]: '正在准备分析上下文...' }));
+    setAnalysisDraftMap((current) => ({ ...current, [fund.code]: '' }));
     try {
-      const analysis = await api.analyzeFund(fund.code);
+      const analysis = await api.analyzeFundStream(fund.code, {
+        onStatus: (message) => setAnalysisStatusMap((current) => ({ ...current, [fund.code]: message })),
+        onDelta: (delta) => setAnalysisDraftMap((current) => ({ ...current, [fund.code]: `${current[fund.code] ?? ''}${delta}` })),
+      });
       setAnalysisMap((current) => ({ ...current, [fund.code]: analysis }));
     } catch (caught) {
       setAnalysisError(caught instanceof Error ? caught.message : '智能分析暂不可用');
@@ -119,6 +126,8 @@ export function FundSearch({ query, setQuery, results, selectedFund, history, be
               target={{ code: selectedFund.code, name: selectedFund.name }}
               analysis={selectedAnalysis}
               loadingCode={analysisLoadingCode}
+              streamingStatus={analysisStatusMap[selectedFund.code]}
+              streamingDraft={analysisDraftMap[selectedFund.code]}
               error={analysisError}
               onClose={() => setAnalysisOpen(false)}
             />

@@ -99,6 +99,57 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+type AnalyzeFundStreamEvent =
+  | { type: 'status'; message: string }
+  | { type: 'delta'; delta: string }
+  | { type: 'result'; data: FundAnalysisResponse }
+  | { type: 'error'; code: string; message: string };
+
+async function postStreamedAnalyzeFund(
+  code: string,
+  handlers: { onStatus?: (message: string) => void; onDelta?: (delta: string) => void } = {},
+): Promise<FundAnalysisResponse> {
+  const response = await fetch('/api/ai/analyze-fund/stream', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ code }),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? '请求失败');
+  }
+  if (!response.body) return postJson<FundAnalysisResponse>('/api/ai/analyze-fund', { code });
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let finalResult: FundAnalysisResponse | undefined;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+    let lineBreak = buffer.indexOf('\n');
+    while (lineBreak >= 0) {
+      const line = buffer.slice(0, lineBreak).trim();
+      buffer = buffer.slice(lineBreak + 1);
+      if (line) {
+        const event = JSON.parse(line) as AnalyzeFundStreamEvent;
+        if (event.type === 'status') handlers.onStatus?.(event.message);
+        if (event.type === 'delta') handlers.onDelta?.(event.delta);
+        if (event.type === 'result') finalResult = event.data;
+        if (event.type === 'error') throw new Error(event.message);
+      }
+      lineBreak = buffer.indexOf('\n');
+    }
+    if (done) break;
+  }
+
+  if (!finalResult) {
+    throw new Error('智能分析未返回最终结果');
+  }
+  return finalResult;
+}
+
 async function putJson<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(path, {
     method: 'PUT',
@@ -160,6 +211,7 @@ export const api = {
   getFundHoldings: (code: string) => getCachedJson<FundHoldings>(`/api/funds/${code}/holdings`, `fund-holdings:${code}`, cacheTtl.holdings),
   getTrendingFunds: () => getCachedJson<FundQuote[]>('/api/funds/trending', 'funds-trending', cacheTtl.trending),
   analyzeFund: (code: string) => postJson<FundAnalysisResponse>('/api/ai/analyze-fund', { code }),
+    analyzeFundStream: (code: string, handlers?: { onStatus?: (message: string) => void; onDelta?: (delta: string) => void }) => postStreamedAnalyzeFund(code, handlers),
   syncPortfolio: (holdings: unknown[], watchlist: unknown[]) =>
     putJson<unknown>('/api/portfolio/default', { holdings, watchlist }),
   getCurrentUser: () => getJson<AuthSessionResponse>('/api/auth/me'),

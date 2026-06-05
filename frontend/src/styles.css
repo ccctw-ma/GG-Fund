@@ -398,7 +398,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .fund-ai-body section,
 .fund-ai-loading,
-.fund-ai-error {
+.fund-ai-error,
+.fund-ai-stream {
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 16px;
   background: rgba(255,255,255,.062);
@@ -414,6 +415,28 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   font-weight: 900;
 }
 .fund-ai-error { margin: 10px 12px 0; color: var(--bull); font-size: .82rem; font-weight: 900; }
+.fund-ai-stream {
+  display: grid;
+  gap: 6px;
+  margin: 10px 12px 0;
+}
+.fund-ai-stream h4 {
+  margin: 0;
+  color: rgba(247,201,107,.96);
+  font-size: .72rem;
+  font-weight: 950;
+  letter-spacing: .06em;
+}
+.fund-ai-stream pre {
+  max-height: 180px;
+  overflow: auto;
+  margin: 0;
+  white-space: pre-wrap;
+  color: rgba(241,245,249,.9);
+  font-size: .8rem;
+  font-weight: 740;
+  line-height: 1.55;
+}
 .fund-ai-body h4 {
   margin: 0 0 5px;
   color: rgba(247,201,107,.96);

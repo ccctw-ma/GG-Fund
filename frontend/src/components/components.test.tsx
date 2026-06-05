@@ -56,6 +56,42 @@ const mockApi = vi.hoisted(() => ({
     researchSources: [{ title: '东方财富基金概况', url: 'https://example.com', summary: '基金经理与持仓摘要' }],
     analysis: 'AI 判断：成长风格改善。',
   })),
+  analyzeFundStream: vi.fn(async (_code: string, handlers?: { onStatus?: (message: string) => void; onDelta?: (delta: string) => void }) => {
+    handlers?.onStatus?.('DeepSeek 正在逐段生成分析...');
+    handlers?.onDelta?.('【核心判断】\nAI 判断：成长风格改善。');
+    return ({
+    fund: { code: '000001', name: '华夏成长混合', netValue: 1.35, quoteDate: '2026-05-29', quoteType: 'estimate' as const, source: 'test' },
+    agent: {
+      model: 'deepseek-v4-flash',
+      steps: [{ name: 'collect_web_research', status: 'done' as const, summary: '联网读取公开材料' }],
+      indicators: { totalReturn: 3, maxDrawdown: -2, shortMomentum: 1, volatility: 0.8, trendSlope: 0.1, sampleSize: 20 },
+    },
+    report: {
+      summary: 'AI 判断：成长风格改善。',
+      trend: '短期趋势偏强。',
+      marketDrivers: '上涨原因来自持仓方向和市场风险偏好修复。',
+      outlook: '未来看权益市场风格、基金持仓和回撤变化。',
+      risk: '注意波动。',
+      beginnerGuide: {
+        riskLevel: 'R3' as const,
+        riskExplanation: '中等风险',
+        netValueExplanation: '结合成本看净值',
+        trendExplanation: '不要追涨',
+        suggestedAction: '观察等待' as const,
+        actionPath: ['观察'],
+        suitableFor: ['长期资金'],
+        avoid: ['追涨杀跌'],
+      },
+      scenarios: [{ name: '中性情景', probability: 'medium' as const, description: '震荡观察' }],
+      watchPoints: ['最大回撤'],
+      sourceNotes: ['公开网页材料'],
+      disclaimer: '不构成投资建议',
+    },
+    chartAnnotations: [],
+    researchSources: [{ title: '东方财富基金概况', url: 'https://example.com', summary: '基金经理与持仓摘要' }],
+    analysis: 'AI 判断：成长风格改善。',
+    });
+  }),
 }));
 
 vi.mock('../api', () => ({ api: mockApi }));
@@ -139,7 +175,7 @@ describe('dashboard components', () => {
     const aiButton = Array.from(search.container.querySelectorAll('button')).find((button) => button.textContent?.includes('智能分析'));
     act(() => aiButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     await act(async () => { await Promise.resolve(); });
-    expect(mockApi.analyzeFund).toHaveBeenCalledWith('000001');
+    expect(mockApi.analyzeFundStream).toHaveBeenCalledWith('000001', expect.any(Object));
     expect(search.container.textContent).toContain('Deepseek Agent');
     expect(search.container.textContent).toContain('核心判断');
     expect(search.container.textContent).toContain('驱动');
@@ -348,7 +384,7 @@ describe('dashboard components', () => {
     expect(aiButtons.length).toBeGreaterThan(0);
     act(() => aiButtons[0]?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     await act(async () => { await Promise.resolve(); });
-    expect(mockApi.analyzeFund).toHaveBeenCalledWith('000001');
+    expect(mockApi.analyzeFundStream).toHaveBeenCalledWith('000001', expect.any(Object));
     expect(portfolio.container.textContent).toContain('Deepseek Agent');
     expect(portfolio.container.textContent).toContain('核心判断');
     expect(portfolio.container.textContent).toContain('驱动');

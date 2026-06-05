@@ -105,5 +105,5 @@ curl https://gg-fund.workers.dev/api/funds/000001
 
 - `app/api/portfolio/default/route.ts` 会优先读取 OpenNext Cloudflare runtime context 中的 `GG_FUND_DB`，并保留对 dev/test 全局 binding 的兼容；部署前需确保 `wrangler.jsonc` 与实际 Worker binding 保持一致。
 - Resend 登录依赖 `RESEND_API_KEY` 与 `AUTH_EMAIL_FROM`；缺失时本地开发会返回 `devCode`，生产环境应配置 Cloudflare Secret。
-- 基金智能分析依赖 `DEEPSEEK_API_KEY`；缺失时 `/api/ai/analyze-fund` 会保留行情、历史走势和公开网页抓取步骤，但最终回退到本地确定性指标报告。
+- 基金智能分析依赖 `DEEPSEEK_API_KEY`；Next Route Handlers 会优先从 OpenNext Cloudflare runtime context 读取该 secret。缺失时 `/api/ai/analyze-fund` 与 `/api/ai/analyze-fund/stream` 都会保留行情、历史走势和公开网页抓取步骤，但最终明确回退到本地确定性指标报告；`/api/health` 的 `ai` 字段会返回 `local-fallback` 而不是伪装成 `ready`。
 - Secret 泄露后必须立即在提供商控制台吊销并重新配置。

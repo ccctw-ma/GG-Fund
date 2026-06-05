@@ -22,6 +22,8 @@ type Props = {
   target?: AnalysisTarget;
   analysis?: FundAnalysisResponse;
   loadingCode?: string;
+  streamingStatus?: string;
+  streamingDraft?: string;
   error?: string;
   onClose: () => void;
 };
@@ -86,7 +88,7 @@ function saveStoredRect(rect: PanelRect) {
   }
 }
 
-export function FundAnalysisPanel({ target, analysis, loadingCode, error, onClose }: Props) {
+export function FundAnalysisPanel({ target, analysis, loadingCode, streamingStatus, streamingDraft, error, onClose }: Props) {
   const [isMobile, setIsMobile] = useState(false);
   const [rect, setRect] = useState<PanelRect>();
   const interactionRef = useRef<{
@@ -180,7 +182,7 @@ export function FundAnalysisPanel({ target, analysis, loadingCode, error, onClos
         <div>
           <span><Bot className="h-4 w-4" /> Deepseek Agent</span>
           <strong>{target.name} 智能分析</strong>
-          <small>{target.code} · 可拖拽、可缩放的精简分析浮层</small>
+          <small>{target.code} · 可拖拽、可缩放的精简分析浮层{analysis ? ` · ${analysis.agent.model}` : ''}</small>
         </div>
         <div className="fund-ai-panel-actions">
           {!isMobile && <Grip className="h-4 w-4 text-[rgba(226,232,240,.55)]" aria-hidden="true" />}
@@ -192,10 +194,16 @@ export function FundAnalysisPanel({ target, analysis, loadingCode, error, onClos
       {loadingCode === target.code && (
         <div className="fund-ai-loading">
           <LoaderCircle className="h-5 w-5 animate-spin" />
-          正在联网读取公开材料并生成分析…
+          {streamingStatus || '正在联网读取公开材料并生成分析…'}
         </div>
       )}
       {error && <p className="fund-ai-error">{error}</p>}
+      {streamingDraft && (loadingCode === target.code || !analysis) && (
+        <div className="fund-ai-stream">
+          <h4>流式草稿</h4>
+          <pre>{streamingDraft}</pre>
+        </div>
+      )}
       {analysis && (
         <div className="fund-ai-body">
           <section className="fund-ai-summary-card">

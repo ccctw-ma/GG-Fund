@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildAnalyzeFundResponse, normalizeAnalyzeFundRequest } from './service';
+import { buildAnalyzeFundResponse, normalizeAnalyzeFundRequest, streamAnalyzeFundResponse } from './service';
 
 const marketService = {
   getFund: async () => ({
@@ -100,5 +100,49 @@ describe('ai service', () => {
     expect(response.chartAnnotations).toEqual([
       expect.objectContaining({ label: '动量改善', tone: 'positive' }),
     ]);
+  });
+
+  it('streams readable DeepSeek output and normalizes it into report sections', async () => {
+    const chunks = [
+      'data: {"choices":[{"delta":{"content":"【核心判断】\\n基金短期仍看成长风格修复。\\n\\n"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":"【趋势】\\n趋势偏强但节奏会反复。\\n\\n【涨跌原因】\\n主要受成长板块回暖与基金重仓方向修复驱动。\\n\\n"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":"【后续观察】\\n继续关注风格切换和回撤。\\n\\n【风险提示】\\n短期波动仍高。\\n\\n【关注点】\\n- 最大回撤\\n- 成长指数强弱\\n\\n【数据来源】\\n- 东方财富基金概况\\n\\n【免责声明】\\n不构成投资建议"}}]}\n\n',
+      'data: [DONE]\n\n',
+    ];
+    const deepSeekFetch = (async () => {
+      let index = 0;
+      return new Response(new ReadableStream({
+        pull(controller) {
+          if (index >= chunks.length) {
+            controller.close();
+            return;
+          }
+          controller.enqueue(new TextEncoder().encode(chunks[index]));
+          index += 1;
+        },
+      }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const statuses: string[] = [];
+    const deltas: string[] = [];
+    const response = await streamAnalyzeFundResponse(
+      { code: '000001' },
+      {
+        marketService,
+        deepSeekApiKey: 'test-secret',
+        deepSeekFetch,
+        webResearchFetch,
+      },
+      {
+        onStatus: (message) => statuses.push(message),
+        onDelta: (delta) => deltas.push(delta),
+      },
+    );
+
+    expect(statuses.at(-1)).toContain('分析完成');
+    expect(deltas.join('')).toContain('核心判断');
+    expect(response.agent.model).toBe('deepseek-v4-flash');
+    expect(response.report.marketDrivers).toContain('成长板块回暖');
+    expect(response.report.watchPoints).toContain('最大回撤');
   });
 });

@@ -1,4 +1,4 @@
-import { buildBeginnerGuide, buildResearchPrompt, computeFundIndicators, normalizeAnalysisReport, normalizeChartAnnotations, type FundResearchSource } from '../../backend/fundAnalysis';
+import { buildBeginnerGuide, buildResearchPrompt, buildStreamingResearchPrompt, computeFundIndicators, normalizeAnalysisReport, normalizeChartAnnotations, type FundResearchSource } from '../../backend/fundAnalysis';
 import { HttpError } from '../../lib/http';
 import type { FundHistoryPoint, FundQuote, IndexQuote } from '../../shared/types';
 import type { MarketService } from '../market/service';
@@ -25,6 +25,11 @@ type AnalyzeFundDependencies = {
   deepSeekApiKey?: string;
   deepSeekFetch?: typeof fetch;
   webResearchFetch?: typeof fetch;
+};
+
+export type AnalyzeFundStreamCallbacks = {
+  onStatus?: (message: string) => void;
+  onDelta?: (delta: string) => void;
 };
 
 const RESEARCH_TIMEOUT_MS = 5000;
@@ -117,16 +122,27 @@ function buildLocalReport(fund: Pick<FundQuote, 'name' | 'code' | 'netValue' | '
   };
 }
 
-export async function buildAnalyzeFundResponse(
+type AnalyzeFundPrepared = {
+  fund: FundQuote;
+  history: FundHistoryPoint[];
+  indices: IndexQuote[];
+  indicators: ReturnType<typeof computeFundIndicators>;
+  researchSources: FundResearchSource[];
+  steps: AnalyzeFundResponse['agent']['steps'];
+};
+
+async function prepareAnalyzeFund(
   request: AnalyzeFundRequest,
   dependencies: AnalyzeFundDependencies,
-): Promise<AnalyzeFundResponse> {
-  const deepSeekFetch = dependencies.deepSeekFetch ?? fetch;
-  const fund = await dependencies.marketService.getFund(request.code);
-  const history = await dependencies.marketService.getFundHistory(request.code, '1y');
-  const indices = await dependencies.marketService.getIndices();
+  callbacks?: AnalyzeFundStreamCallbacks,
+): Promise<AnalyzeFundPrepared> {
+  callbacks?.onStatus?.('正在读取基金净值与历史走势...');
+  const fund = await dependencies.marketService.getFund(request.code) as FundQuote;
+  const history = await dependencies.marketService.getFundHistory(request.code, '1y') as FundHistoryPoint[];
+  const indices = await dependencies.marketService.getIndices() as IndexQuote[];
+  callbacks?.onStatus?.('正在联网抓取公开材料...');
   const researchSources = await collectResearchSources(fund, dependencies.webResearchFetch ?? fetch);
-  const indicators = computeFundIndicators(history as FundHistoryPoint[]);
+  const indicators = computeFundIndicators(history);
   const steps: AnalyzeFundResponse['agent']['steps'] = [
     { name: 'collect_fund_quote', status: 'done', summary: `读取 ${fund.name} 当前净值 ${fund.netValue}` },
     { name: 'collect_history', status: 'done', summary: `读取 ${history.length} 条历史净值` },
@@ -134,27 +150,82 @@ export async function buildAnalyzeFundResponse(
     { name: 'collect_web_research', status: 'done', summary: `联网读取 ${researchSources.length} 条公开基金材料` },
     { name: 'compute_indicators', status: 'done', summary: `区间收益 ${indicators.totalReturn.toFixed(2)}%，最大回撤 ${indicators.maxDrawdown.toFixed(2)}%` },
   ];
+  return { fund, history, indices, indicators, researchSources, steps };
+}
+
+function buildFallbackAnalyzeFundResponse(prepared: AnalyzeFundPrepared): AnalyzeFundResponse {
+  const report = buildLocalReport(prepared.fund, prepared.indicators);
+  const steps = [
+    ...prepared.steps,
+    { name: 'build_research_prompt', status: 'done' as const, summary: '构建包含指标、行情和输出契约的研究提示' },
+    { name: 'call_deepseek', status: 'done' as const, summary: '未配置 DeepSeek key，使用本地确定性报告作为降级输出' },
+    { name: 'normalize_report', status: 'done' as const, summary: '基于指标生成离线趋势/风险/情景报告' },
+  ];
+  return {
+    fund: prepared.fund,
+    agent: { model: 'local-fallback', steps, indicators: prepared.indicators },
+    report,
+    chartAnnotations: [{ label: '本地降级', description: report.summary, tone: 'neutral' }],
+    researchSources: prepared.researchSources,
+    analysis: report.summary,
+  };
+}
+
+async function readDeepSeekStream(
+  response: Response,
+  callbacks?: AnalyzeFundStreamCallbacks,
+) {
+  if (!response.body) throw new HttpError(502, 'DEEPSEEK_UPSTREAM_ERROR', 'DeepSeek 流式响应不可用');
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullText = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+    let eventBoundary = buffer.indexOf('\n\n');
+    while (eventBoundary >= 0) {
+      const eventChunk = buffer.slice(0, eventBoundary);
+      buffer = buffer.slice(eventBoundary + 2);
+      const data = eventChunk
+        .split('\n')
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => line.slice('data:'.length).trim())
+        .join('');
+      if (data && data !== '[DONE]') {
+        const payload = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string } }> };
+        const delta = payload.choices?.[0]?.delta?.content ?? '';
+        if (delta) {
+          fullText += delta;
+          callbacks?.onDelta?.(delta);
+        }
+      }
+      eventBoundary = buffer.indexOf('\n\n');
+    }
+    if (done) break;
+  }
+
+  return fullText.trim();
+}
+
+export async function buildAnalyzeFundResponse(
+  request: AnalyzeFundRequest,
+  dependencies: AnalyzeFundDependencies,
+): Promise<AnalyzeFundResponse> {
+  const deepSeekFetch = dependencies.deepSeekFetch ?? fetch;
+  const prepared = await prepareAnalyzeFund(request, dependencies);
   const prompt = buildResearchPrompt({
-    fund: fund as FundQuote,
-    history: history as FundHistoryPoint[],
-    indices: indices as IndexQuote[],
-    indicators,
-    researchSources,
+    fund: prepared.fund,
+    history: prepared.history,
+    indices: prepared.indices,
+    indicators: prepared.indicators,
+    researchSources: prepared.researchSources,
   });
-  steps.push({ name: 'build_research_prompt', status: 'done', summary: '构建包含指标、行情和输出契约的研究提示' });
+  const steps = [...prepared.steps, { name: 'build_research_prompt', status: 'done' as const, summary: '构建包含指标、行情和输出契约的研究提示' }];
 
   if (!dependencies.deepSeekApiKey) {
-    const report = buildLocalReport(fund, indicators);
-    steps.push({ name: 'call_deepseek', status: 'done', summary: '未配置 DeepSeek key，使用本地确定性报告作为降级输出' });
-    steps.push({ name: 'normalize_report', status: 'done', summary: '基于指标生成离线趋势/风险/情景报告' });
-    return {
-      fund,
-      agent: { model: 'local-fallback', steps, indicators },
-      report,
-      chartAnnotations: [{ label: '本地降级', description: report.summary, tone: 'neutral' }],
-      researchSources,
-      analysis: report.summary,
-    };
+    return buildFallbackAnalyzeFundResponse(prepared);
   }
 
   const response = await deepSeekFetch('https://api.deepseek.com/chat/completions', {
@@ -184,11 +255,74 @@ export async function buildAnalyzeFundResponse(
   steps.push({ name: 'normalize_report', status: 'done', summary: '规范化研究报告、情景和图表标注' });
 
   return {
-    fund,
-    agent: { model: 'deepseek-v4-flash', steps, indicators },
+    fund: prepared.fund,
+    agent: { model: 'deepseek-v4-flash', steps, indicators: prepared.indicators },
     report,
     chartAnnotations,
-    researchSources,
+    researchSources: prepared.researchSources,
+    analysis: report.summary,
+  };
+}
+
+export async function streamAnalyzeFundResponse(
+  request: AnalyzeFundRequest,
+  dependencies: AnalyzeFundDependencies,
+  callbacks?: AnalyzeFundStreamCallbacks,
+): Promise<AnalyzeFundResponse> {
+  const deepSeekFetch = dependencies.deepSeekFetch ?? fetch;
+  const prepared = await prepareAnalyzeFund(request, dependencies, callbacks);
+  if (!dependencies.deepSeekApiKey) {
+    callbacks?.onStatus?.('未检测到 DeepSeek key，已切换到本地降级分析。');
+    const fallback = buildFallbackAnalyzeFundResponse(prepared);
+    callbacks?.onDelta?.(fallback.report.summary);
+    return fallback;
+  }
+
+  callbacks?.onStatus?.('正在连接 DeepSeek 并开始流式生成...');
+  const prompt = buildStreamingResearchPrompt({
+    fund: prepared.fund,
+    history: prepared.history,
+    indices: prepared.indices,
+    indicators: prepared.indicators,
+    researchSources: prepared.researchSources,
+  });
+  const steps = [...prepared.steps, { name: 'build_research_prompt', status: 'done' as const, summary: '构建流式研究提示并等待模型输出' }];
+
+  const response = await deepSeekFetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${dependencies.deepSeekApiKey}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'deepseek-v4-flash',
+      stream: true,
+      messages: [
+        { role: 'system', content: '你是谨慎的基金研究助理。输出必须简洁、可读、基于证据，并强调不构成投资建议。' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.25,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new HttpError(502, 'DEEPSEEK_UPSTREAM_ERROR', 'DeepSeek 流式分析服务暂不可用');
+  }
+
+  callbacks?.onStatus?.('DeepSeek 正在逐段生成分析...');
+  const content = await readDeepSeekStream(response, callbacks);
+  const report = normalizeAnalysisReport(content || '暂无分析结果');
+  const chartAnnotations = normalizeChartAnnotations(content || '', report.summary);
+  steps.push({ name: 'call_deepseek', status: 'done', summary: 'DeepSeek v4 Flash 已流式返回研究内容' });
+  steps.push({ name: 'normalize_report', status: 'done', summary: '规范化研究报告、情景和图表标注' });
+  callbacks?.onStatus?.('分析完成，已整理成结构化结论。');
+
+  return {
+    fund: prepared.fund,
+    agent: { model: 'deepseek-v4-flash', steps, indicators: prepared.indicators },
+    report,
+    chartAnnotations,
+    researchSources: prepared.researchSources,
     analysis: report.summary,
   };
 }

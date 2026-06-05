@@ -120,6 +120,72 @@ export function buildResearchPrompt(input: { fund: FundQuote; history: FundHisto
 }`;
 }
 
+export function buildStreamingResearchPrompt(input: { fund: FundQuote; history: FundHistoryPoint[]; indices: IndexQuote[]; indicators: FundAnalysisIndicators; researchSources?: FundResearchSource[] }) {
+  return `你是谨慎的中国公募基金研究 Agent。请基于真实数据与公开材料输出精炼分析，不构成投资建议。
+
+基金：${input.fund.name} (${input.fund.code})
+当前净值/估算：${input.fund.netValue}
+报价日期：${input.fund.quoteDate}
+数据来源：${input.fund.source}
+
+指标 JSON：${JSON.stringify(input.indicators)}
+最近历史净值：${JSON.stringify(input.history.slice(-30))}
+市场指数：${JSON.stringify(input.indices)}
+联网公开材料：${JSON.stringify(input.researchSources ?? [])}
+
+请严格按以下纯文本结构输出，不要 JSON、不要代码块、不要 markdown 表格：
+【核心判断】
+一句话总结
+
+【趋势】
+结合 totalReturn、shortMomentum、trendSlope 说明趋势
+
+【涨跌原因】
+结合联网公开材料、指数、持仓/基金经理/基金主题解释为什么涨或为什么跌；没有足够证据时明确说证据不足
+
+【后续观察】
+分析未来 1-3 个月可能影响走势的因素、触发条件和不确定性，不做收益承诺
+
+【风险提示】
+结合 maxDrawdown、volatility 说明风险
+
+【新手说明】
+风险等级：R1|R2|R3|R4|R5
+风险解释：...
+净值怎么看：...
+趋势怎么看：...
+建议动作：继续持有|观察等待|分批加仓|分批减仓|避免追涨
+执行路径：
+1. ...
+2. ...
+3. ...
+适合：
+- ...
+- ...
+避免：
+- ...
+- ...
+
+【情景推演】
+- 乐观情景 | low|medium|high | ...
+- 中性情景 | low|medium|high | ...
+- 压力情景 | low|medium|high | ...
+
+【关注点】
+- ...
+- ...
+
+【数据来源】
+- ...
+- ...
+
+【图表标注】
+- positive|negative|neutral | 标注标题 | 标注说明
+
+【免责声明】
+不构成投资建议`;
+}
+
 function inferRiskLevel(indicators: FundAnalysisIndicators): FundAnalysisReport['beginnerGuide']['riskLevel'] {
   const drawdown = Math.abs(indicators.maxDrawdown);
   if (drawdown < 1 && indicators.volatility < 0.35) return 'R2';
@@ -180,6 +246,91 @@ function fallbackBeginnerGuide(summary: string): FundAnalysisReport['beginnerGui
   };
 }
 
+function parseTaggedSections(content: string) {
+  const sections = new Map<string, string>();
+  const matches = content.matchAll(/【([^】]+)】\s*([\s\S]*?)(?=\n【[^】]+】|$)/g);
+  for (const match of matches) {
+    const title = match[1]?.trim();
+    const body = match[2]?.trim();
+    if (title && body) sections.set(title, body);
+  }
+  return sections;
+}
+
+function parseBulletList(body?: string) {
+  if (!body) return [];
+  return body
+    .split('\n')
+    .map((line) => line.replace(/^[-*]\s*/, '').trim())
+    .filter(Boolean);
+}
+
+function parseBeginnerGuide(body: string | undefined, summary: string): FundAnalysisReport['beginnerGuide'] {
+  if (!body) return fallbackBeginnerGuide(summary);
+  const lines = body.split('\n').map((line) => line.trim()).filter(Boolean);
+  const riskLevel = (lines.find((line) => line.startsWith('风险等级：'))?.replace('风险等级：', '').trim() as FundAnalysisReport['beginnerGuide']['riskLevel'] | undefined) ?? 'R3';
+  const riskExplanation = lines.find((line) => line.startsWith('风险解释：'))?.replace('风险解释：', '').trim() ?? '';
+  const netValueExplanation = lines.find((line) => line.startsWith('净值怎么看：'))?.replace('净值怎么看：', '').trim() ?? '';
+  const trendExplanation = lines.find((line) => line.startsWith('趋势怎么看：'))?.replace('趋势怎么看：', '').trim() ?? '';
+  const suggestedAction = (lines.find((line) => line.startsWith('建议动作：'))?.replace('建议动作：', '').trim() as FundAnalysisReport['beginnerGuide']['suggestedAction'] | undefined) ?? '观察等待';
+
+  const actionStart = lines.findIndex((line) => line === '执行路径：');
+  const suitableStart = lines.findIndex((line) => line === '适合：');
+  const avoidStart = lines.findIndex((line) => line === '避免：');
+  const actionPath = actionStart >= 0
+    ? lines.slice(actionStart + 1, suitableStart >= 0 ? suitableStart : lines.length).map((line) => line.replace(/^\d+\.\s*/, '').trim()).filter(Boolean)
+    : [];
+  const suitableFor = suitableStart >= 0
+    ? lines.slice(suitableStart + 1, avoidStart >= 0 ? avoidStart : lines.length).map((line) => line.replace(/^[-*]\s*/, '').trim()).filter(Boolean)
+    : [];
+  const avoid = avoidStart >= 0
+    ? lines.slice(avoidStart + 1).map((line) => line.replace(/^[-*]\s*/, '').trim()).filter(Boolean)
+    : [];
+
+  return {
+    riskLevel: ['R1', 'R2', 'R3', 'R4', 'R5'].includes(riskLevel) ? riskLevel : 'R3',
+    riskExplanation: riskExplanation || fallbackBeginnerGuide(summary).riskExplanation,
+    netValueExplanation: netValueExplanation || fallbackBeginnerGuide(summary).netValueExplanation,
+    trendExplanation: trendExplanation || fallbackBeginnerGuide(summary).trendExplanation,
+    suggestedAction: ['继续持有', '观察等待', '分批加仓', '分批减仓', '避免追涨'].includes(suggestedAction) ? suggestedAction : '观察等待',
+    actionPath: actionPath.length ? actionPath : fallbackBeginnerGuide(summary).actionPath,
+    suitableFor: suitableFor.length ? suitableFor : fallbackBeginnerGuide(summary).suitableFor,
+    avoid: avoid.length ? avoid : fallbackBeginnerGuide(summary).avoid,
+  };
+}
+
+function parseScenarios(body?: string): FundAnalysisReport['scenarios'] {
+  if (!body) return [];
+  return body
+    .split('\n')
+    .map((line) => line.replace(/^[-*]\s*/, '').trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [name, probability, ...rest] = line.split('|').map((part) => part.trim());
+      if (!name || !probability || rest.length === 0) return undefined;
+      const normalizedProbability = (['low', 'medium', 'high'].includes(probability) ? probability : 'medium') as 'low' | 'medium' | 'high';
+      return { name, probability: normalizedProbability, description: rest.join(' | ') };
+    })
+    .filter((scenario): scenario is FundAnalysisReport['scenarios'][number] => Boolean(scenario));
+}
+
+function parseChartAnnotationsFromSections(content: string, fallback: string): ChartAnnotation[] {
+  const body = parseTaggedSections(content).get('图表标注');
+  if (!body) return [{ label: 'AI 观察', description: fallback, tone: 'neutral' }];
+  const annotations = body
+    .split('\n')
+    .map((line) => line.replace(/^[-*]\s*/, '').trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [tone, label, ...rest] = line.split('|').map((part) => part.trim());
+      if (!label || rest.length === 0) return undefined;
+      const normalizedTone = (['positive', 'negative', 'neutral'].includes(tone) ? tone : 'neutral') as ChartAnnotation['tone'];
+      return { tone: normalizedTone, label, description: rest.join(' | ') };
+    })
+    .filter((annotation): annotation is ChartAnnotation => Boolean(annotation));
+  return annotations.length ? annotations : [{ label: 'AI 观察', description: fallback, tone: 'neutral' }];
+}
+
 export function normalizeAnalysisReport(content: string): FundAnalysisReport {
   try {
     const parsed = JSON.parse(content) as Partial<FundAnalysisReport>;
@@ -197,6 +348,22 @@ export function normalizeAnalysisReport(content: string): FundAnalysisReport {
       disclaimer: parsed.disclaimer || '本分析仅供学习参考，不构成投资建议。',
     };
   } catch {
+    const sections = parseTaggedSections(content);
+    if (sections.size > 0) {
+      const summary = sections.get('核心判断') ?? content;
+      return {
+        summary,
+        trend: sections.get('趋势') ?? '趋势信息不足，需要结合更长历史净值继续观察。',
+        marketDrivers: sections.get('涨跌原因') ?? '当前公开材料不足以归因涨跌，先结合净值、指数和持仓变化观察。',
+        outlook: sections.get('后续观察') ?? '未来走势取决于市场风格、基金持仓方向和回撤修复情况，不宜线性外推。',
+        risk: sections.get('风险提示') ?? '风险信息不足，请关注回撤和波动。',
+        beginnerGuide: parseBeginnerGuide(sections.get('新手说明'), summary),
+        scenarios: parseScenarios(sections.get('情景推演')).length ? parseScenarios(sections.get('情景推演')) : [{ name: '中性情景', probability: 'medium', description: '维持当前走势，等待更多数据确认。' }],
+        watchPoints: parseBulletList(sections.get('关注点')).length ? parseBulletList(sections.get('关注点')) : ['后续净值变化', '主要指数走势', '基金公告和持仓变化'],
+        sourceNotes: parseBulletList(sections.get('数据来源')).length ? parseBulletList(sections.get('数据来源')) : ['未获得足够公开网页材料，主要依据净值和指数数据。'],
+        disclaimer: sections.get('免责声明') ?? '本分析仅供学习参考，不构成投资建议。',
+      };
+    }
     return {
       summary: content,
       trend: content,
@@ -217,6 +384,6 @@ export function normalizeChartAnnotations(content: string, fallback: string): Ch
     const parsed = JSON.parse(content) as { chartAnnotations?: ChartAnnotation[] };
     return parsed.chartAnnotations?.length ? parsed.chartAnnotations : [{ label: 'AI 观察', description: fallback, tone: 'neutral' }];
   } catch {
-    return [{ label: 'AI 观察', description: fallback, tone: 'neutral' }];
+    return parseChartAnnotationsFromSections(content, fallback);
   }
 }
