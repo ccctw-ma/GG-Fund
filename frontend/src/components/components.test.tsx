@@ -140,9 +140,11 @@ describe('dashboard components', () => {
     await act(async () => { await Promise.resolve(); });
     expect(mockApi.analyzeFund).toHaveBeenCalledWith('000001');
     expect(search.container.textContent).toContain('Deepseek Agent');
-    expect(search.container.textContent).toContain('为什么涨 / 跌');
+    expect(search.container.textContent).toContain('核心判断');
+    expect(search.container.textContent).toContain('驱动');
     expect(search.container.textContent).toContain('上涨原因来自持仓方向');
     expect(search.container.textContent).toContain('东方财富基金概况');
+    expect(search.container.querySelector('.fund-ai-resize-handle.is-corner')).not.toBeNull();
     const holdingButton = search.container.querySelector<HTMLButtonElement>('[data-testid="fund-holdings"] button');
     expect(holdingButton).not.toBeNull();
     const annualizedButton = Array.from(search.container.querySelectorAll('button')).find((button) => button.textContent?.includes('年化收益'));
@@ -346,8 +348,10 @@ describe('dashboard components', () => {
     await act(async () => { await Promise.resolve(); });
     expect(mockApi.analyzeFund).toHaveBeenCalledWith('000001');
     expect(portfolio.container.textContent).toContain('Deepseek Agent');
-    expect(portfolio.container.textContent).toContain('为什么涨 / 跌');
+    expect(portfolio.container.textContent).toContain('核心判断');
+    expect(portfolio.container.textContent).toContain('驱动');
     expect(portfolio.container.textContent).toContain('上涨原因来自持仓方向');
+    expect(portfolio.container.querySelector('.fund-ai-links a')?.textContent).toContain('东方财富基金概况');
     const bottomModules = portfolio.container.querySelector('[data-testid="portfolio-bottom-modules"]');
     expect(bottomModules).not.toBeNull();
     expect(portfolio.container.textContent).toContain('多平台账本');
