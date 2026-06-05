@@ -100,6 +100,8 @@ export type FundAnalysisIndicators = {
 export type FundAnalysisReport = {
   summary: string;
   trend: string;
+  marketDrivers: string;
+  outlook: string;
   risk: string;
   beginnerGuide: {
     riskLevel: 'R1' | 'R2' | 'R3' | 'R4' | 'R5';
@@ -113,6 +115,7 @@ export type FundAnalysisReport = {
   };
   scenarios: Array<{ name: string; probability: 'low' | 'medium' | 'high'; description: string }>;
   watchPoints: string[];
+  sourceNotes: string[];
   disclaimer: string;
 };
 
@@ -125,6 +128,7 @@ export type FundAnalysisResponse = {
   };
   report: FundAnalysisReport;
   chartAnnotations: Array<{ date?: string; label: string; description: string; tone: 'positive' | 'negative' | 'neutral' }>;
+  researchSources: Array<{ title: string; url: string; summary: string }>;
   analysis: string;
 };
 

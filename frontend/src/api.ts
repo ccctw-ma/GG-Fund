@@ -1,4 +1,4 @@
-import type { FundHistoryPoint, FundHoldings, FundIntradayPoint, FundQuote, IndexQuote } from './types';
+import type { FundAnalysisResponse, FundHistoryPoint, FundHoldings, FundIntradayPoint, FundQuote, IndexQuote } from './types';
 
 const SESSION_TOKEN_KEY = 'gg_fund_session_token';
 const CACHE_PREFIX = 'gg_fund_api_cache:';
@@ -159,6 +159,7 @@ export const api = {
   getFundIntraday: (code: string) => getCachedJson<FundIntradayPoint[]>(`/api/funds/${code}/intraday`, `fund-intraday:${code}`, cacheTtl.fundIntraday),
   getFundHoldings: (code: string) => getCachedJson<FundHoldings>(`/api/funds/${code}/holdings`, `fund-holdings:${code}`, cacheTtl.holdings),
   getTrendingFunds: () => getCachedJson<FundQuote[]>('/api/funds/trending', 'funds-trending', cacheTtl.trending),
+  analyzeFund: (code: string) => postJson<FundAnalysisResponse>('/api/ai/analyze-fund', { code }),
   syncPortfolio: (holdings: unknown[], watchlist: unknown[]) =>
     putJson<unknown>('/api/portfolio/default', { holdings, watchlist }),
   getCurrentUser: () => getJson<AuthSessionResponse>('/api/auth/me'),

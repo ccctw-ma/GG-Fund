@@ -1,7 +1,9 @@
 'use client';
 
-import { Layers, Search, Star, WalletCards } from 'lucide-react';
-import type { FundHistoryPoint, FundHoldings, FundQuote, WatchItem } from '../types';
+import { Bot, Layers, LoaderCircle, Search, Star, WalletCards, X } from 'lucide-react';
+import { useState } from 'react';
+import { api } from '../api';
+import type { FundAnalysisResponse, FundHistoryPoint, FundHoldings, FundQuote, WatchItem } from '../types';
 import { FundTrendChart } from './FundTrendChart';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -34,12 +36,33 @@ function formatAssetValue(fund: FundQuote) {
 }
 
 export function FundSearch({ query, setQuery, results, selectedFund, history, benchmarkHistory = [], holdings, loading, error, onSearch, onSelect, onAddHolding, onToggleWatch, watchlist }: Props) {
+  const [analysisOpen, setAnalysisOpen] = useState(false);
+  const [analysisLoadingCode, setAnalysisLoadingCode] = useState<string>();
+  const [analysisError, setAnalysisError] = useState('');
+  const [analysisMap, setAnalysisMap] = useState<Record<string, FundAnalysisResponse>>({});
   const selectedIsStock = selectedFund?.assetType === 'stock';
+  const selectedAnalysis = selectedFund ? analysisMap[selectedFund.code] : undefined;
   const holdingStocks = holdings?.stocks ?? [];
   const disclosedStockWeight = holdingStocks.reduce((sum, stock) => sum + stock.weight, 0);
   const topTenWeight = holdingStocks.reduce((sum, stock, index) => sum + ((stock.isTopTen ?? (stock.rank ? stock.rank <= 10 : index < 10)) ? stock.weight : 0), 0);
   const disclosedBeyondTopTenWeight = Math.max(0, disclosedStockWeight - topTenWeight);
   const undisclosedWeight = Math.max(0, 100 - disclosedStockWeight);
+
+  async function openFundAnalysis(fund: FundQuote) {
+    setAnalysisOpen(true);
+    setAnalysisError('');
+    if (analysisMap[fund.code]) return;
+    setAnalysisLoadingCode(fund.code);
+    try {
+      const analysis = await api.analyzeFund(fund.code);
+      setAnalysisMap((current) => ({ ...current, [fund.code]: analysis }));
+    } catch (caught) {
+      setAnalysisError(caught instanceof Error ? caught.message : '智能分析暂不可用');
+    } finally {
+      setAnalysisLoadingCode((current) => (current === fund.code ? undefined : current));
+    }
+  }
+
   return (
     <Card id="funds" className="fund-search-card">
       <CardHeader>
@@ -80,10 +103,99 @@ export function FundSearch({ query, setQuery, results, selectedFund, history, be
               <p className={selectedFund.dailyChangePercent && selectedFund.dailyChangePercent >= 0 ? 'mt-2 font-black text-[var(--bull)]' : 'mt-2 font-black text-[var(--bear)]'}>日涨跌：{selectedFund.dailyChangePercent?.toFixed(2) ?? '--'}%</p>
             </div>
             <div className="flex flex-wrap gap-2">
+              {!selectedIsStock && (
+                <Button variant="outline" onClick={() => void openFundAnalysis(selectedFund)}>
+                  {analysisLoadingCode === selectedFund.code ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
+                  智能分析
+                </Button>
+              )}
               <Button onClick={() => onAddHolding(selectedFund)}><WalletCards className="h-4 w-4" />加入持仓</Button>
               <Button variant="secondary" onClick={() => onToggleWatch(selectedFund)}><Star className="h-4 w-4" />{watchlist.some((item) => item.fundCode === selectedFund.code) ? '移出自选' : '加入自选'}</Button>
             </div>
           </div>
+          {!selectedIsStock && analysisOpen && selectedFund && (
+            <aside className="fund-ai-panel" aria-label={`${selectedFund.name} 智能分析面板`}>
+              <div className="fund-ai-panel-head">
+                <div>
+                  <span><Bot className="h-4 w-4" /> Deepseek Agent</span>
+                  <strong>{selectedFund.name} 智能分析</strong>
+                  <small>{selectedFund.code} · 行情、历史走势、公开网页材料综合判断</small>
+                </div>
+                <button type="button" onClick={() => setAnalysisOpen(false)} aria-label="关闭智能分析">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              {analysisLoadingCode === selectedFund.code && (
+                <div className="fund-ai-loading">
+                  <LoaderCircle className="h-5 w-5 animate-spin" />
+                  正在联网读取公开材料并调用 Deepseek 分析…
+                </div>
+              )}
+              {analysisError && <p className="fund-ai-error">{analysisError}</p>}
+              {selectedAnalysis && (
+                <div className="fund-ai-body">
+                  <section>
+                    <h4>结论</h4>
+                    <p>{selectedAnalysis.report.summary}</p>
+                  </section>
+                  <section>
+                    <h4>为什么涨 / 跌</h4>
+                    <p>{selectedAnalysis.report.marketDrivers}</p>
+                  </section>
+                  <section>
+                    <h4>未来走势因素</h4>
+                    <p>{selectedAnalysis.report.outlook}</p>
+                  </section>
+                  <section className="fund-ai-grid">
+                    <div>
+                      <h4>趋势</h4>
+                      <p>{selectedAnalysis.report.trend}</p>
+                    </div>
+                    <div>
+                      <h4>风险</h4>
+                      <p>{selectedAnalysis.report.risk}</p>
+                    </div>
+                  </section>
+                  <section>
+                    <h4>情景推演</h4>
+                    <ul>
+                      {selectedAnalysis.report.scenarios.map((scenario) => (
+                        <li key={scenario.name}>
+                          <strong>{scenario.name}</strong>
+                          <span>{scenario.probability} · {scenario.description}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                  <section>
+                    <h4>关注点</h4>
+                    <div className="fund-ai-tags">
+                      {selectedAnalysis.report.watchPoints.map((point) => <span key={point}>{point}</span>)}
+                    </div>
+                  </section>
+                  <section>
+                    <h4>联网来源</h4>
+                    {selectedAnalysis.researchSources.length > 0 ? (
+                      <ul>
+                        {selectedAnalysis.researchSources.map((source) => (
+                          <li key={source.url}>
+                            <a href={source.url} target="_blank" rel="noreferrer">{source.title}</a>
+                            <span>{source.summary}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>本次未读取到可用公开网页材料，分析主要依据行情接口与历史净值。</p>
+                    )}
+                  </section>
+                  <section>
+                    <h4>说明</h4>
+                    <p>{selectedAnalysis.report.disclaimer}</p>
+                  </section>
+                </div>
+              )}
+            </aside>
+          )}
           {selectedIsStock ? (
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {[

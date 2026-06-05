@@ -12,6 +12,8 @@ export type FundAnalysisIndicators = {
 export type FundAnalysisReport = {
   summary: string;
   trend: string;
+  marketDrivers: string;
+  outlook: string;
   risk: string;
   beginnerGuide: {
     riskLevel: 'R1' | 'R2' | 'R3' | 'R4' | 'R5';
@@ -25,6 +27,7 @@ export type FundAnalysisReport = {
   };
   scenarios: Array<{ name: string; probability: 'low' | 'medium' | 'high'; description: string }>;
   watchPoints: string[];
+  sourceNotes: string[];
   disclaimer: string;
 };
 
@@ -67,7 +70,13 @@ export function computeFundIndicators(history: FundHistoryPoint[]): FundAnalysis
   };
 }
 
-export function buildResearchPrompt(input: { fund: FundQuote; history: FundHistoryPoint[]; indices: IndexQuote[]; indicators: FundAnalysisIndicators }) {
+export type FundResearchSource = {
+  title: string;
+  url: string;
+  summary: string;
+};
+
+export function buildResearchPrompt(input: { fund: FundQuote; history: FundHistoryPoint[]; indices: IndexQuote[]; indicators: FundAnalysisIndicators; researchSources?: FundResearchSource[] }) {
   return `你是谨慎的中国公募基金研究 Agent。请基于数据做情景分析，不构成投资建议。
 
 基金：${input.fund.name} (${input.fund.code})
@@ -78,11 +87,14 @@ export function buildResearchPrompt(input: { fund: FundQuote; history: FundHisto
 指标 JSON：${JSON.stringify(input.indicators)}
 最近历史净值：${JSON.stringify(input.history.slice(-30))}
 市场指数：${JSON.stringify(input.indices)}
+联网公开材料：${JSON.stringify(input.researchSources ?? [])}
 
 请严格按下面 JSON 输出，不要输出 markdown：
 {
   "summary": "一句话总结",
   "trend": "结合 totalReturn、shortMomentum、trendSlope 说明趋势",
+  "marketDrivers": "结合联网公开材料、指数、持仓/基金经理/基金主题解释为什么涨或为什么跌；没有足够证据时明确说证据不足",
+  "outlook": "分析未来 1-3 个月可能影响走势的因素、触发条件和不确定性，不做收益承诺",
   "risk": "结合 maxDrawdown、volatility 说明风险",
   "beginnerGuide": {
     "riskLevel": "R1|R2|R3|R4|R5",
@@ -100,6 +112,7 @@ export function buildResearchPrompt(input: { fund: FundQuote; history: FundHisto
     {"name":"压力情景","probability":"low|medium|high","description":"触发条件和表现"}
   ],
   "watchPoints": ["需要观察的指标或事件"],
+  "sourceNotes": ["使用了哪些公开网页/接口材料，哪些只是估算或证据不足"],
   "chartAnnotations": [
     {"label":"图表标注", "description":"为什么标注", "tone":"positive|negative|neutral"}
   ],
@@ -174,20 +187,26 @@ export function normalizeAnalysisReport(content: string): FundAnalysisReport {
     return {
       summary,
       trend: parsed.trend || '趋势信息不足，需要结合更长历史净值继续观察。',
+      marketDrivers: parsed.marketDrivers || '当前公开材料不足以归因涨跌，先结合净值、指数和持仓变化观察。',
+      outlook: parsed.outlook || '未来走势取决于市场风格、基金持仓方向和回撤修复情况，不宜线性外推。',
       risk: parsed.risk || '风险信息不足，请关注回撤和波动。',
       beginnerGuide: parsed.beginnerGuide || fallbackBeginnerGuide(summary),
       scenarios: parsed.scenarios?.length ? parsed.scenarios : [{ name: '中性情景', probability: 'medium', description: '维持当前走势，等待更多数据确认。' }],
       watchPoints: parsed.watchPoints?.length ? parsed.watchPoints : ['后续净值变化', '主要指数走势', '最大回撤变化'],
+      sourceNotes: parsed.sourceNotes?.length ? parsed.sourceNotes : ['未获得足够公开网页材料，主要依据净值和指数数据。'],
       disclaimer: parsed.disclaimer || '本分析仅供学习参考，不构成投资建议。',
     };
   } catch {
     return {
       summary: content,
       trend: content,
+      marketDrivers: '当前 AI 输出不是结构化 JSON，无法可靠拆分涨跌原因。',
+      outlook: '未来走势需要继续结合基金公告、持仓变化和市场指数确认。',
       risk: '请结合最大回撤、波动率和个人风险承受能力审慎判断。',
       beginnerGuide: fallbackBeginnerGuide(content),
       scenarios: [{ name: '中性情景', probability: 'medium', description: '当前信息不足以支持单边判断，建议继续观察。' }],
       watchPoints: ['后续净值变化', '主要指数走势', '基金公告和持仓变化'],
+      sourceNotes: ['AI 输出解析失败，已保留原始摘要并使用保守降级解释。'],
       disclaimer: '本分析仅供学习参考，不构成投资建议。',
     };
   }

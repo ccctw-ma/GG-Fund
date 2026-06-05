@@ -56,6 +56,21 @@ describe('frontend api client', () => {
     });
   });
 
+  it('posts fund analysis requests to the AI endpoint', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ analysis: 'ok' }), { status: 200, headers: { 'content-type': 'application/json' } }),
+    );
+
+    await api.analyzeFund('000001');
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/ai/analyze-fund', {
+      method: 'POST',
+      headers: expect.objectContaining({ 'content-type': 'application/json' }),
+      body: JSON.stringify({ code: '000001' }),
+    });
+  });
+
+
   it('builds OAuth metadata URL with provider and redirect', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ provider: 'github', authUrl: 'https://github.com/login/oauth/authorize', configured: true, callback: 'https://example.com/api/auth/oauth-callback' }), { status: 200, headers: { 'content-type': 'application/json' } }),

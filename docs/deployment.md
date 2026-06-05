@@ -40,6 +40,7 @@ bunx wrangler login
 ```bash
 RESEND_API_KEY=re_your_key
 AUTH_EMAIL_FROM="GG Fund <onboarding@resend.dev>"
+DEEPSEEK_API_KEY=sk_your_key
 ```
 
 如需继续使用现有 Cloudflare D1/KV 资源：
@@ -95,6 +96,7 @@ curl https://gg-fund.workers.dev/api/funds/000001
 
 - `RESEND_API_KEY`
 - `AUTH_EMAIL_FROM`
+- `DEEPSEEK_API_KEY`
 - `CF_WORKER_NAME`
 - `CF_D1_DATABASE`
 - `CF_VERIFY_BASE_URL`
@@ -103,4 +105,5 @@ curl https://gg-fund.workers.dev/api/funds/000001
 
 - `app/api/portfolio/default/route.ts` 会优先读取 OpenNext Cloudflare runtime context 中的 `GG_FUND_DB`，并保留对 dev/test 全局 binding 的兼容；部署前需确保 `wrangler.jsonc` 与实际 Worker binding 保持一致。
 - Resend 登录依赖 `RESEND_API_KEY` 与 `AUTH_EMAIL_FROM`；缺失时本地开发会返回 `devCode`，生产环境应配置 Cloudflare Secret。
+- 基金智能分析依赖 `DEEPSEEK_API_KEY`；缺失时 `/api/ai/analyze-fund` 会保留行情、历史走势和公开网页抓取步骤，但最终回退到本地确定性指标报告。
 - Secret 泄露后必须立即在提供商控制台吊销并重新配置。

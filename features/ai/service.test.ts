@@ -24,6 +24,12 @@ const marketService = {
   ],
 };
 
+const webResearchFetch = (async (input: RequestInfo | URL) =>
+  new Response(
+    `<html><body>华夏成长混合 000001 基金经理稳定，基金持仓偏成长，近期受权益市场风格影响。</body></html>`,
+    { status: String(input).includes('eastmoney') ? 200 : 404 },
+  )) as unknown as typeof fetch;
+
 describe('ai service', () => {
   it('validates analyze request payloads', () => {
     expect(normalizeAnalyzeFundRequest({ code: '000001' })).toEqual({ code: '000001' });
@@ -33,7 +39,7 @@ describe('ai service', () => {
   it('falls back to deterministic analysis when DeepSeek is unavailable', async () => {
     const response = await buildAnalyzeFundResponse(
       { code: '000001' },
-      { marketService, deepSeekApiKey: undefined },
+      { marketService, deepSeekApiKey: undefined, webResearchFetch },
     );
 
     expect(response.agent.model).toBe('local-fallback');
@@ -43,6 +49,7 @@ describe('ai service', () => {
     expect(response.chartAnnotations).toEqual([
       expect.objectContaining({ label: '本地降级' }),
     ]);
+    expect(response.researchSources[0]?.summary).toContain('基金经理');
   });
 
   it('normalizes DeepSeek output into a stable response contract', async () => {
@@ -55,6 +62,8 @@ describe('ai service', () => {
                 content: JSON.stringify({
                   summary: '上涨原因：估值与动量共振。',
                   trend: '趋势偏强',
+                  marketDrivers: '成长风格反弹带动净值上行。',
+                  outlook: '后续看权益市场风险偏好和基金重仓方向。',
                   risk: '注意波动回撤',
                   beginnerGuide: {
                     riskLevel: 'R4',
@@ -68,6 +77,7 @@ describe('ai service', () => {
                   },
                   scenarios: [{ name: '中性情景', probability: 'medium', description: '延续震荡上行' }],
                   watchPoints: ['最大回撤'],
+                  sourceNotes: ['参考东方财富公开材料与历史净值。'],
                   chartAnnotations: [{ label: '动量改善', description: '短期净值走强', tone: 'positive' }],
                   disclaimer: '不构成投资建议',
                 }),
@@ -80,12 +90,13 @@ describe('ai service', () => {
 
     const response = await buildAnalyzeFundResponse(
       { code: '000001' },
-      { marketService, deepSeekApiKey: 'test-secret', deepSeekFetch },
+      { marketService, deepSeekApiKey: 'test-secret', deepSeekFetch, webResearchFetch },
     );
 
     expect(response.agent.model).toBe('deepseek-v4-flash');
     expect(response.analysis).toContain('上涨原因');
     expect(response.report.beginnerGuide.suggestedAction).toBe('继续持有');
+    expect(response.report.marketDrivers).toContain('成长风格');
     expect(response.chartAnnotations).toEqual([
       expect.objectContaining({ label: '动量改善', tone: 'positive' }),
     ]);

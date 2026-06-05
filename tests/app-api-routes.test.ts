@@ -763,6 +763,8 @@ describe('app api routes', () => {
       report: {
         summary: '基金基本面稳定。',
         trend: '短期趋势偏强。',
+        marketDrivers: '上涨原因来自持仓方向和市场风险偏好。',
+        outlook: '未来关注指数风格和回撤变化。',
         risk: '注意回撤控制。',
         beginnerGuide: {
           riskLevel: 'R4',
@@ -776,9 +778,11 @@ describe('app api routes', () => {
         },
         scenarios: [],
         watchPoints: ['净值波动'],
+        sourceNotes: ['参考公开网页材料。'],
         disclaimer: '不构成投资建议',
       },
       chartAnnotations: [{ label: '趋势改善', description: '净值回升', tone: 'positive' }],
+      researchSources: [{ title: '东方财富基金概况', url: 'https://example.com', summary: '基金公开材料' }],
       analysis: '基金基本面稳定。',
     });
 
@@ -802,6 +806,8 @@ describe('app api routes', () => {
       report: {
         summary: '基金基本面稳定。',
         trend: '短期趋势偏强。',
+        marketDrivers: '上涨原因来自持仓方向和市场风险偏好。',
+        outlook: '未来关注指数风格和回撤变化。',
         risk: '注意回撤控制。',
         beginnerGuide: {
           riskLevel: 'R4',
@@ -815,9 +821,11 @@ describe('app api routes', () => {
         },
         scenarios: [],
         watchPoints: ['净值波动'],
+        sourceNotes: ['参考公开网页材料。'],
         disclaimer: '不构成投资建议',
       },
       chartAnnotations: [{ label: '趋势改善', description: '净值回升', tone: 'positive' }],
+      researchSources: [{ title: '东方财富基金概况', url: 'https://example.com', summary: '基金公开材料' }],
       analysis: '基金基本面稳定。',
     });
   });

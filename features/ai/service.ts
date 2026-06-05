@@ -1,4 +1,4 @@
-import { buildBeginnerGuide, buildResearchPrompt, computeFundIndicators, normalizeAnalysisReport, normalizeChartAnnotations } from '../../backend/fundAnalysis';
+import { buildBeginnerGuide, buildResearchPrompt, computeFundIndicators, normalizeAnalysisReport, normalizeChartAnnotations, type FundResearchSource } from '../../backend/fundAnalysis';
 import { HttpError } from '../../lib/http';
 import type { FundHistoryPoint, FundQuote, IndexQuote } from '../../shared/types';
 import type { MarketService } from '../market/service';
@@ -16,6 +16,7 @@ export type AnalyzeFundResponse = {
   };
   report: ReturnType<typeof normalizeAnalysisReport>;
   chartAnnotations: Array<{ date?: string; label: string; description: string; tone: 'positive' | 'negative' | 'neutral' }>;
+  researchSources: FundResearchSource[];
   analysis: string;
 };
 
@@ -23,7 +24,68 @@ type AnalyzeFundDependencies = {
   marketService: Pick<MarketService, 'getFund' | 'getFundHistory' | 'getIndices'>;
   deepSeekApiKey?: string;
   deepSeekFetch?: typeof fetch;
+  webResearchFetch?: typeof fetch;
 };
+
+const RESEARCH_TIMEOUT_MS = 5000;
+
+function stripHtml(input: string) {
+  return input
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;|&#160;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function pickRelevantSnippet(text: string, keywords: string[]) {
+  const normalized = text.slice(0, 20_000);
+  const index = keywords
+    .map((keyword) => normalized.indexOf(keyword))
+    .filter((position) => position >= 0)
+    .sort((a, b) => a - b)[0] ?? 0;
+  const start = Math.max(0, index - 240);
+  return normalized.slice(start, start + 900);
+}
+
+async function fetchText(fetcher: typeof fetch, url: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), RESEARCH_TIMEOUT_MS);
+  try {
+    const response = await fetcher(url, {
+      headers: {
+        'user-agent': 'GG-Fund research agent/1.0',
+        accept: 'text/html,application/json,text/plain,*/*',
+      },
+      signal: controller.signal,
+    });
+    if (!response.ok) return '';
+    return await response.text();
+  } catch {
+    return '';
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function collectResearchSources(fund: Pick<FundQuote, 'code' | 'name'>, fetcher: typeof fetch): Promise<FundResearchSource[]> {
+  const targets = [
+    { title: '东方财富基金概况', url: `https://fundf10.eastmoney.com/jbgk_${fund.code}.html` },
+    { title: '东方财富基金持仓', url: `https://fundf10.eastmoney.com/ccmx_${fund.code}.html` },
+    { title: '东方财富基金经理', url: `https://fundf10.eastmoney.com/jjjl_${fund.code}.html` },
+    { title: '东方财富搜索结果', url: `https://so.eastmoney.com/web/s?keyword=${encodeURIComponent(`${fund.code} ${fund.name}`)}` },
+  ];
+  const pages = await Promise.all(targets.map(async (target) => {
+    const raw = await fetchText(fetcher, target.url);
+    const summary = pickRelevantSnippet(stripHtml(raw), [fund.code, fund.name, '基金经理', '持仓', '规模', '业绩']);
+    return summary ? { ...target, summary } : undefined;
+  }));
+  return pages.filter((source): source is FundResearchSource => Boolean(source));
+}
 
 export function normalizeAnalyzeFundRequest(body: unknown): AnalyzeFundRequest {
   const code = typeof body === 'object' && body !== null ? String((body as { code?: unknown }).code ?? '') : '';
@@ -40,6 +102,8 @@ function buildLocalReport(fund: Pick<FundQuote, 'name' | 'code' | 'netValue' | '
   return {
     summary: `${fund.name}(${fund.code}) 一年区间收益 ${indicators.totalReturn.toFixed(2)}%，${trendVerb}，最大回撤 ${indicators.maxDrawdown.toFixed(2)}%。`,
     trend: `区间收益 ${indicators.totalReturn.toFixed(2)}%、短期动量 ${indicators.shortMomentum.toFixed(2)}%、趋势斜率 ${indicators.trendSlope.toFixed(2)}，${trendVerb}。`,
+    marketDrivers: `本地降级模式未联网归因，当前主要依据净值走势和指数联动判断：${trendVerb}，短期涨跌更可能来自基金持仓方向与大盘风格共同影响。`,
+    outlook: `未来走势需重点观察短期动量是否延续、最大回撤是否扩大，以及主要指数是否继续支撑该基金持仓方向。`,
     risk: `波动率 ${indicators.volatility.toFixed(2)}，${riskVerb}。`,
     beginnerGuide: buildBeginnerGuide(fund, indicators),
     scenarios: [
@@ -48,6 +112,7 @@ function buildLocalReport(fund: Pick<FundQuote, 'name' | 'code' | 'netValue' | '
       { name: '压力情景', probability: 'low' as const, description: '若回撤再度逼近历史最大值，需关注止损。' },
     ],
     watchPoints: ['净值突破近期高点', '最大回撤是否扩大', '主要指数与板块的联动'],
+    sourceNotes: ['未配置 DeepSeek key 或 AI 不可用时使用本地确定性指标报告；联网材料不参与降级结论。'],
     disclaimer: '本分析为本地指标推算，仅供学习参考，不构成投资建议。',
   };
 }
@@ -60,11 +125,13 @@ export async function buildAnalyzeFundResponse(
   const fund = await dependencies.marketService.getFund(request.code);
   const history = await dependencies.marketService.getFundHistory(request.code, '1y');
   const indices = await dependencies.marketService.getIndices();
+  const researchSources = await collectResearchSources(fund, dependencies.webResearchFetch ?? fetch);
   const indicators = computeFundIndicators(history as FundHistoryPoint[]);
   const steps: AnalyzeFundResponse['agent']['steps'] = [
     { name: 'collect_fund_quote', status: 'done', summary: `读取 ${fund.name} 当前净值 ${fund.netValue}` },
     { name: 'collect_history', status: 'done', summary: `读取 ${history.length} 条历史净值` },
     { name: 'collect_market_context', status: 'done', summary: `读取 ${indices.length} 个主要指数` },
+    { name: 'collect_web_research', status: 'done', summary: `联网读取 ${researchSources.length} 条公开基金材料` },
     { name: 'compute_indicators', status: 'done', summary: `区间收益 ${indicators.totalReturn.toFixed(2)}%，最大回撤 ${indicators.maxDrawdown.toFixed(2)}%` },
   ];
   const prompt = buildResearchPrompt({
@@ -72,6 +139,7 @@ export async function buildAnalyzeFundResponse(
     history: history as FundHistoryPoint[],
     indices: indices as IndexQuote[],
     indicators,
+    researchSources,
   });
   steps.push({ name: 'build_research_prompt', status: 'done', summary: '构建包含指标、行情和输出契约的研究提示' });
 
@@ -84,6 +152,7 @@ export async function buildAnalyzeFundResponse(
       agent: { model: 'local-fallback', steps, indicators },
       report,
       chartAnnotations: [{ label: '本地降级', description: report.summary, tone: 'neutral' }],
+      researchSources,
       analysis: report.summary,
     };
   }
@@ -119,6 +188,7 @@ export async function buildAnalyzeFundResponse(
     agent: { model: 'deepseek-v4-flash', steps, indicators },
     report,
     chartAnnotations,
+    researchSources,
     analysis: report.summary,
   };
 }
