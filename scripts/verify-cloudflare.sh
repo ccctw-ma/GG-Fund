@@ -41,6 +41,7 @@ verify_market_indices_complete() {
   curl -fsS "${CF_VERIFY_BASE_URL}/api/market/indices" -o "${output}"
   node - "${CF_VERIFY_BASE_URL}" "${output}" <<'NODE'
 const [baseUrl, file] = process.argv.slice(2);
+const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 
 const required = [
@@ -77,24 +78,18 @@ for (const index of indices) {
   }
 }
 
-(async () => {
-  for (const code of required) {
-    const url = `${baseUrl}/api/market/indices/${encodeURIComponent(code)}/history?range=all`;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`${code} history request failed with HTTP ${response.status}`);
-    const history = await response.json();
-    if (!Array.isArray(history) || history.length < 20) {
-      throw new Error(`${code} history expected at least 20 rows, got ${Array.isArray(history) ? history.length : typeof history}`);
-    }
-    const latest = history.at(-1);
-    if (!latest?.date || typeof latest.netValue !== 'number' || !Number.isFinite(latest.netValue)) {
-      throw new Error(`${code} latest history point is invalid`);
-    }
+for (const code of required) {
+  const url = `${baseUrl}/api/market/indices/${encodeURIComponent(code)}/history?range=all&v=20260607`;
+  const body = execFileSync('curl', ['-fsS', url], { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
+  const history = JSON.parse(body);
+  if (!Array.isArray(history) || history.length < 20) {
+    throw new Error(`${code} history expected at least 20 rows, got ${Array.isArray(history) ? history.length : typeof history}`);
   }
-})().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+  const latest = history.at(-1);
+  if (!latest?.date || typeof latest.netValue !== 'number' || !Number.isFinite(latest.netValue)) {
+    throw new Error(`${code} latest history point is invalid`);
+  }
+}
 NODE
 }
 
