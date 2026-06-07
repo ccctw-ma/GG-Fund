@@ -139,6 +139,7 @@ export type PortfolioItem = Holding & {
   returnRate: number;
   weight: number;
   estimatedDailyProfit: number;
+  dailyProfitAvailable: boolean;
   holdingDays?: number;
   quoteStatus: 'ok' | 'missing';
 };
@@ -171,6 +172,7 @@ export type PortfolioSummary = {
   totalProfit: number;
   totalReturnRate: number;
   estimatedDailyProfit: number;
+  dailyProfitAvailable: boolean;
   liveQuoteRatio: number;
   ledgers: PortfolioLedger[];
   riskSignals: PortfolioSignal[];

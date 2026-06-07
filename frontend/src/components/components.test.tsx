@@ -281,6 +281,8 @@ describe('dashboard components', () => {
           estimateTime: '2026-05-29 10:00:00',
         },
       },
+      {},
+      new Date('2026-05-29T10:30:00+08:00'),
     );
     let refreshCount = 0;
 

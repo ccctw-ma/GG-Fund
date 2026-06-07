@@ -114,6 +114,15 @@ function signedMoney(value: number) {
   return `${value >= 0 ? '+' : ''}${money.format(value)}`;
 }
 
+function dailyProfitClass(value: number, available: boolean) {
+  if (!available) return 'yb-tone-muted';
+  return value >= 0 ? 'profit-up' : 'profit-down';
+}
+
+function dailyProfitText(value: number, available: boolean) {
+  return available ? signedMoney(value) : '--';
+}
+
 // 持仓组成里的标的既可能是股票，也可能是基金（FOF/联接），逐源查找并在失败时自动重试。
 async function fetchQuoteWithRetry(code: string, attempts = 3): Promise<FundQuote | null> {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
@@ -186,7 +195,7 @@ export function PortfolioPanel({
   const sortedItems = useMemo(() => sortItems(summary.items, holdingSort), [holdingSort, summary.items]);
   const dailyProfitItems = useMemo(
     () => sortDailyItems(
-      summary.items.filter((item) => item.quote || item.estimatedDailyProfit !== 0),
+      summary.items.filter((item) => item.dailyProfitAvailable),
       dailySort,
     ),
     [dailySort, summary.items],
@@ -408,8 +417,8 @@ export function PortfolioPanel({
             onClick={() => setActiveInsight('daily')}
           >
             <span>今日估算收益</span>
-            <strong className={summary.estimatedDailyProfit >= 0 ? 'profit-up' : 'profit-down'}>{summary.estimatedDailyProfit >= 0 ? '+' : ''}{money.format(summary.estimatedDailyProfit)}</strong>
-            <small>按已返回日涨跌本地估算</small>
+            <strong className={dailyProfitClass(summary.estimatedDailyProfit, summary.dailyProfitAvailable)}>{dailyProfitText(summary.estimatedDailyProfit, summary.dailyProfitAvailable)}</strong>
+            <small>{summary.dailyProfitAvailable ? '按已返回日涨跌本地估算' : '非交易日不展示今日收益'}</small>
           </button>
           <div className="yb-metric-refresh">
             <small>{quoteRefreshLabel} · 每 1 分钟自动刷新</small>
@@ -438,7 +447,7 @@ export function PortfolioPanel({
           <div className="yb-daily-profit-head">
             <div>
               <strong>今日收益拆解</strong>
-              <span>{dailyLosers.length} 只亏损 · {dailyGainers.length} 只盈利 · {quoteRefreshLabel}</span>
+              <span>{summary.dailyProfitAvailable ? `${dailyLosers.length} 只亏损 · ${dailyGainers.length} 只盈利 · ${quoteRefreshLabel}` : `非交易日或暂无当天行情 · ${quoteRefreshLabel}`}</span>
             </div>
             <div className="yb-insight-actions">
               <div className="yb-sort-group yb-insight-sort" role="group" aria-label="今日收益排序">
@@ -463,7 +472,7 @@ export function PortfolioPanel({
             </div>
           </div>
           {dailyProfitItems.length === 0 ? (
-            <p className="yb-empty-copy">暂无可拆解的日涨跌数据，补齐基金代码或刷新行情后会显示每只持仓的今日贡献。</p>
+            <p className="yb-empty-copy">今天不是交易日或暂未拿到当天行情，不展示今日收益拆解，避免把上一交易日涨跌误当作今天收益。</p>
           ) : (
             <>
             <div className="yb-daily-profit-list">
@@ -486,13 +495,13 @@ export function PortfolioPanel({
                       <span className="yb-value-line">
                         <em>{item.fundCode}</em>
                         <em className={toneClass(item.quote?.dailyChangePercent)}>
-                          日涨跌 {item.quote?.dailyChangePercent !== undefined ? `${item.quote.dailyChangePercent >= 0 ? '+' : ''}${item.quote.dailyChangePercent.toFixed(2)}%` : '--'}
+                          日涨跌 {item.dailyProfitAvailable && item.quote?.dailyChangePercent !== undefined ? `${item.quote.dailyChangePercent >= 0 ? '+' : ''}${item.quote.dailyChangePercent.toFixed(2)}%` : '--'}
                         </em>
                         <em>市值 {money.format(item.marketValue)}</em>
                       </span>
                     </div>
-                    <strong className={`yb-daily-profit-amount ${item.estimatedDailyProfit >= 0 ? 'profit-up' : 'profit-down'}`}>
-                      {signedMoney(item.estimatedDailyProfit)}
+                    <strong className={`yb-daily-profit-amount ${dailyProfitClass(item.estimatedDailyProfit, item.dailyProfitAvailable)}`}>
+                      {dailyProfitText(item.estimatedDailyProfit, item.dailyProfitAvailable)}
                     </strong>
                   </article>
                   {intradayCode === item.fundCode && (
@@ -642,7 +651,7 @@ export function PortfolioPanel({
                     {item.quote && (
                       <>
                         <em>{item.quote.quoteDate}</em>
-                        <em className={toneClass(item.estimatedDailyProfit)}>今日 {signedMoney(item.estimatedDailyProfit)}</em>
+                        {item.dailyProfitAvailable && <em className={toneClass(item.estimatedDailyProfit)}>今日 {signedMoney(item.estimatedDailyProfit)}</em>}
                       </>
                     )}
                   </small>
@@ -678,7 +687,7 @@ export function PortfolioPanel({
                 <div className="yb-holding-detail" data-testid="holding-detail">
                   <div><span>基金代码</span><strong>{hasCode ? `${item.fundCode}${item.codeSource === 'auto' ? '（自动补全）' : item.codeSource === 'manual' ? '（手动确认）' : ''}` : '待补全'}</strong></div>
                   <div><span>最新净值</span><strong>{item.quote?.netValue ? item.quote.netValue.toFixed(4) : '自填估值'}</strong></div>
-                  <div><span>日涨跌</span><strong className={(item.quote?.dailyChangePercent ?? 0) >= 0 ? 'yb-holding-profit-up' : 'yb-holding-profit-down'}>{item.quote?.dailyChangePercent !== undefined ? `${item.quote.dailyChangePercent >= 0 ? '+' : ''}${item.quote.dailyChangePercent.toFixed(2)}%` : '--'}</strong></div>
+                  <div><span>日涨跌</span><strong className={item.dailyProfitAvailable && (item.quote?.dailyChangePercent ?? 0) < 0 ? 'yb-holding-profit-down' : item.dailyProfitAvailable ? 'yb-holding-profit-up' : 'yb-tone-muted'}>{item.dailyProfitAvailable && item.quote?.dailyChangePercent !== undefined ? `${item.quote.dailyChangePercent >= 0 ? '+' : ''}${item.quote.dailyChangePercent.toFixed(2)}%` : '--'}</strong></div>
                   <div><span>持有市值</span><strong>{money.format(item.marketValue)}</strong></div>
                   <div><span>持仓成本</span><strong>{money.format(item.costAmount)}</strong></div>
                   <div><span>累计盈亏</span><strong className={item.profit >= 0 ? 'yb-holding-profit-up' : 'yb-holding-profit-down'}>{money.format(item.profit)} / {item.returnRate.toFixed(2)}%</strong></div>

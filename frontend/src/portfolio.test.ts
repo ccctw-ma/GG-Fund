@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { FundQuote, Holding } from './types';
 import { calculatePortfolioSummary } from './portfolio';
 
+const tradingDay = new Date('2026-05-28T10:30:00+08:00');
+
 const holdings: Holding[] = [
   {
     id: 'h-1',
@@ -50,7 +52,7 @@ const quotes: Record<string, FundQuote> = {
 
 describe('calculatePortfolioSummary', () => {
   it('calculates market value, profit, return rate, and weights from local holdings and quotes', () => {
-    const summary = calculatePortfolioSummary(holdings, quotes);
+    const summary = calculatePortfolioSummary(holdings, quotes, {}, tradingDay);
 
     expect(summary.totalCost).toBe(2100);
     expect(summary.totalMarketValue).toBe(2150);
@@ -66,6 +68,7 @@ describe('calculatePortfolioSummary', () => {
     expect(summary.items[0].weight).toBeCloseTo(62.7907, 4);
     expect(summary.items[1].weight).toBeCloseTo(37.2093, 4);
     expect(summary.estimatedDailyProfit).toBeCloseTo(9.1111, 4);
+    expect(summary.dailyProfitAvailable).toBe(true);
     expect(summary.liveQuoteRatio).toBe(100);
     expect(summary.ledgers.map((ledger) => ledger.platform)).toEqual(['支付宝', '天天基金']);
     expect(summary.riskSignals.map((signal) => signal.title)).toContain('单只集中度偏高');
@@ -83,6 +86,8 @@ describe('calculatePortfolioSummary', () => {
           name: '华夏成长混合',
         },
       },
+      {},
+      tradingDay,
     );
 
     expect(summary.items[0].fundName).toBe('华夏成长混合');
@@ -90,7 +95,7 @@ describe('calculatePortfolioSummary', () => {
   });
 
   it('keeps holdings with missing quotes visible and marks their quote status', () => {
-    const summary = calculatePortfolioSummary(holdings, { '000001': quotes['000001'] });
+    const summary = calculatePortfolioSummary(holdings, { '000001': quotes['000001'] }, {}, tradingDay);
 
     expect(summary.totalMarketValue).toBe(1350);
     expect(summary.items[1]).toMatchObject({
@@ -132,6 +137,7 @@ describe('calculatePortfolioSummary', () => {
           { date: '2026-05-29', netValue: 1.2 },
         ],
       },
+      new Date('2026-05-29T10:30:00+08:00'),
     );
 
     expect(summary.totalMarketValue).toBeCloseTo(1200, 2);
@@ -143,5 +149,19 @@ describe('calculatePortfolioSummary', () => {
       profit: 300,
       quoteStatus: 'ok',
     });
+  });
+
+  it('does not show stale daily profit on weekends', () => {
+    const summary = calculatePortfolioSummary(
+      holdings,
+      quotes,
+      {},
+      new Date('2026-06-07T10:30:00+08:00'),
+    );
+
+    expect(summary.dailyProfitAvailable).toBe(false);
+    expect(summary.estimatedDailyProfit).toBe(0);
+    expect(summary.items.every((item) => item.dailyProfitAvailable === false)).toBe(true);
+    expect(summary.reportSignals.find((signal) => signal.title === '今日估算收益')?.detail).toContain('今日收益不展示');
   });
 });

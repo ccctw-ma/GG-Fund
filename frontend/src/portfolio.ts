@@ -26,6 +26,33 @@ function dateKey(value?: string) {
   return parsed.toISOString().slice(0, 10);
 }
 
+function localDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function isWeekday(date: Date) {
+  const day = date.getDay();
+  return day !== 0 && day !== 6;
+}
+
+function quoteDateKey(quote?: FundQuote) {
+  if (!quote?.quoteDate) return undefined;
+  const direct = quote.quoteDate.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+  return direct ?? dateKey(quote.quoteDate);
+}
+
+function hasCurrentTradingDayChange(quote: FundQuote | undefined, asOf: Date) {
+  return Boolean(
+    quote?.dailyChangePercent !== undefined
+    && quote.dailyChangePercent !== -100
+    && isWeekday(asOf)
+    && quoteDateKey(quote) === localDateKey(asOf),
+  );
+}
+
 function baselineNetValue(history: FundHistoryPoint[] | undefined, date?: string) {
   if (!history?.length || !date) return undefined;
   const target = dateKey(date);
@@ -51,13 +78,13 @@ function estimatedShares(holding: Holding, quote?: FundQuote, history?: FundHist
   return holding.recordedMarketValue / baseline;
 }
 
-function dailyProfit(holding: Holding, quote?: FundQuote, history?: FundHistoryPoint[], marketValue?: number) {
-  if (quote?.dailyChangePercent && quote.dailyChangePercent !== -100) {
+function dailyProfit(holding: Holding, quote?: FundQuote, history?: FundHistoryPoint[], marketValue?: number, dailyProfitAvailable = false) {
+  if (dailyProfitAvailable && quote?.dailyChangePercent !== undefined) {
     const value = marketValue ?? holdingMarketValue(holding, quote, history);
     const previousValue = value / (1 + quote.dailyChangePercent / 100);
     return value - previousValue;
   }
-  return holding.recordedDailyProfit ?? 0;
+  return 0;
 }
 
 function holdingMarketValue(holding: Holding, quote?: FundQuote, history?: FundHistoryPoint[]) {
@@ -132,14 +159,16 @@ function buildRiskSignals(summary: Pick<PortfolioSummary, 'items' | 'totalMarket
   return signals;
 }
 
-function buildReportSignals(summary: Pick<PortfolioSummary, 'totalProfit' | 'totalReturnRate' | 'estimatedDailyProfit' | 'items'>): PortfolioSignal[] {
+function buildReportSignals(summary: Pick<PortfolioSummary, 'totalProfit' | 'totalReturnRate' | 'estimatedDailyProfit' | 'dailyProfitAvailable' | 'items'>): PortfolioSignal[] {
   const best = [...summary.items].sort((a, b) => b.profit - a.profit)[0];
   const weakest = [...summary.items].sort((a, b) => a.profit - b.profit)[0];
   return [
     {
       title: '今日估算收益',
-      detail: `按已返回日涨跌估算为 ${summary.estimatedDailyProfit >= 0 ? '+' : ''}${summary.estimatedDailyProfit.toFixed(2)} 元。`,
-      tone: summary.estimatedDailyProfit >= 0 ? 'positive' : 'warning',
+      detail: summary.dailyProfitAvailable
+        ? `按已返回日涨跌估算为 ${summary.estimatedDailyProfit >= 0 ? '+' : ''}${summary.estimatedDailyProfit.toFixed(2)} 元。`
+        : '非交易日或暂无当天行情，今日收益不展示。',
+      tone: summary.dailyProfitAvailable ? (summary.estimatedDailyProfit >= 0 ? 'positive' : 'warning') : 'neutral',
     },
     {
       title: '周/月报摘要',
@@ -155,8 +184,9 @@ function buildReportSignals(summary: Pick<PortfolioSummary, 'totalProfit' | 'tot
 }
 
 function buildActionSignals(summary: Pick<PortfolioSummary, 'items' | 'totalReturnRate' | 'estimatedDailyProfit'>): PortfolioSignal[] {
-  const rising = summary.items.filter((item) => (item.quote?.dailyChangePercent ?? 0) > 0).length;
-  const falling = summary.items.filter((item) => (item.quote?.dailyChangePercent ?? 0) < 0).length;
+  const currentDailyItems = summary.items.filter((item) => item.dailyProfitAvailable);
+  const rising = currentDailyItems.filter((item) => (item.quote?.dailyChangePercent ?? 0) > 0).length;
+  const falling = currentDailyItems.filter((item) => (item.quote?.dailyChangePercent ?? 0) < 0).length;
   const targetDrift = summary.items.find((item) => item.targetWeight !== undefined && Math.abs(item.weight - item.targetWeight) >= 8);
   return [
     {
@@ -181,6 +211,7 @@ export function calculatePortfolioSummary(
   holdings: Holding[],
   quotes: Record<string, FundQuote | undefined>,
   histories: Record<string, FundHistoryPoint[] | undefined> = {},
+  asOf: Date = new Date(),
 ): PortfolioSummary {
   const totalMarketValue = holdings.reduce((sum, holding) => sum + holdingMarketValue(holding, quotes[holding.fundCode], histories[holding.fundCode]), 0);
   const totalCost = holdings.reduce((sum, holding) => sum + holding.costAmount, 0);
@@ -192,7 +223,8 @@ export function calculatePortfolioSummary(
     const profit = marketValue - holding.costAmount;
     const returnRate = holding.costAmount > 0 ? percent(profit / holding.costAmount) : 0;
     const weight = totalMarketValue > 0 ? percent(marketValue / totalMarketValue) : 0;
-    const estimatedDailyProfit = dailyProfit(holding, quote, history, marketValue);
+    const dailyProfitAvailable = hasCurrentTradingDayChange(quote, asOf);
+    const estimatedDailyProfit = dailyProfit(holding, quote, history, marketValue, dailyProfitAvailable);
 
     return {
       ...holding,
@@ -203,6 +235,7 @@ export function calculatePortfolioSummary(
       returnRate,
       weight,
       estimatedDailyProfit,
+      dailyProfitAvailable,
       holdingDays: holdingDays(holding.purchaseDate),
       quoteStatus: hasValuation(holding, quote, history) ? ('ok' as const) : ('missing' as const),
     };
@@ -211,6 +244,7 @@ export function calculatePortfolioSummary(
   const totalProfit = totalMarketValue - totalCost;
   const totalReturnRate = totalCost > 0 ? percent(totalProfit / totalCost) : 0;
   const estimatedDailyProfit = items.reduce((sum, item) => sum + item.estimatedDailyProfit, 0);
+  const dailyProfitAvailable = items.some((item) => item.dailyProfitAvailable);
   const liveQuoteRatio = holdings.length > 0 ? percent(items.filter((item) => item.quoteStatus === 'ok').length / holdings.length) : 0;
   const ledgers = buildLedgers(items);
   const baseSummary = {
@@ -220,6 +254,7 @@ export function calculatePortfolioSummary(
     totalProfit,
     totalReturnRate,
     estimatedDailyProfit,
+    dailyProfitAvailable,
   };
 
   return {
@@ -228,6 +263,7 @@ export function calculatePortfolioSummary(
     totalProfit,
     totalReturnRate,
     estimatedDailyProfit,
+    dailyProfitAvailable,
     liveQuoteRatio,
     ledgers,
     riskSignals: buildRiskSignals(baseSummary),

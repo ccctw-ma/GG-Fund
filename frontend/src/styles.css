@@ -890,23 +890,23 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .yb-sort-arrows {
   display: inline-grid;
-  grid-template-rows: repeat(2, .72rem);
+  grid-template-rows: repeat(2, .66rem);
   align-items: center;
   justify-items: center;
-  min-width: .82rem;
-  line-height: .72rem;
+  width: .86rem;
+  height: 1.32rem;
+  line-height: .66rem;
 }
 .yb-sort-arrow {
-  display: block;
-  height: .72rem;
+  display: grid;
+  place-items: center;
+  height: .66rem;
   color: currentColor;
-  font-size: .76rem;
+  font-size: .72rem;
   font-style: normal;
   font-weight: 950;
   opacity: .34;
-  transform: translateY(-1px);
 }
-.yb-sort-arrow + .yb-sort-arrow { transform: translateY(1px); }
 .yb-sort-group .yb-sort-chip.is-active .yb-sort-arrow {
   color: #0a1810;
   opacity: .58;
