@@ -73,6 +73,7 @@ const GLOBAL_INDEX_MARKETS: Record<string, string> = {
   DJIA: 'US',
   SPX: 'US',
   NDX: 'US',
+  IXIC: 'US',
   N225: 'JP',
   KS11: 'KR',
   FTSE: 'UK',
@@ -102,6 +103,19 @@ const SINA_INDEX_CODES: Record<string, string> = {
   b_UKX: 'FTSE.UK',
   b_DAX: 'GDAXI.DE',
   b_CAC: 'FCHI.FR',
+};
+
+const NAVER_INDEX_SYMBOLS: Record<string, { market: 'foreign' | 'domestic'; symbol: string }> = {
+  'DJIA.US': { market: 'foreign', symbol: '.DJI' },
+  'SPX.US': { market: 'foreign', symbol: '.INX' },
+  'IXIC.US': { market: 'foreign', symbol: '.IXIC' },
+  'NDX.US': { market: 'foreign', symbol: '.NDX' },
+  'N225.JP': { market: 'foreign', symbol: '.N225' },
+  'KS11.KR': { market: 'domestic', symbol: 'KOSPI' },
+  'HSI.HK': { market: 'foreign', symbol: '.HSI' },
+  'FTSE.UK': { market: 'foreign', symbol: '.FTSE' },
+  'GDAXI.DE': { market: 'foreign', symbol: '.GDAXI' },
+  'FCHI.FR': { market: 'foreign', symbol: '.FCHI' },
 };
 
 const historyByCode: Record<string, FundHistoryPoint[]> = Object.fromEntries(
@@ -578,12 +592,32 @@ function historyFromEastmoneyKline(data: unknown): FundHistoryPoint[] {
   return klines
     .map((line) => {
       if (typeof line !== 'string') return undefined;
-      const [date, close] = line.split(',');
-      const netValue = toNumber(close);
+      const parts = line.split(',');
+      const date = parts[0];
+      const netValue = toNumber(parts[2] ?? parts[1]);
       if (!date || netValue === undefined) return undefined;
       return { date, netValue };
     })
     .filter((item): item is FundHistoryPoint => Boolean(item));
+}
+
+function historyFromNaverIndex(data: unknown, limit: number): FundHistoryPoint[] {
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((item) => {
+      if (typeof item !== 'object' || item === null) return undefined;
+      const record = item as Record<string, unknown>;
+      const localDate = String(record.localDate ?? '');
+      const netValue = toNumber(record.closePrice);
+      if (!/^\d{8}$/.test(localDate) || netValue === undefined) return undefined;
+      return {
+        date: `${localDate.slice(0, 4)}-${localDate.slice(4, 6)}-${localDate.slice(6, 8)}`,
+        netValue,
+      };
+    })
+    .filter((item): item is FundHistoryPoint => Boolean(item))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-limit);
 }
 
 function intradayFromEastmoneyTrends(data: unknown): FundIntradayPoint[] {
@@ -938,8 +972,24 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
       'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
       referer: 'https://quote.eastmoney.com/',
     };
-    const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f53&klt=101&fqt=1&beg=0&end=20500101&rtntype=6&lmt=${limit}`;
+    const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}&klt=101&fqt=1&lmt=${limit}&end=20500000&iscca=1&fields1=f1,f2,f3,f4,f5,f6,f7,f8&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64&ut=f057cbcbce2a86e2866ab8877db1d059&forcect=1`;
     return historyFromEastmoneyKline(await fetchJson(url, headers));
+  }
+
+  async function getNaverIndexHistory(code: string, limit = 120): Promise<FundHistoryPoint[]> {
+    const target = NAVER_INDEX_SYMBOLS[code.toUpperCase()];
+    if (!target) return [];
+    const end = new Date(now());
+    const start = new Date(end);
+    start.setDate(start.getDate() - Math.max(limit * 2, 45));
+    const format = (date: Date) => {
+      const year = date.getUTCFullYear();
+      const month = `${date.getUTCMonth() + 1}`.padStart(2, '0');
+      const day = `${date.getUTCDate()}`.padStart(2, '0');
+      return `${year}${month}${day}0000`;
+    };
+    const url = `https://api.stock.naver.com/chart/${target.market}/index/${encodeURIComponent(target.symbol)}/day?startDateTime=${format(start)}&endDateTime=${format(end)}`;
+    return historyFromNaverIndex(await fetchJson(url), limit);
   }
 
   async function getTencentIndexHistory(code: string, limit = 120): Promise<FundHistoryPoint[]> {
@@ -1044,6 +1094,12 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
       return cached(`index-history:${code}:${limit}`, 86_400_000, async () => {
         try {
           const history = await getEastmoneyIndexHistory(code, limit);
+          if (history.length > 0) return history;
+        } catch {
+          // fall through to Naver/Tencent
+        }
+        try {
+          const history = await getNaverIndexHistory(code, limit);
           if (history.length > 0) return history;
         } catch {
           // fall through to Tencent

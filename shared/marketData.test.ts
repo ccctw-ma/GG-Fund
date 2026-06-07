@@ -602,7 +602,7 @@ describe('market data service', () => {
     const service = createMarketDataService({
       fetchJson: async (url) => {
         capturedUrl = url;
-        return { data: { klines: ['2026-05-27,3100.10', '2026-05-28,3128.42'] } };
+        return { data: { klines: ['2026-05-27,3090.00,3100.10', '2026-05-28,3110.00,3128.42'] } };
       },
     });
 
@@ -613,6 +613,45 @@ describe('market data service', () => {
       { date: '2026-05-27', netValue: 3100.1 },
       { date: '2026-05-28', netValue: 3128.42 },
     ]);
+  });
+
+  it('falls back to Naver global index history before Tencent for overseas indices', async () => {
+    const naverUrls: string[] = [];
+    const samples: Record<string, { symbol: string; date: string; value: number }> = {
+      'DJIA.US': { symbol: '.DJI', date: '2026-06-05', value: 50866.78 },
+      'SPX.US': { symbol: '.INX', date: '2026-06-05', value: 7383.74 },
+      'IXIC.US': { symbol: '.IXIC', date: '2026-06-05', value: 25709.43 },
+      'NDX.US': { symbol: '.NDX', date: '2026-06-05', value: 25709.43 },
+      'N225.JP': { symbol: '.N225', date: '2026-06-05', value: 66587.9 },
+      'KS11.KR': { symbol: 'KOSPI', date: '2026-06-05', value: 8160.59 },
+      'HSI.HK': { symbol: '.HSI', date: '2026-06-05', value: 24961.95 },
+      'FTSE.UK': { symbol: '.FTSE', date: '2026-06-05', value: 10368.05 },
+      'GDAXI.DE': { symbol: '.GDAXI', date: '2026-06-05', value: 24759.05 },
+      'FCHI.FR': { symbol: '.FCHI', date: '2026-06-05', value: 8218.24 },
+    };
+
+    for (const [code, sample] of Object.entries(samples)) {
+      const service = createMarketDataService({
+        now: () => Date.parse('2026-06-07T12:00:00Z'),
+        fetchJson: async (url) => {
+          if (url.includes('push2his.eastmoney.com')) return { data: { klines: [] } };
+          naverUrls.push(url);
+          return [
+            { localDate: '20260604', closePrice: sample.value - 100 },
+            { localDate: '20260605', closePrice: sample.value },
+          ];
+        },
+        fetchText: async () => {
+          throw new Error('Tencent should not be called when Naver has data');
+        },
+      });
+
+      await expect(service.getIndexHistory(code, '1m')).resolves.toEqual([
+        { date: '2026-06-04', netValue: sample.value - 100 },
+        { date: sample.date, netValue: sample.value },
+      ]);
+      expect(naverUrls.at(-1)).toContain(`/index/${encodeURIComponent(sample.symbol)}/day`);
+    }
   });
 
   it('falls back to the Tencent kline source when Eastmoney returns nothing', async () => {
