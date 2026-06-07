@@ -79,6 +79,30 @@ const GLOBAL_INDEX_MARKETS: Record<string, string> = {
   FCHI: 'FR',
 };
 
+const SINA_GLOBAL_INDEX_SYMBOLS = [
+  'gb_$dji',
+  'gb_$inx',
+  'gb_ixic',
+  'b_NKY',
+  'b_KOSPI',
+  'rt_hkHSI',
+  'b_UKX',
+  'b_DAX',
+  'b_CAC',
+];
+
+const SINA_INDEX_CODES: Record<string, string> = {
+  'gb_$dji': 'DJIA.US',
+  'gb_$inx': 'SPX.US',
+  gb_ixic: 'NDX.US',
+  b_NKY: 'N225.JP',
+  b_KOSPI: 'KS11.KR',
+  rt_hkHSI: 'HSI.HK',
+  b_UKX: 'FTSE.UK',
+  b_DAX: 'GDAXI.DE',
+  b_CAC: 'FCHI.FR',
+};
+
 const historyByCode: Record<string, FundHistoryPoint[]> = Object.fromEntries(
   fallbackFunds.filter((fund) => fund.assetType !== 'stock').map((fund, fundIndex) => [
     fund.code,
@@ -197,6 +221,73 @@ function indicesFromTencent(text: string): IndexQuote[] {
     .split('\n')
     .map((line) => indexFromTencentLine(line.trim()))
     .filter((item): item is IndexQuote => Boolean(item));
+}
+
+function indexFromSinaLine(line: string): IndexQuote | undefined {
+  const match = line.match(/^var hq_str_([^=]+)="([^"]*)";?$/);
+  if (!match) return undefined;
+  const [, symbol, payload] = match;
+  const code = SINA_INDEX_CODES[symbol];
+  if (!code || !payload) return undefined;
+  const parts = payload.split(',');
+  const rawCode = code.split('.')[0];
+  let value: number | undefined;
+  let change: number | undefined;
+  let changePercent: number | undefined;
+  let quoteTime: string;
+
+  if (symbol.startsWith('gb_')) {
+    value = toNumber(parts[1]);
+    changePercent = toNumber(parts[2]);
+    change = toNumber(parts[4]);
+    quoteTime = [parts[3], parts[24]].filter(Boolean).join(' ');
+  } else if (symbol === 'rt_hkHSI') {
+    value = toNumber(parts[6]);
+    change = toNumber(parts[7]);
+    changePercent = toNumber(parts[8]);
+    quoteTime = [parts[16]?.replaceAll('/', '-'), parts[17]].filter(Boolean).join(' ');
+  } else {
+    value = toNumber(parts[1]);
+    change = toNumber(parts[2]);
+    changePercent = toNumber(parts[3]);
+    quoteTime = [parts[6], parts[7]].filter(Boolean).join(' ');
+  }
+
+  if (value === undefined || change === undefined || changePercent === undefined) return undefined;
+  return {
+    code,
+    name: INDEX_NAMES[rawCode] ?? parts[0] ?? code,
+    value,
+    change,
+    changePercent,
+    quoteTime: quoteTime || new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).format(new Date()),
+  };
+}
+
+function indicesFromSina(text: string): IndexQuote[] {
+  return text
+    .split('\n')
+    .map((line) => indexFromSinaLine(line.trim()))
+    .filter((item): item is IndexQuote => Boolean(item));
+}
+
+function mergeIndices(...groups: IndexQuote[][]) {
+  const byCode = new Map<string, IndexQuote>();
+  for (const group of groups) {
+    for (const item of group) {
+      if (!byCode.has(item.code)) byCode.set(item.code, item);
+    }
+  }
+  return Array.from(byCode.values());
 }
 
 function fundFromSearchRow(row: unknown): FundQuote | undefined {
@@ -682,7 +773,7 @@ async function defaultFetchText(url: string, headers?: Record<string, string>): 
   const response = await fetchWithTimeout(url, { headers: { 'user-agent': 'GG-Fund/0.1', ...headers } });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   // 腾讯证券行情接口（qt.gtimg.cn）返回 GBK 编码，直接 text() 会把中文名解析成乱码。
-  if (url.includes('qt.gtimg.cn')) {
+  if (url.includes('qt.gtimg.cn') || url.includes('hq.sinajs.cn')) {
     const buffer = await response.arrayBuffer();
     return new TextDecoder('gbk').decode(buffer);
   }
@@ -734,14 +825,32 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     return indicesFromTencent(await fetchText(url));
   }
 
+  async function getSinaGlobalIndices(): Promise<IndexQuote[]> {
+    const url = `https://hq.sinajs.cn/list=${SINA_GLOBAL_INDEX_SYMBOLS.join(',')}`;
+    return indicesFromSina(await fetchText(url, { referer: 'https://finance.sina.com.cn' }));
+  }
+
   async function getLiveIndices(): Promise<IndexQuote[]> {
+    const groups: IndexQuote[][] = [];
     try {
       const indices = await getEastmoneyIndices();
-      if (indices.length > 0) return indices;
+      if (indices.length > 0) groups.push(indices);
     } catch {
-      // fall through to Tencent
+      // fall through to alternate sources
     }
-    return getTencentIndices();
+    try {
+      const indices = await getTencentIndices();
+      if (indices.length > 0) groups.push(indices);
+    } catch {
+      // fall through to Sina
+    }
+    try {
+      const indices = await getSinaGlobalIndices();
+      if (indices.length > 0) groups.push(indices);
+    } catch {
+      // return whatever was collected
+    }
+    return mergeIndices(...groups);
   }
 
   async function searchEastmoneyFunds(query: string): Promise<FundQuote[]> {

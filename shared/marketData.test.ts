@@ -86,6 +86,27 @@ describe('market data service', () => {
       { code: '399001.SZ', name: '深证成指', value: 15854.79, change: 118.32, changePercent: 0.75, quoteTime: expect.any(String) },
     ]);
   });
+
+  it('falls back to Sina global index quotes when Eastmoney and Tencent are unavailable', async () => {
+    const service = createMarketDataService({
+      fetchText: async (url) => {
+        if (url.includes('eastmoney') || url.includes('qt.gtimg.cn')) throw new Error('edge blocked');
+        return [
+          'var hq_str_gb_$dji="道琼斯,50866.7812,-1.35,2026-06-06 05:01:02,-695.1500";',
+          'var hq_str_b_NKY="日经225指数,66587.9000,-882.79,-1.31,2:12 AM,14:12:00,2026-06-05,14:30:03";',
+          'var hq_str_b_KOSPI="韩国KOSPI指数,8160.5900,-478.82,-5.54,2:27 AM,14:27:00,2026-06-05,14:30:40";',
+          'var hq_str_rt_hkHSI="HSI,恒生指数,25186.120,25253.400,25216.180,24928.140,24961.951,-291.450,-1.150,0.000,0.000,342805366.102,16958798691,0.000,0.000,28056.100,23185.580,2026/06/05,16:10:06";',
+        ].join('\n');
+      },
+    });
+
+    await expect(service.getIndices()).resolves.toEqual([
+      expect.objectContaining({ code: 'DJIA.US', name: '道琼斯工业指数', value: 50866.7812, change: -695.15, changePercent: -1.35 }),
+      expect.objectContaining({ code: 'N225.JP', name: '日经225', value: 66587.9, change: -882.79, changePercent: -1.31 }),
+      expect.objectContaining({ code: 'KS11.KR', name: '韩国KOSPI', value: 8160.59, change: -478.82, changePercent: -5.54 }),
+      expect.objectContaining({ code: 'HSI.HK', name: '恒生指数', value: 24961.951, change: -291.45, changePercent: -1.15 }),
+    ]);
+  });
   it('normalizes current Eastmoney search JSON and includes latest official net value', async () => {
     const service = createMarketDataService({
       fetchText: async () => JSON.stringify({
