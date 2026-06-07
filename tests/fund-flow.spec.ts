@@ -27,6 +27,70 @@ const marketIndicesFixture = [
     quoteTime: '2026-05-29 15:00',
   },
   {
+    code: '399006.SZ',
+    name: '创业板指',
+    value: 2145.32,
+    change: 12.4,
+    changePercent: 0.58,
+    quoteTime: '2026-05-29 15:00',
+  },
+  {
+    code: '000300.SH',
+    name: '沪深300',
+    value: 3840.18,
+    change: 18.7,
+    changePercent: 0.49,
+    quoteTime: '2026-05-29 15:00',
+  },
+  {
+    code: '000688.SH',
+    name: '科创50',
+    value: 1040.52,
+    change: -8.12,
+    changePercent: -0.77,
+    quoteTime: '2026-05-29 15:00',
+  },
+  {
+    code: '899050.BJ',
+    name: '北证50',
+    value: 1210.86,
+    change: 4.8,
+    changePercent: 0.4,
+    quoteTime: '2026-05-29 15:00',
+  },
+  {
+    code: 'HSI.HK',
+    name: '恒生指数',
+    value: 24961.95,
+    change: -291.45,
+    changePercent: -1.15,
+    quoteTime: '2026-06-05 16:10',
+  },
+  {
+    code: 'DJIA.US',
+    name: '道琼斯工业指数',
+    value: 50866.78,
+    change: -695.15,
+    changePercent: -1.35,
+    quoteTime: '2026-06-05 16:00',
+  },
+  {
+    code: 'SPX.US',
+    name: '标普500',
+    value: 7383.74,
+    change: -200.57,
+    changePercent: -2.64,
+    quoteTime: '2026-06-05 16:00',
+  },
+  {
+    code: 'IXIC.US',
+    name: '纳斯达克综合指数',
+    value: 25709.43,
+    change: -1121.53,
+    changePercent: -4.18,
+    quoteTime: '2026-06-05 16:00',
+  },
+  {
     code: 'NDX.US',
     name: '纳斯达克100',
     value: 25709.43,
@@ -49,6 +113,30 @@ const marketIndicesFixture = [
     change: -478.82,
     changePercent: -5.54,
     quoteTime: '2026-06-05 15:00',
+  },
+  {
+    code: 'FTSE.UK',
+    name: '英国富时100',
+    value: 10368.05,
+    change: 7.73,
+    changePercent: 0.07,
+    quoteTime: '2026-06-05 16:30',
+  },
+  {
+    code: 'GDAXI.DE',
+    name: '德国DAX',
+    value: 24759.05,
+    change: -185.9,
+    changePercent: -0.75,
+    quoteTime: '2026-06-05 17:30',
+  },
+  {
+    code: 'FCHI.FR',
+    name: '法国CAC40',
+    value: 8218.24,
+    change: -26.05,
+    changePercent: -0.32,
+    quoteTime: '2026-06-05 17:30',
   },
 ];
 
@@ -82,6 +170,16 @@ const indexHistoryFixture = [
   { date: '2026-05-15', netValue: 3112.66 },
   { date: '2026-05-29', netValue: 3128.42 },
 ];
+
+const indexHistoryFixtures = Object.fromEntries(
+  marketIndicesFixture.map((index, indexPosition) => [
+    index.code,
+    indexHistoryFixture.map((point, pointPosition) => ({
+      date: point.date,
+      netValue: Number((index.value * (0.96 + pointPosition * 0.01) + indexPosition).toFixed(4)),
+    })),
+  ]),
+);
 
 let otpRequests: OtpRequest[] = [];
 
@@ -135,9 +233,11 @@ test.beforeEach(async ({ page }) => {
   });
 
   await page.route('**/api/market/indices/*/history?*', async (route) => {
+    const match = route.request().url().match(/\/api\/market\/indices\/([^/]+)\/history/);
+    const code = match ? decodeURIComponent(match[1]) : '';
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify(indexHistoryFixture),
+      body: JSON.stringify(indexHistoryFixtures[code] ?? []),
     });
   });
 
@@ -234,6 +334,12 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
   await expect(page.locator('#markets')).toContainText('3128.42');
   await expect(page.getByTestId('market-chart').getByRole('button', { name: /上证指数/ })).toBeVisible();
   await expect(page.getByTestId('index-chart')).toBeVisible();
+  for (const index of marketIndicesFixture) {
+    await page.getByTestId('market-chart').getByRole('button', { name: new RegExp(index.name) }).click();
+    await expect(page.getByTestId('index-chart')).toContainText(`${index.name} 走势`);
+    await expect(page.getByTestId('index-chart')).not.toContainText('暂无该指数的历史数据');
+    await expect(page.getByTestId('index-chart').getByRole('button', { name: '区间收益' })).toBeVisible();
+  }
 
   await page.getByLabel('基金、股票代码或名称').fill('000001');
   await page.getByRole('button', { name: '搜索' }).click();

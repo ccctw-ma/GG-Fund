@@ -4,6 +4,7 @@ type CacheEntry<T> = { expiresAt: number; staleUntil: number; value: T; pending?
 
 type MarketDataOptions = {
   now?: () => number;
+  completeIndexUniverse?: boolean;
   fetchIndices?: () => Promise<IndexQuote[]>;
   fetchText?: (url: string, headers?: Record<string, string>) => Promise<string>;
   fetchJson?: (url: string, headers?: Record<string, string>) => Promise<unknown>;
@@ -118,6 +119,25 @@ const NAVER_INDEX_SYMBOLS: Record<string, { market: 'foreign' | 'domestic'; symb
   'FCHI.FR': { market: 'foreign', symbol: '.FCHI' },
 };
 
+const REQUIRED_INDEX_CODES = [
+  '000001.SH',
+  '399001.SZ',
+  '399006.SZ',
+  '000300.SH',
+  '000688.SH',
+  '899050.BJ',
+  'HSI.HK',
+  'DJIA.US',
+  'SPX.US',
+  'IXIC.US',
+  'NDX.US',
+  'N225.JP',
+  'KS11.KR',
+  'FTSE.UK',
+  'GDAXI.DE',
+  'FCHI.FR',
+];
+
 const historyByCode: Record<string, FundHistoryPoint[]> = Object.fromEntries(
   fallbackFunds.filter((fund) => fund.assetType !== 'stock').map((fund, fundIndex) => [
     fund.code,
@@ -172,7 +192,7 @@ function indexFromEastmoneyPush2Item(item: unknown): IndexQuote | undefined {
   const change = toNumber(record.f4);
   const quoteTimestamp = toNumber(record.f124);
   if (!rawCode || value === undefined || changePercent === undefined || change === undefined || !quoteTimestamp) return undefined;
-  const market = GLOBAL_INDEX_MARKETS[rawCode] ?? (rawCode.startsWith('399') || rawCode.startsWith('899') ? 'SZ' : 'SH');
+  const market = GLOBAL_INDEX_MARKETS[rawCode] ?? (rawCode.startsWith('899') ? 'BJ' : rawCode.startsWith('399') ? 'SZ' : 'SH');
   const quoteTime = new Intl.DateTimeFormat('sv-SE', {
     timeZone: 'Asia/Shanghai',
     year: 'numeric',
@@ -303,6 +323,26 @@ function mergeIndices(...groups: IndexQuote[][]) {
     }
   }
   return Array.from(byCode.values());
+}
+
+function requiredIndexName(code: string) {
+  const [rawCode] = code.split('.');
+  return INDEX_NAMES[rawCode] ?? rawCode;
+}
+
+function indexQuoteFromHistory(code: string, history: FundHistoryPoint[]): IndexQuote | undefined {
+  const latest = history.at(-1);
+  if (!latest) return undefined;
+  const previous = [...history].reverse().find((point) => point.date < latest.date && point.netValue > 0);
+  const change = previous ? latest.netValue - previous.netValue : 0;
+  return {
+    code,
+    name: requiredIndexName(code),
+    value: latest.netValue,
+    change,
+    changePercent: previous ? (change / previous.netValue) * 100 : 0,
+    quoteTime: `${latest.date} 15:00:00`,
+  };
 }
 
 function fundFromSearchRow(row: unknown): FundQuote | undefined {
@@ -620,6 +660,33 @@ function historyFromNaverIndex(data: unknown, limit: number): FundHistoryPoint[]
     .slice(-limit);
 }
 
+function historyFromSohuIndex(text: string, limit: number): FundHistoryPoint[] {
+  let payload: unknown;
+  try {
+    const match = text.match(/^[^(]*\(([\s\S]*)\)\s*;?$/);
+    payload = JSON.parse(match ? match[1] : text);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(payload)) return [];
+  const rows = payload.flatMap((item) => {
+    if (typeof item !== 'object' || item === null) return [];
+    const hq = (item as { hq?: unknown }).hq;
+    return Array.isArray(hq) ? hq : [];
+  });
+  return rows
+    .map((row) => {
+      if (!Array.isArray(row)) return undefined;
+      const date = row[0];
+      const netValue = toNumber(row[2]);
+      if (typeof date !== 'string' || netValue === undefined) return undefined;
+      return { date, netValue };
+    })
+    .filter((item): item is FundHistoryPoint => Boolean(item))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-limit);
+}
+
 function intradayFromEastmoneyTrends(data: unknown): FundIntradayPoint[] {
   if (typeof data !== 'object' || data === null) return [];
   const root = data as { data?: unknown };
@@ -649,6 +716,7 @@ function eastmoneySecidForIndex(code: string): string {
   const [rawCode, market] = code.split('.');
   if (market === 'SH') return `1.${rawCode}`;
   if (market === 'SZ') return `0.${rawCode}`;
+  if (market === 'BJ') return `0.${rawCode}`;
   return `100.${rawCode}`;
 }
 
@@ -656,6 +724,7 @@ function tencentSymbolForIndex(code: string): string {
   const [rawCode, market] = code.split('.');
   if (market === 'SH') return `sh${rawCode}`;
   if (market === 'SZ') return `sz${rawCode}`;
+  if (market === 'BJ') return `bj${rawCode}`;
   return rawCode;
 }
 
@@ -826,6 +895,11 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
   const fetchIndices = options.fetchIndices ?? getLiveIndices;
   const fetchText = options.fetchText ?? defaultFetchText;
   const fetchJson = options.fetchJson ?? defaultFetchJson;
+  const completeIndexUniverse = options.completeIndexUniverse ?? (
+    options.fetchIndices === undefined
+    && options.fetchText === undefined
+    && options.fetchJson === undefined
+  );
   const cache = new Map<string, CacheEntry<unknown>>();
 
   async function cached<T>(key: string, ttlMs: number, loader: () => Promise<T>): Promise<T> {
@@ -885,7 +959,21 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     } catch {
       // return whatever was collected
     }
-    return mergeIndices(...groups);
+    const indices = mergeIndices(...groups);
+    return completeIndexUniverse ? completeRequiredIndexQuotes(indices) : indices;
+  }
+
+  async function completeRequiredIndexQuotes(indices: IndexQuote[]): Promise<IndexQuote[]> {
+    const byCode = new Map(indices.map((index) => [index.code, index]));
+    await Promise.all(REQUIRED_INDEX_CODES.map(async (code) => {
+      if (byCode.has(code)) return;
+      const history = await getIndexHistoryFromSources(code, 30).catch(() => []);
+      const quote = indexQuoteFromHistory(code, history);
+      if (quote) byCode.set(code, quote);
+    }));
+    return REQUIRED_INDEX_CODES
+      .map((code) => byCode.get(code))
+      .filter((item): item is IndexQuote => Boolean(item));
   }
 
   async function searchEastmoneyFunds(query: string): Promise<FundQuote[]> {
@@ -998,6 +1086,49 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     return historyFromTencentKline(await fetchText(url));
   }
 
+  async function getSohuIndexHistory(code: string, limit = 120): Promise<FundHistoryPoint[]> {
+    if (code !== '899050.BJ') return [];
+    const end = new Date(now());
+    const start = new Date(end);
+    start.setDate(start.getDate() - Math.max(limit * 2, 90));
+    const format = (date: Date) => {
+      const year = date.getUTCFullYear();
+      const month = `${date.getUTCMonth() + 1}`.padStart(2, '0');
+      const day = `${date.getUTCDate()}`.padStart(2, '0');
+      return `${year}${month}${day}`;
+    };
+    const url = `https://q.stock.sohu.com/hisHq?code=zs_899050&start=${format(start)}&end=${format(end)}&stat=1&order=D&period=d&callback=historySearchHandler&rt=jsonp`;
+    return historyFromSohuIndex(await fetchText(url), limit);
+  }
+
+  async function getIndexHistoryFromSources(code: string, limit = 120): Promise<FundHistoryPoint[]> {
+    try {
+      const history = await getEastmoneyIndexHistory(code, limit);
+      if (history.length > 0) return history;
+    } catch {
+      // fall through to Naver/Tencent
+    }
+    try {
+      const history = await getNaverIndexHistory(code, limit);
+      if (history.length > 0) return history;
+    } catch {
+      // fall through to Sohu/Tencent
+    }
+    try {
+      const history = await getSohuIndexHistory(code, limit);
+      if (history.length > 0) return history;
+    } catch {
+      // fall through to Tencent
+    }
+    try {
+      const history = await getTencentIndexHistory(code, limit);
+      if (history.length > 0) return history;
+    } catch {
+      // fall through to empty history
+    }
+    return [];
+  }
+
   // A 股个股日线：push2 在 Worker 出口被屏蔽，直接用腾讯前复权日 K（UTF-8 JSON，与指数同结构）。
   async function getTencentStockHistory(code: string, limit = 120): Promise<FundHistoryPoint[]> {
     const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${encodeURIComponent(tencentSymbolForStock(code))},day,,,${limit},qfq`;
@@ -1092,25 +1223,7 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
       const normalizedRange = String(range).toLowerCase();
       const limit = normalizedRange === 'all' ? 1200 : normalizedRange === '1y' ? 260 : normalizedRange === '6m' ? 130 : normalizedRange === '3m' ? 70 : 30;
       return cached(`index-history:${code}:${limit}`, 86_400_000, async () => {
-        try {
-          const history = await getEastmoneyIndexHistory(code, limit);
-          if (history.length > 0) return history;
-        } catch {
-          // fall through to Naver/Tencent
-        }
-        try {
-          const history = await getNaverIndexHistory(code, limit);
-          if (history.length > 0) return history;
-        } catch {
-          // fall through to Tencent
-        }
-        try {
-          const history = await getTencentIndexHistory(code, limit);
-          if (history.length > 0) return history;
-        } catch {
-          // fall through to empty history
-        }
-        return [];
+        return getIndexHistoryFromSources(code, limit);
       });
     },
     async searchFunds(query: string): Promise<FundQuote[]> {

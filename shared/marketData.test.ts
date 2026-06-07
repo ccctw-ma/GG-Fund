@@ -672,6 +672,74 @@ describe('market data service', () => {
     expect(history).toEqual([{ date: '2026-05-27', netValue: 3100.1 }]);
   });
 
+  it('falls back to Sohu history for BSE 50 before Tencent single-day data', async () => {
+    const service = createMarketDataService({
+      now: () => Date.parse('2026-06-07T12:00:00Z'),
+      fetchJson: async () => ({ data: { klines: [] } }),
+      fetchText: async (url) => {
+        if (url.includes('q.stock.sohu.com/hisHq')) {
+          return 'historySearchHandler([{"status":0,"hq":[["2026-06-05","1232.53","1299.07"],["2026-06-04","1231.82","1230.26"]]}])';
+        }
+        return JSON.stringify({ data: { bj899050: { day: [['2026-06-05', '1232.53', '1299.07']] } } });
+      },
+    });
+
+    await expect(service.getIndexHistory('899050.BJ', '1m')).resolves.toEqual([
+      { date: '2026-06-04', netValue: 1230.26 },
+      { date: '2026-06-05', netValue: 1299.07 },
+    ]);
+  });
+
+  it('fills required index quotes from history when realtime quote sources miss them', async () => {
+    const service = createMarketDataService({
+      completeIndexUniverse: true,
+      fetchText: async (url) => {
+        if (url.includes('push2.eastmoney.com/api/qt/ulist')) return JSON.stringify({ data: { diff: [] } });
+        return '';
+      },
+      fetchJson: async (url) => {
+        if (url.includes('push2his.eastmoney.com')) {
+          return { data: { klines: ['2026-06-04,100.00,100.00', '2026-06-05,101.00,102.00'] } };
+        }
+        return [];
+      },
+    });
+
+    const indices = await service.getIndices();
+
+    expect(indices.map((index) => index.code)).toEqual([
+      '000001.SH',
+      '399001.SZ',
+      '399006.SZ',
+      '000300.SH',
+      '000688.SH',
+      '899050.BJ',
+      'HSI.HK',
+      'DJIA.US',
+      'SPX.US',
+      'IXIC.US',
+      'NDX.US',
+      'N225.JP',
+      'KS11.KR',
+      'FTSE.UK',
+      'GDAXI.DE',
+      'FCHI.FR',
+    ]);
+    expect(indices).toContainEqual(expect.objectContaining({
+      code: '000688.SH',
+      name: '科创50',
+      value: 102,
+      change: 2,
+      changePercent: 2,
+      quoteTime: '2026-06-05 15:00:00',
+    }));
+    expect(indices).toContainEqual(expect.objectContaining({
+      code: 'NDX.US',
+      name: '纳斯达克100',
+      value: 102,
+    }));
+  });
+
   it('caches index data within the ttl', async () => {
     let calls = 0;
     const service = createMarketDataService({

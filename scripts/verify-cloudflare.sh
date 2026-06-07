@@ -34,19 +34,75 @@ if (!Array.isArray(payload) || payload.length < minCount) {
 NODE
 }
 
+verify_market_indices_complete() {
+  local output="${TMP_DIR}/market_indices.json"
+
+  echo "==> Verify complete market index universe and histories"
+  curl -fsS "${CF_VERIFY_BASE_URL}/api/market/indices" -o "${output}"
+  node - "${CF_VERIFY_BASE_URL}" "${output}" <<'NODE'
+const [baseUrl, file] = process.argv.slice(2);
+const fs = require('node:fs');
+
+const required = [
+  '000001.SH',
+  '399001.SZ',
+  '399006.SZ',
+  '000300.SH',
+  '000688.SH',
+  '899050.BJ',
+  'HSI.HK',
+  'DJIA.US',
+  'SPX.US',
+  'IXIC.US',
+  'NDX.US',
+  'N225.JP',
+  'KS11.KR',
+  'FTSE.UK',
+  'GDAXI.DE',
+  'FCHI.FR',
+];
+
+const indices = JSON.parse(fs.readFileSync(file, 'utf8'));
+if (!Array.isArray(indices)) throw new Error(`market index list expected array, got ${typeof indices}`);
+
+const byCode = new Map(indices.map((index) => [index.code, index]));
+const missing = required.filter((code) => !byCode.has(code));
+if (missing.length > 0) throw new Error(`missing required market indices: ${missing.join(', ')}`);
+
+for (const index of indices) {
+  for (const field of ['code', 'name', 'value', 'change', 'changePercent', 'quoteTime']) {
+    if (index[field] === undefined || index[field] === null || index[field] === '') {
+      throw new Error(`${index.code ?? 'unknown index'} missing quote field ${field}`);
+    }
+  }
+}
+
+(async () => {
+  for (const code of required) {
+    const url = `${baseUrl}/api/market/indices/${encodeURIComponent(code)}/history?range=all`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`${code} history request failed with HTTP ${response.status}`);
+    const history = await response.json();
+    if (!Array.isArray(history) || history.length < 20) {
+      throw new Error(`${code} history expected at least 20 rows, got ${Array.isArray(history) ? history.length : typeof history}`);
+    }
+    const latest = history.at(-1);
+    if (!latest?.date || typeof latest.netValue !== 'number' || !Number.isFinite(latest.netValue)) {
+      throw new Error(`${code} latest history point is invalid`);
+    }
+  }
+})().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+NODE
+}
+
 verify_endpoint "/"
 verify_endpoint "/api/health"
 verify_endpoint "/api/market/indices"
 verify_endpoint "/api/funds/000001"
-verify_json_array_min "/api/market/indices" 10 "global index quote list"
-verify_json_array_min "/api/market/indices/DJIA.US/history?range=1m" 1 "Dow Jones history"
-verify_json_array_min "/api/market/indices/SPX.US/history?range=1m" 1 "S&P 500 history"
-verify_json_array_min "/api/market/indices/IXIC.US/history?range=1m" 1 "Nasdaq Composite history"
-verify_json_array_min "/api/market/indices/N225.JP/history?range=1m" 1 "Nikkei 225 history"
-verify_json_array_min "/api/market/indices/KS11.KR/history?range=1m" 1 "KOSPI history"
-verify_json_array_min "/api/market/indices/HSI.HK/history?range=1m" 1 "Hang Seng history"
-verify_json_array_min "/api/market/indices/FTSE.UK/history?range=1m" 1 "FTSE 100 history"
-verify_json_array_min "/api/market/indices/GDAXI.DE/history?range=1m" 1 "DAX history"
-verify_json_array_min "/api/market/indices/FCHI.FR/history?range=1m" 1 "CAC 40 history"
+verify_json_array_min "/api/market/indices" 16 "global index quote list"
+verify_market_indices_complete
 
 echo "==> Cloudflare verification completed"
