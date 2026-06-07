@@ -151,7 +151,7 @@ describe('calculatePortfolioSummary', () => {
     });
   });
 
-  it('does not show stale daily profit on weekends', () => {
+  it('shows the latest quoted daily profit on weekends and labels the quote date', () => {
     const summary = calculatePortfolioSummary(
       holdings,
       quotes,
@@ -159,9 +159,31 @@ describe('calculatePortfolioSummary', () => {
       new Date('2026-06-07T10:30:00+08:00'),
     );
 
-    expect(summary.dailyProfitAvailable).toBe(false);
-    expect(summary.estimatedDailyProfit).toBe(0);
-    expect(summary.items.every((item) => item.dailyProfitAvailable === false)).toBe(true);
-    expect(summary.reportSignals.find((signal) => signal.title === '今日估算收益')?.detail).toContain('今日收益不展示');
+    expect(summary.dailyProfitAvailable).toBe(true);
+    expect(summary.dailyProfitIsCurrent).toBe(false);
+    expect(summary.dailyProfitDate).toBe('2026-05-28');
+    expect(summary.estimatedDailyProfit).toBeCloseTo(9.1111, 4);
+    expect(summary.items.every((item) => item.dailyProfitAvailable === true)).toBe(true);
+    expect(summary.reportSignals.find((signal) => signal.title === '2026-05-28估算收益')?.detail).toContain('2026-05-28');
+  });
+
+  it('uses estimate time as the daily profit date for intraday estimates', () => {
+    const summary = calculatePortfolioSummary(
+      [holdings[0]],
+      {
+        '000001': {
+          ...quotes['000001'],
+          quoteDate: '2026-06-04',
+          estimateTime: '2026-06-05 15:00',
+          quoteType: 'estimate',
+        },
+      },
+      {},
+      new Date('2026-06-07T10:30:00+08:00'),
+    );
+
+    expect(summary.dailyProfitDate).toBe('2026-06-05');
+    expect(summary.dailyProfitAvailable).toBe(true);
+    expect(summary.dailyProfitIsCurrent).toBe(false);
   });
 });

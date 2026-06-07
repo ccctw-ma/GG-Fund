@@ -889,24 +889,29 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   color: inherit;
 }
 .yb-sort-arrows {
-  display: inline-grid;
-  grid-template-rows: repeat(2, .66rem);
+  display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  justify-items: center;
+  justify-content: center;
+  gap: 2px;
   width: .86rem;
-  height: 1.32rem;
-  line-height: .66rem;
+  height: 1rem;
+  line-height: 0;
 }
 .yb-sort-arrow {
-  display: grid;
-  place-items: center;
-  height: .66rem;
+  display: block;
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
   color: currentColor;
-  font-size: .72rem;
+  font-size: 0;
   font-style: normal;
   font-weight: 950;
   opacity: .34;
 }
+.yb-sort-arrow:first-child { border-bottom: 4.5px solid currentColor; }
+.yb-sort-arrow:last-child { border-top: 4.5px solid currentColor; }
 .yb-sort-group .yb-sort-chip.is-active .yb-sort-arrow {
   color: #0a1810;
   opacity: .58;

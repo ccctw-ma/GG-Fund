@@ -44,12 +44,25 @@ function quoteDateKey(quote?: FundQuote) {
   return direct ?? dateKey(quote.quoteDate);
 }
 
-function hasCurrentTradingDayChange(quote: FundQuote | undefined, asOf: Date) {
+function estimateDateKey(quote?: FundQuote) {
+  if (!quote?.estimateTime) return undefined;
+  const direct = quote.estimateTime.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+  return direct ?? undefined;
+}
+
+function dailyProfitDateKey(quote?: FundQuote) {
+  return estimateDateKey(quote) ?? quoteDateKey(quote);
+}
+
+function isCurrentTradingDay(date: string | undefined, asOf: Date) {
+  return Boolean(date && isWeekday(asOf) && date === localDateKey(asOf));
+}
+
+function hasDailyChange(quote: FundQuote | undefined) {
   return Boolean(
     quote?.dailyChangePercent !== undefined
     && quote.dailyChangePercent !== -100
-    && isWeekday(asOf)
-    && quoteDateKey(quote) === localDateKey(asOf),
+    && dailyProfitDateKey(quote),
   );
 }
 
@@ -159,15 +172,16 @@ function buildRiskSignals(summary: Pick<PortfolioSummary, 'items' | 'totalMarket
   return signals;
 }
 
-function buildReportSignals(summary: Pick<PortfolioSummary, 'totalProfit' | 'totalReturnRate' | 'estimatedDailyProfit' | 'dailyProfitAvailable' | 'items'>): PortfolioSignal[] {
+function buildReportSignals(summary: Pick<PortfolioSummary, 'totalProfit' | 'totalReturnRate' | 'estimatedDailyProfit' | 'dailyProfitAvailable' | 'dailyProfitDate' | 'dailyProfitIsCurrent' | 'items'>): PortfolioSignal[] {
   const best = [...summary.items].sort((a, b) => b.profit - a.profit)[0];
   const weakest = [...summary.items].sort((a, b) => a.profit - b.profit)[0];
+  const dailyLabel = summary.dailyProfitIsCurrent ? '今日估算收益' : `${summary.dailyProfitDate ?? '最近行情日'}估算收益`;
   return [
     {
-      title: '今日估算收益',
+      title: dailyLabel,
       detail: summary.dailyProfitAvailable
-        ? `按已返回日涨跌估算为 ${summary.estimatedDailyProfit >= 0 ? '+' : ''}${summary.estimatedDailyProfit.toFixed(2)} 元。`
-        : '非交易日或暂无当天行情，今日收益不展示。',
+        ? `按 ${summary.dailyProfitDate ?? '最近行情日'} 日涨跌估算为 ${summary.estimatedDailyProfit >= 0 ? '+' : ''}${summary.estimatedDailyProfit.toFixed(2)} 元。`
+        : '暂无可用日涨跌行情。',
       tone: summary.dailyProfitAvailable ? (summary.estimatedDailyProfit >= 0 ? 'positive' : 'warning') : 'neutral',
     },
     {
@@ -223,7 +237,9 @@ export function calculatePortfolioSummary(
     const profit = marketValue - holding.costAmount;
     const returnRate = holding.costAmount > 0 ? percent(profit / holding.costAmount) : 0;
     const weight = totalMarketValue > 0 ? percent(marketValue / totalMarketValue) : 0;
-    const dailyProfitAvailable = hasCurrentTradingDayChange(quote, asOf);
+    const dailyProfitDate = dailyProfitDateKey(quote);
+    const dailyProfitAvailable = hasDailyChange(quote);
+    const dailyProfitIsCurrent = isCurrentTradingDay(dailyProfitDate, asOf);
     const estimatedDailyProfit = dailyProfit(holding, quote, history, marketValue, dailyProfitAvailable);
 
     return {
@@ -236,6 +252,8 @@ export function calculatePortfolioSummary(
       weight,
       estimatedDailyProfit,
       dailyProfitAvailable,
+      dailyProfitDate,
+      dailyProfitIsCurrent,
       holdingDays: holdingDays(holding.purchaseDate),
       quoteStatus: hasValuation(holding, quote, history) ? ('ok' as const) : ('missing' as const),
     };
@@ -245,6 +263,12 @@ export function calculatePortfolioSummary(
   const totalReturnRate = totalCost > 0 ? percent(totalProfit / totalCost) : 0;
   const estimatedDailyProfit = items.reduce((sum, item) => sum + item.estimatedDailyProfit, 0);
   const dailyProfitAvailable = items.some((item) => item.dailyProfitAvailable);
+  const dailyProfitDates = items
+    .filter((item) => item.dailyProfitAvailable)
+    .map((item) => item.dailyProfitDate)
+    .filter((date): date is string => Boolean(date));
+  const dailyProfitDate = dailyProfitDates.sort((a, b) => b.localeCompare(a))[0];
+  const dailyProfitIsCurrent = isCurrentTradingDay(dailyProfitDate, asOf);
   const liveQuoteRatio = holdings.length > 0 ? percent(items.filter((item) => item.quoteStatus === 'ok').length / holdings.length) : 0;
   const ledgers = buildLedgers(items);
   const baseSummary = {
@@ -255,6 +279,8 @@ export function calculatePortfolioSummary(
     totalReturnRate,
     estimatedDailyProfit,
     dailyProfitAvailable,
+    dailyProfitDate,
+    dailyProfitIsCurrent,
   };
 
   return {
@@ -264,6 +290,8 @@ export function calculatePortfolioSummary(
     totalReturnRate,
     estimatedDailyProfit,
     dailyProfitAvailable,
+    dailyProfitDate,
+    dailyProfitIsCurrent,
     liveQuoteRatio,
     ledgers,
     riskSignals: buildRiskSignals(baseSummary),

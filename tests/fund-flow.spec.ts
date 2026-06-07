@@ -228,7 +228,8 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
   await expect(page.getByRole('button', { name: '返回行情' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: '我的持仓分析' })).toBeVisible();
   await expect(page.locator('#portfolio')).toContainText('持仓明细');
-  await expect(page.locator('#portfolio')).toContainText('今日估算收益');
+  await expect(page.locator('#portfolio')).toContainText(/今日估算收益|最近估算收益/);
+  await expect(page.locator('#portfolio')).toContainText('收益日期');
   await expect(page.locator('#portfolio')).toContainText('累计盈亏');
   await expect(page.locator('#portfolio')).toContainText('风险诊断');
   await expect(page.locator('.profile-card')).toContainText('未登录');
