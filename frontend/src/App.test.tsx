@@ -56,7 +56,7 @@ describe('App', () => {
     localStorage.clear();
   });
 
-  it('renders the redesigned fund landing page and live workspace', async () => {
+  it('renders the market page first and keeps account navigation focused', async () => {
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -65,17 +65,14 @@ describe('App', () => {
       root?.render(<App />);
     });
 
-    expect(container.textContent).toContain('基金研究操作系统');
-    expect(container.textContent).toContain('智能基金账户');
-    expect(container.textContent).toContain('账户总览');
-    expect(container.textContent).toContain('交易与基金工具');
-    expect(container.textContent).not.toContain('工具宇宙');
-    expect(container.querySelector('[aria-current="page"]')?.textContent).toContain('总览');
-
-    clickButton('行情工作台');
-    expect(container.textContent).toContain('中国基金行情');
-    expect(container.textContent).toContain('四大指数行情');
+    expect(container.textContent).toContain('行情');
+    expect(container.textContent).toContain('全球指数行情');
     expect(container.textContent).toContain('金融资产搜索');
+    expect(container.textContent).not.toContain('基金研究操作系统');
+    expect(container.textContent).not.toContain('账户总览');
+    expect(container.textContent).not.toContain('交易与基金工具');
+    expect(container.textContent).not.toContain('工具宇宙');
+    expect(container.querySelector('[aria-current="page"]')?.textContent).toContain('行情');
     expect(container.textContent).not.toContain('基金小白决策地图');
     expect(container.textContent).not.toContain('查看组合');
 
@@ -83,7 +80,7 @@ describe('App', () => {
     expect(container.textContent).not.toContain('个人信息');
     expect(container.textContent).not.toContain('右侧登录状态');
     expect(container.textContent).not.toContain('智能投研');
-    clickButton('组合账户');
+    clickButton('账户');
     expect(container.textContent).not.toContain('安全与隐私');
     expect(container.textContent).not.toContain('下载移动端');
     expect(container.textContent).not.toContain('移动端');
@@ -91,15 +88,8 @@ describe('App', () => {
     expect(container.textContent).not.toContain('Resend 邮箱验证码登录');
     expect(container.textContent).not.toContain('发送验证码');
     expect(container.textContent).not.toContain('OTP / OAuth 登录');
-    expect(container.textContent).toContain('组合账户');
+    expect(container.textContent).toContain('账户');
     expect(container.textContent).toContain('自选基金');
-
-    clickButton('总览');
-    const heroSection = container.querySelector('.landing-hero');
-    const heroTitle = container.querySelector('#hero-title');
-    expect(heroSection?.getAttribute('aria-labelledby')).toBe('hero-title');
-    expect(heroSection?.getAttribute('aria-label')).toBeNull();
-    expect(heroTitle?.textContent).toContain('基金研究操作系统');
   });
 
   it('hydrates without mismatching locally cached holdings', async () => {

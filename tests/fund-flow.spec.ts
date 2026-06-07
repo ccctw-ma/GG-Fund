@@ -26,6 +26,30 @@ const marketIndicesFixture = [
     changePercent: -0.25,
     quoteTime: '2026-05-29 15:00',
   },
+  {
+    code: 'NDX.US',
+    name: '纳斯达克100',
+    value: 25709.43,
+    change: -1121.53,
+    changePercent: -4.18,
+    quoteTime: '2026-06-05 16:00',
+  },
+  {
+    code: 'N225.JP',
+    name: '日经225',
+    value: 66588.12,
+    change: -882.57,
+    changePercent: -1.31,
+    quoteTime: '2026-06-05 15:00',
+  },
+  {
+    code: 'KS11.KR',
+    name: '韩国KOSPI',
+    value: 8160.59,
+    change: -478.82,
+    changePercent: -5.54,
+    quoteTime: '2026-06-05 15:00',
+  },
 ];
 
 const fundQuoteFixture = {
@@ -191,8 +215,9 @@ test.beforeEach(async ({ page }) => {
 test('searches realtime data, covers reconstructed content, uses deterministic Resend OTP, renders charts, and adds a holding', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByText('基金研究操作系统').first()).toBeVisible();
-  await expect(page.getByTestId('banking-hero-card')).toBeVisible();
+  await expect(page.getByRole('button', { name: '行情', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByText('基金研究操作系统').first()).toHaveCount(0);
+  await expect(page.getByTestId('banking-hero-card')).toHaveCount(0);
 
   await expect(page.getByRole('button', { name: /工具宇宙/ })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: '全景工具宇宙' })).toHaveCount(0);
@@ -200,10 +225,12 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
   await expect(page.getByText('官方公告与高信任披露').first()).toHaveCount(0);
   await expect(page.getByText('AKShare / AKTools').first()).toHaveCount(0);
 
-  await page.getByRole('button', { name: /行情工作台/ }).click();
-  await expect(page.getByRole('heading', { name: '中国基金行情' })).toBeAttached();
-  await expect(page.getByRole('heading', { name: '四大指数行情' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '行情', exact: true })).toBeAttached();
+  await expect(page.getByRole('heading', { name: '全球指数行情' })).toBeVisible();
   await expect(page.locator('#markets')).toContainText('上证指数');
+  await expect(page.locator('#markets')).toContainText('纳斯达克100');
+  await expect(page.locator('#markets')).toContainText('日经225');
+  await expect(page.locator('#markets')).toContainText('韩国KOSPI');
   await expect(page.locator('#markets')).toContainText('3128.42');
   await expect(page.getByTestId('market-chart').getByRole('button', { name: /上证指数/ })).toBeVisible();
   await expect(page.getByTestId('index-chart')).toBeVisible();
@@ -224,7 +251,7 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
 
   await page.getByRole('button', { name: '加入持仓' }).click();
 
-  await page.getByRole('button', { name: /组合账户/ }).click();
+  await page.getByRole('button', { name: '账户', exact: true }).click();
   await expect(page.getByRole('button', { name: '返回行情' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: '我的持仓分析' })).toBeVisible();
   await expect(page.locator('#portfolio')).toContainText('持仓明细');
@@ -238,7 +265,7 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
 test('imports and deletes local portfolio data', async ({ page }) => {
   await page.goto('/');
 
-  await page.getByRole('button', { name: /组合账户/ }).click();
+  await page.getByRole('button', { name: '账户', exact: true }).click();
   await expect(page.locator('#settings')).not.toContainText('数据与部署说明');
   await expect(page.locator('#settings')).not.toContainText('本地数据导出');
   await expect(page.locator('#settings')).not.toContainText('导入 JSON 备份');
@@ -265,27 +292,27 @@ test('shows fund search errors without breaking the dashboard', async ({ page })
   });
 
   await page.goto('/');
-  await page.getByRole('button', { name: /行情工作台/ }).click();
+  await page.getByRole('button', { name: '行情', exact: true }).click();
   await page.getByLabel('基金、股票代码或名称').fill('bad-query');
   await page.getByRole('button', { name: '搜索' }).click();
   await expect(page.getByText('基金查询服务暂不可用')).toBeVisible();
-  await expect(page.getByRole('heading', { name: '四大指数行情' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '全球指数行情' })).toBeVisible();
 });
 
 test('toggles watchlist and keeps portfolio focused on holdings', async ({ page }) => {
   await page.goto('/');
 
-  await page.getByRole('button', { name: /行情工作台/ }).click();
+  await page.getByRole('button', { name: '行情', exact: true }).click();
   await page.getByLabel('基金、股票代码或名称').fill('000001');
   await page.getByRole('button', { name: '搜索' }).click();
   await page.locator('#funds').getByRole('button').filter({ hasText: '华夏成长混合' }).first().click();
 
   await page.getByRole('button', { name: '加入自选' }).click();
-  await page.getByRole('button', { name: /组合账户/ }).click();
+  await page.getByRole('button', { name: '账户', exact: true }).click();
   await expect(page.locator('#portfolio').getByText('华夏成长混合 000001')).toBeVisible();
-  await page.getByRole('button', { name: /行情工作台/ }).click();
+  await page.getByRole('button', { name: '行情', exact: true }).click();
   await page.getByRole('button', { name: '移出自选' }).click();
-  await page.getByRole('button', { name: /组合账户/ }).click();
+  await page.getByRole('button', { name: '账户', exact: true }).click();
   await expect(page.locator('#portfolio').getByText('华夏成长混合 000001')).toHaveCount(0);
 
   await expect(page.getByRole('heading', { name: '我的持仓分析' })).toBeVisible();

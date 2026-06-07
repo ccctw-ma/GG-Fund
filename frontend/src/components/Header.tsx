@@ -1,7 +1,7 @@
-import { BarChart3, Compass, LogOut, UserRound } from 'lucide-react';
+import { BarChart3, LogOut, UserRound } from 'lucide-react';
 import type { AuthSessionResponse } from '../api';
 
-export type WorkspacePage = 'overview' | 'workspace' | 'portfolio';
+export type WorkspacePage = 'workspace' | 'portfolio';
 
 type HeaderProps = {
   session?: AuthSessionResponse;
@@ -12,10 +12,9 @@ type HeaderProps = {
 };
 
 const navItems = [
-  { id: 'overview', label: '总览', icon: Compass },
-  { id: 'workspace', label: '行情工作台', icon: BarChart3 },
-  { id: 'portfolio', label: '组合账户', icon: UserRound },
-] satisfies Array<{ id: WorkspacePage; label: string; icon: typeof Compass }>;
+  { id: 'workspace', label: '行情', icon: BarChart3 },
+  { id: 'portfolio', label: '账户', icon: UserRound },
+] satisfies Array<{ id: WorkspacePage; label: string; icon: typeof BarChart3 }>;
 
 function shortAccountLabel(session?: AuthSessionResponse) {
   const label = session?.user.displayName || session?.user.identifier;
@@ -28,7 +27,7 @@ function shortAccountLabel(session?: AuthSessionResponse) {
 export function Header({ session, onLogout, logoutPending = false, activePage, onPageChange }: HeaderProps) {
   return (
     <header className="banking-header">
-      <button type="button" className="brand-lockup" aria-label="GG Fund 首页" onClick={() => onPageChange('overview')}>
+      <button type="button" className="brand-lockup" aria-label="GG Fund 行情" onClick={() => onPageChange('workspace')}>
         <span className="brand-mark">GG</span>
         <span>
           <span className="block text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">Trusted Fund OS</span>

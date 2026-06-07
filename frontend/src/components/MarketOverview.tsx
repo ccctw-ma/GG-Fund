@@ -45,8 +45,8 @@ export function MarketOverview({ indices, loading, error }: { indices: IndexQuot
       <CardHeader className="market-overview-head">
         <div>
           <Badge tone="blue" className="mb-2"><Activity className="h-3 w-3" /> Market</Badge>
-          <CardTitle>四大指数行情</CardTitle>
-          <CardDescription>默认显示上证指数，点击指数卡片切换下方走势图。</CardDescription>
+          <CardTitle>全球指数行情</CardTitle>
+          <CardDescription>覆盖 A 股、港股、美股、日经、韩国和欧洲主要指数，点击指数卡片切换下方走势图。</CardDescription>
         </div>
         <Badge tone="slate">{indices.length > 4 ? '多市场数据' : '公开数据'}</Badge>
       </CardHeader>

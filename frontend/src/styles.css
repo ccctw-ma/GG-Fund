@@ -587,14 +587,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   justify-content: space-between;
   gap: 10px;
 }
-.yb-insight-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-}
-.yb-insight-sort { display: flex; align-items: center; max-width: 100%; }
 .yb-metric-refresh small { margin-top: 0; }
 .yb-metric-refresh button,
 .yb-daily-profit-head button {
@@ -855,6 +847,20 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .yb-holdings-panel .yb-holding-toolbar { margin-top: 0; }
 .yb-holding-toolbar > span { color: var(--text-strong); font-size: 1rem; font-weight: 950; }
+.yb-insight-toolbar { margin-top: 0; }
+.yb-insight-toolbar > div:first-child { min-width: min(100%, 320px); }
+.yb-insight-toolbar > div:first-child strong {
+  color: var(--text-strong);
+  font-size: 1rem;
+  font-weight: 950;
+}
+.yb-insight-toolbar > div:first-child span {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: .78rem;
+  font-weight: 800;
+}
 .yb-sort-group {
   display: inline-flex;
   align-items: center;

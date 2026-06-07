@@ -22,7 +22,7 @@ describe('market data service', () => {
     ]);
   });
 
-  it('normalizes expanded Eastmoney index quotes for A/H/US market radar', async () => {
+  it('normalizes expanded Eastmoney index quotes for global market radar', async () => {
     const service = createMarketDataService({
       now: () => 1_779_951_200_000,
       fetchText: async () => JSON.stringify({
@@ -31,7 +31,11 @@ describe('market data service', () => {
           diff: [
             { f12: '000688', f14: '科创50', f2: 1288.88, f3: 1.08, f4: 13.7, f124: 1779951051 },
             { f12: 'HSI', f14: '恒生指数', f2: 26888.66, f3: -0.35, f4: -94.1, f124: 1779951051 },
-            { f12: 'IXIC', f14: '纳斯达克', f2: 19888.12, f3: 0.42, f4: 83.3, f124: 1779951051 },
+            { f12: 'DJIA', f14: '道琼斯', f2: 50866.78, f3: -1.35, f4: -695.15, f124: 1779951051 },
+            { f12: 'SPX', f14: '标普500', f2: 7383.74, f3: -2.64, f4: -200.57, f124: 1779951051 },
+            { f12: 'NDX', f14: '纳斯达克', f2: 25709.43, f3: -4.18, f4: -1121.53, f124: 1779951051 },
+            { f12: 'N225', f14: '日经225', f2: 66588.12, f3: -1.31, f4: -882.57, f124: 1779951051 },
+            { f12: 'KS11', f14: '韩国KOSPI', f2: 8160.59, f3: -5.54, f4: -478.82, f124: 1779951051 },
           ],
         },
       }),
@@ -40,7 +44,11 @@ describe('market data service', () => {
     await expect(service.getIndices()).resolves.toEqual([
       expect.objectContaining({ code: '000688.SH', name: '科创50' }),
       expect.objectContaining({ code: 'HSI.HK', name: '恒生指数' }),
-      expect.objectContaining({ code: 'IXIC.US', name: '纳斯达克' }),
+      expect.objectContaining({ code: 'DJIA.US', name: '道琼斯工业指数' }),
+      expect.objectContaining({ code: 'SPX.US', name: '标普500' }),
+      expect.objectContaining({ code: 'NDX.US', name: '纳斯达克100' }),
+      expect.objectContaining({ code: 'N225.JP', name: '日经225' }),
+      expect.objectContaining({ code: 'KS11.KR', name: '韩国KOSPI' }),
     ]);
   });
 

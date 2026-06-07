@@ -455,31 +455,25 @@ export function PortfolioPanel({
       <section className="yb-daily-profit-detail" id="portfolio-insight-detail" data-testid="portfolio-insight-detail">
         {activeInsight === 'daily' && (
           <>
-          <div className="yb-daily-profit-head">
+          <div className="yb-holding-toolbar yb-insight-toolbar">
             <div>
               <strong>{summary.dailyProfitIsCurrent ? '今日收益拆解' : '最近收益拆解'}</strong>
               <span>{summary.dailyProfitAvailable ? `${dailyMeta} · 亏损 ${dailyLosers.length} 只 · 盈利 ${dailyGainers.length} 只 · ${quoteRefreshLabel}` : `暂无可用日涨跌行情 · ${quoteRefreshLabel}`}</span>
             </div>
-            <div className="yb-insight-actions">
-              <div className="yb-sort-group yb-insight-sort" role="group" aria-label="今日收益排序">
-                {dailySortOptions.map((option) => (
-                  <button
-                    key={option.key}
-                    type="button"
-                    className={option.key === dailySort.key ? 'yb-sort-chip is-active' : 'yb-sort-chip'}
-                    aria-label={sortButtonLabel(option.label, option.key === dailySort.key, dailySort.direction, option.defaultDirection)}
-                    aria-pressed={option.key === dailySort.key}
-                    onClick={() => setDailySort((current) => nextSortState(current, option.key, option.defaultDirection))}
-                  >
-                    <span>{option.label}</span>
-                    {sortArrows(option.key === dailySort.key, dailySort.direction)}
-                  </button>
-                ))}
-              </div>
-              <button type="button" onClick={() => void onRefreshQuotes?.()} disabled={quotesRefreshing}>
-                <RefreshCw className={`h-3.5 w-3.5 ${quotesRefreshing ? 'animate-spin' : ''}`} />
-                {quotesRefreshing ? '刷新中' : '刷新行情'}
-              </button>
+            <div className="yb-sort-group" role="group" aria-label="今日收益排序">
+              {dailySortOptions.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  className={option.key === dailySort.key ? 'yb-sort-chip is-active' : 'yb-sort-chip'}
+                  aria-label={sortButtonLabel(option.label, option.key === dailySort.key, dailySort.direction, option.defaultDirection)}
+                  aria-pressed={option.key === dailySort.key}
+                  onClick={() => setDailySort((current) => nextSortState(current, option.key, option.defaultDirection))}
+                >
+                  <span>{option.label}</span>
+                  {sortArrows(option.key === dailySort.key, dailySort.direction)}
+                </button>
+              ))}
             </div>
           </div>
           {dailyProfitItems.length === 0 ? (
@@ -533,7 +527,7 @@ export function PortfolioPanel({
         )}
         {activeInsight === 'profit' && (
           <>
-          <div className="yb-daily-profit-head">
+          <div className="yb-holding-toolbar yb-insight-toolbar">
             <div>
               <strong>累计盈亏拆解</strong>
               <span className="yb-value-line">
@@ -542,7 +536,7 @@ export function PortfolioPanel({
                 <em className={toneClass(summary.totalReturnRate)}>收益率 {summary.totalReturnRate.toFixed(2)}%</em>
               </span>
             </div>
-            <div className="yb-sort-group yb-insight-sort" role="group" aria-label="累计盈亏排序">
+            <div className="yb-sort-group" role="group" aria-label="累计盈亏排序">
               {profitSortOptions.map((option) => (
                 <button
                   key={option.key}

@@ -26,7 +26,14 @@ const INDEX_NAMES: Record<string, string> = {
   '000688': '科创50',
   '899050': '北证50',
   HSI: '恒生指数',
-  IXIC: '纳斯达克',
+  DJIA: '道琼斯工业指数',
+  SPX: '标普500',
+  NDX: '纳斯达克100',
+  N225: '日经225',
+  KS11: '韩国KOSPI',
+  FTSE: '英国富时100',
+  GDAXI: '德国DAX',
+  FCHI: '法国CAC40',
 };
 
 const fallbackFunds: FundQuote[] = [
@@ -41,6 +48,36 @@ const fallbackFunds: FundQuote[] = [
 ];
 
 const fallbackIndices: IndexQuote[] = [];
+
+const EASTMONEY_INDEX_SECIDS = [
+  '1.000001',
+  '0.399001',
+  '0.399006',
+  '1.000300',
+  '1.000688',
+  '0.899050',
+  '100.HSI',
+  '100.DJIA',
+  '100.SPX',
+  '100.NDX',
+  '100.N225',
+  '100.KS11',
+  '100.FTSE',
+  '100.GDAXI',
+  '100.FCHI',
+];
+
+const GLOBAL_INDEX_MARKETS: Record<string, string> = {
+  HSI: 'HK',
+  DJIA: 'US',
+  SPX: 'US',
+  NDX: 'US',
+  N225: 'JP',
+  KS11: 'KR',
+  FTSE: 'UK',
+  GDAXI: 'DE',
+  FCHI: 'FR',
+};
 
 const historyByCode: Record<string, FundHistoryPoint[]> = Object.fromEntries(
   fallbackFunds.filter((fund) => fund.assetType !== 'stock').map((fund, fundIndex) => [
@@ -96,7 +133,7 @@ function indexFromEastmoneyPush2Item(item: unknown): IndexQuote | undefined {
   const change = toNumber(record.f4);
   const quoteTimestamp = toNumber(record.f124);
   if (!rawCode || value === undefined || changePercent === undefined || change === undefined || !quoteTimestamp) return undefined;
-  const market = rawCode === 'HSI' ? 'HK' : rawCode === 'IXIC' ? 'US' : rawCode.startsWith('399') || rawCode.startsWith('899') ? 'SZ' : 'SH';
+  const market = GLOBAL_INDEX_MARKETS[rawCode] ?? (rawCode.startsWith('399') || rawCode.startsWith('899') ? 'SZ' : 'SH');
   const quoteTime = new Intl.DateTimeFormat('sv-SE', {
     timeZone: 'Asia/Shanghai',
     year: 'numeric',
@@ -688,7 +725,7 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
   }
 
   async function getEastmoneyIndices(): Promise<IndexQuote[]> {
-    const url = 'https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids=1.000001,0.399001,0.399006,1.000300,1.000688,0.899050,100.HSI,100.IXIC&fields=f12,f14,f2,f3,f4,f124';
+    const url = `https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids=${EASTMONEY_INDEX_SECIDS.join(',')}&fields=f12,f14,f2,f3,f4,f124`;
     return indicesFromEastmoneyPush2(JSON.parse(await fetchText(url)));
   }
 

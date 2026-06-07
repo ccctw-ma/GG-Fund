@@ -1,16 +1,7 @@
 'use client';
 
 import {
-  ArrowUpRight,
-  BadgeCheck,
-  BarChart3,
   BellRing,
-  ChevronRight,
-  Database,
-  LineChart,
-  ShieldCheck,
-  WalletCards,
-  Wifi,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, type AuthSessionResponse } from './api';
@@ -26,25 +17,10 @@ import { loadHoldings, loadWatchlist, parseImportedData, saveHoldings, saveWatch
 import type { FundHistoryPoint, FundHoldings, FundQuote, Holding, IndexQuote, WatchItem } from './types';
 
 const nowIso = () => new Date().toISOString();
-const money = new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY', maximumFractionDigits: 2 });
-
-const heroStats = [
-  { label: '实时行情', value: '指数 + 基金 + 股票', detail: '东方财富 / 腾讯 / 天天基金' },
-  { label: '养基账本', value: '报告 + 提醒', detail: '盈亏 / 风险 / 定投 / 止盈' },
-  { label: '多平台导入', value: '文字识别', detail: '支付宝 / 理财通 / 天天 / 雪球' },
-];
-
-const transactionFeatures = [
-  { title: '多源行情搜索', description: '输入基金、股票代码或名称，自动聚合基金净值、A股实时价格和公开数据备用源。', icon: LineChart },
-  { title: '养基宝式账本', description: '多平台持仓汇总、今日估算收益、周/月报摘要、7 天赎回提醒和组合风险诊断。', icon: WalletCards },
-  { title: '筛选、对比与诊断', description: '把好买式筛选、对比、诊断抽象为 GG Fund 的基金研究工具层。', icon: BarChart3 },
-  { title: '公告、资讯与开源研究', description: '把东方财富、雪球、同花顺、交易所披露和 AKShare/Qlib 能力纳入路线图。', icon: Database },
-];
 
 const hashPageMap: Record<string, WorkspacePage> = {
-  overview: 'overview',
-  features: 'overview',
   workspace: 'workspace',
+  market: 'workspace',
   funds: 'workspace',
   portfolio: 'portfolio',
   account: 'portfolio',
@@ -60,7 +36,7 @@ export type AppInitialData = {
 
 function pageFromHash(hash: string): WorkspacePage {
   const key = hash.replace(/^#/, '');
-  return hashPageMap[key] ?? 'overview';
+  return hashPageMap[key] ?? 'workspace';
 }
 
 export default function App({ initialData }: { initialData?: AppInitialData }) {
@@ -85,7 +61,7 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
   const [session, setSession] = useState<AuthSessionResponse>();
   const [authPending, setAuthPending] = useState<'idle' | 'logout'>('idle');
   const [storageReady, setStorageReady] = useState(false);
-  const [activePage, setActivePage] = useState<WorkspacePage>('overview');
+  const [activePage, setActivePage] = useState<WorkspacePage>('workspace');
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -194,8 +170,6 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
   }, [holdings, watchlist, storageReady, session]);
 
   const summary = useMemo(() => calculatePortfolioSummary(holdings, quotes, holdingHistories), [holdings, quotes, holdingHistories]);
-  const positive = summary.totalProfit >= 0;
-  const leadingIndex = indices[0];
 
   async function searchFunds() {
     setFundLoading(true);
@@ -387,98 +361,9 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
           onPageChange={changePage}
         />
         <main className="landing-flow">
-          {activePage === 'overview' && (
-            <>
-              <section className="landing-hero" aria-labelledby="hero-title">
-                <div className="hero-copy">
-                  <div className="trust-pill"><ShieldCheck className="h-4 w-4" /> Cloudflare-first · Local-first · AI-ready</div>
-                  <h2 className="hero-title" id="hero-title">基金研究操作系统，把行情、工具、公告、组合与 AI 装进一张专业工作台。</h2>
-                  <p className="hero-subtitle">
-                    GG Fund 重构为面向中国基金投资者的全景工具站：实时基金净值、ETF/LOF/REITs/转债路线图、官方披露、资讯社区、开源量化底座和本地组合分析在同一个可信界面里串起来。
-                  </p>
-                  <div className="hero-actions">
-                    <button type="button" className="gold-cta" onClick={() => changePage('workspace')}>立即体验 <ArrowUpRight className="h-4 w-4" /></button>
-                  </div>
-                  <div className="hero-stat-grid">
-                    {heroStats.map((item) => (
-                      <article className="hero-stat" key={item.label}>
-                        <span>{item.label}</span>
-                        <strong>{item.value}</strong>
-                        <small>{item.detail}</small>
-                      </article>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="hero-device" data-testid="banking-hero-card">
-                  <div className="phone-frame" aria-label="账户卡片预览">
-                    <div className="phone-speaker" />
-                    <div className="phone-topline">
-                      <span>GG Fund · 研究工作台</span>
-                      <BadgeCheck className="h-4 w-4 text-[var(--mint)]" />
-                    </div>
-                    <div className="balance-card">
-                      <span>智能基金账户 · 研究工作台</span>
-                      <strong>{money.format(summary.totalMarketValue)}</strong>
-                      <small className={positive ? 'profit-up' : 'profit-down'}>{positive ? '+' : ''}{summary.totalReturnRate.toFixed(2)}% · {money.format(summary.totalProfit)}</small>
-                    </div>
-                    <div className="phone-list">
-                      <div><span>持仓基金</span><strong>{summary.items.length}</strong></div>
-                      <div><span>自选观察</span><strong>{watchlist.length}</strong></div>
-                      <div><span>市场脉冲</span><strong>{leadingIndex ? leadingIndex.value.toFixed(0) : '--'}</strong></div>
-                    </div>
-                  </div>
-                  <article className="floating-ticket">
-                    <Wifi className="h-5 w-5 text-[var(--mint)]" />
-                    <div><strong>Market Pulse</strong><span>{leadingIndex?.name ?? '上证指数'} · {leadingIndex ? `${leadingIndex.changePercent.toFixed(2)}%` : '同步中'}</span></div>
-                  </article>
-                </div>
-              </section>
-
-              <section className="glass-section" id="overview" aria-labelledby="overview-title">
-                <div className="section-heading">
-                  <span className="section-kicker">Account Overview</span>
-                  <h2 id="overview-title">账户总览</h2>
-                  <p>用真实组合数据驱动的账户预览，帮助用户第一眼确认资产、收益、风险和下一步动作。</p>
-                </div>
-                <div className="overview-grid">
-                  <article className="overview-primary-card">
-                    <span>总资产估值</span>
-                    <strong>{money.format(summary.totalMarketValue)}</strong>
-                    <p className={positive ? 'profit-up' : 'profit-down'}>{positive ? '累计收益为正' : '组合处于回撤'} · {money.format(summary.totalProfit)} / {summary.totalReturnRate.toFixed(2)}%</p>
-                  </article>
-                  <article><span>投入成本</span><strong>{money.format(summary.totalCost)}</strong><small>由本地持仓计算</small></article>
-                  <article><span>基金持仓</span><strong>{summary.items.length}</strong><small>默认样例可一键添加</small></article>
-                  <article><span>自选列表</span><strong>{watchlist.length}</strong><small>关注净值与估算变化</small></article>
-                </div>
-              </section>
-
-              <section className="glass-section" id="features" aria-labelledby="features-title">
-                <div className="section-heading">
-                  <span className="section-kicker">Transaction Features</span>
-                  <h2 id="features-title">交易与基金工具</h2>
-                  <p>把“查、看、管、研、备份”的核心路径拆成可理解的功能卡片，降低首次使用成本。</p>
-                </div>
-                <div className="feature-grid">
-                  {transactionFeatures.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <article className="feature-card" key={item.title}>
-                        <span className="feature-icon"><Icon className="h-5 w-5" /></span>
-                        <h3>{item.title}</h3>
-                        <p>{item.description}</p>
-                        <button type="button" onClick={() => changePage('workspace')}>进入功能 <ChevronRight className="h-4 w-4" /></button>
-                      </article>
-                    );
-                  })}
-                </div>
-              </section>
-            </>
-          )}
-
           {activePage === 'workspace' && (
             <section className="workspace-section" id="workspace" aria-labelledby="workspace-title">
-              <h2 id="workspace-title" className="sr-only">中国基金行情</h2>
+              <h2 id="workspace-title" className="sr-only">行情</h2>
               <div className="banking-grid">
                 <MarketOverview indices={indices} loading={marketLoading} error={marketError} />
                 <FundSearch
@@ -503,7 +388,7 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
 
           {activePage === 'portfolio' && (
             <section className="workspace-section" id="portfolio-page" aria-labelledby="portfolio-page-title">
-              <h2 id="portfolio-page-title" className="sr-only">组合账户</h2>
+              <h2 id="portfolio-page-title" className="sr-only">账户</h2>
               <div className="banking-grid single-page-grid">
                 <PortfolioPanel
                   summary={summary}
