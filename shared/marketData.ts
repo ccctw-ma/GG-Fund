@@ -28,6 +28,7 @@ const INDEX_NAMES: Record<string, string> = {
   HSI: '恒生指数',
   DJIA: '道琼斯工业指数',
   SPX: '标普500',
+  IXIC: '纳斯达克综合指数',
   NDX: '纳斯达克100',
   N225: '日经225',
   KS11: '韩国KOSPI',
@@ -94,7 +95,7 @@ const SINA_GLOBAL_INDEX_SYMBOLS = [
 const SINA_INDEX_CODES: Record<string, string> = {
   'gb_$dji': 'DJIA.US',
   'gb_$inx': 'SPX.US',
-  gb_ixic: 'NDX.US',
+  gb_ixic: 'IXIC.US',
   b_NKY: 'N225.JP',
   b_KOSPI: 'KS11.KR',
   rt_hkHSI: 'HSI.HK',
@@ -245,7 +246,7 @@ function indexFromSinaLine(line: string): IndexQuote | undefined {
     value = toNumber(parts[6]);
     change = toNumber(parts[7]);
     changePercent = toNumber(parts[8]);
-    quoteTime = [parts[16]?.replaceAll('/', '-'), parts[17]].filter(Boolean).join(' ');
+    quoteTime = [parts[17]?.replaceAll('/', '-'), parts[18]].filter(Boolean).join(' ');
   } else {
     value = toNumber(parts[1]);
     change = toNumber(parts[2]);
