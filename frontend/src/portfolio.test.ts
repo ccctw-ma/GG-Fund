@@ -186,4 +186,78 @@ describe('calculatePortfolioSummary', () => {
     expect(summary.dailyProfitAvailable).toBe(true);
     expect(summary.dailyProfitIsCurrent).toBe(false);
   });
+
+  it('uses confirmed NAV history instead of intraday estimates for Nasdaq QDII daily profit', () => {
+    const summary = calculatePortfolioSummary(
+      [{
+        id: 'h-nasdaq',
+        fundCode: '161130',
+        fundName: '易方达纳斯达克100ETF联接(QDII-LOF)A',
+        recordedMarketValue: 1000,
+        costAmount: 1100,
+        createdAt: '2026-06-08T10:00:00.000Z',
+        updatedAt: '2026-06-08T10:00:00.000Z',
+      }],
+      {
+        '161130': {
+          code: '161130',
+          name: '易方达纳斯达克100ETF联接(QDII-LOF)A(人民币)',
+          netValue: 4.4549,
+          officialNetValue: 4.3851,
+          dailyChangePercent: 1.59,
+          quoteDate: '2026-06-05',
+          estimateTime: '2026-06-08 22:29',
+          quoteType: 'estimate',
+          source: '天天基金实时估算',
+        },
+      },
+      {
+        '161130': [
+          { date: '2026-06-04', netValue: 4.5955 },
+          { date: '2026-06-05', netValue: 4.3851 },
+        ],
+      },
+      new Date('2026-06-08T23:00:00+08:00'),
+    );
+
+    expect(summary.dailyProfitDate).toBe('2026-06-05');
+    expect(summary.items[0].quote?.quoteType).toBe('official');
+    expect(summary.items[0].quote?.dailyChangePercent).toBeCloseTo(-4.5784, 4);
+    expect(summary.items[0].estimatedDailyProfit).toBeLessThan(0);
+  });
+
+  it('prefers same-day recorded platform daily profit when imported from Alipay', () => {
+    const summary = calculatePortfolioSummary(
+      [{
+        id: 'h-alipay',
+        fundCode: '040046',
+        fundName: '华安纳斯达克100ETF联接(QDII)A',
+        recordedMarketValue: 1000,
+        recordedDailyProfit: -12.34,
+        costAmount: 1100,
+        platform: 'alipay',
+        createdAt: '2026-06-08T10:00:00.000Z',
+        updatedAt: '2026-06-08T10:00:00.000Z',
+      }],
+      {
+        '040046': {
+          code: '040046',
+          name: '华安纳斯达克100ETF联接(QDII)A',
+          netValue: 8.2764,
+          officialNetValue: 8.1467,
+          dailyChangePercent: 1.59,
+          quoteDate: '2026-06-05',
+          estimateTime: '2026-06-08 22:29',
+          quoteType: 'estimate',
+          source: '天天基金实时估算',
+        },
+      },
+      {},
+      new Date('2026-06-08T23:00:00+08:00'),
+    );
+
+    expect(summary.estimatedDailyProfit).toBe(-12.34);
+    expect(summary.items[0].estimatedDailyProfit).toBe(-12.34);
+    expect(summary.dailyProfitIsCurrent).toBe(true);
+  });
 });

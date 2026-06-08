@@ -534,12 +534,13 @@ describe('dashboard components', () => {
     ].join('\n');
     const importText = buildRecognizedImport(ocrText, 'alipay');
     const parsed = JSON.parse(importText) as {
-      holdings: Array<{ fundCode: string; fundName: string; recordedMarketValue: number; costAmount: number; platform: string }>;
+      holdings: Array<{ fundCode: string; fundName: string; recordedMarketValue: number; recordedDailyProfit?: number; costAmount: number; platform: string }>;
     };
 
     expect(parsed.holdings.length).toBeGreaterThanOrEqual(3);
     const first = parsed.holdings[0];
     expect(first.recordedMarketValue).toBe(19374.21);
+    expect(first.recordedDailyProfit).toBe(49.08);
     expect(first.costAmount).toBeCloseTo(19374.21 - 2624.21, 2);
     expect(first.platform).toBe('alipay');
     expect(first.fundName).toContain('纳斯达克');

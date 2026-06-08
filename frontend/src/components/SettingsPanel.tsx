@@ -81,6 +81,12 @@ function parseAlipayHoldingScreenshot(text: string, preferredPlatform: string) {
 
     // 续行（当日收益/收益率行）：持有金额列永远是无符号正数，带 +/- 或 % 开头的首列说明这是上一只基金的涨跌续行。
     if (/^[+＋-]/.test(firstAmount) || firstAmount.includes('%')) {
+      const latest = holdings.at(-1);
+      const dailyProfit = parseAmount(firstAmount.replace('%', ''));
+      if (latest && !firstAmount.includes('%') && dailyProfit !== undefined) {
+        latest.recordedDailyProfit = Number(dailyProfit.toFixed(2));
+        latest.updatedAt = now;
+      }
       return;
     }
 
