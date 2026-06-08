@@ -61,6 +61,7 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
   const [session, setSession] = useState<AuthSessionResponse>();
   const [authPending, setAuthPending] = useState<'idle' | 'logout'>('idle');
   const [storageReady, setStorageReady] = useState(false);
+  const [remotePortfolioReady, setRemotePortfolioReady] = useState(true);
   const [activePage, setActivePage] = useState<WorkspacePage>('workspace');
 
   useEffect(() => {
@@ -81,7 +82,13 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
       .finally(() => setMarketLoading(false));
     api.getTrendingFunds().then(setResults).catch(() => undefined);
     api.getIndexHistory('000300.SH', 'all').then(setBenchmarkHistory).catch(() => undefined);
-    api.getCurrentUser().then(setSession).catch(() => setSession(undefined));
+    api.getCurrentUser().then((nextSession) => {
+      setRemotePortfolioReady(false);
+      setSession(nextSession);
+    }).catch(() => {
+      setSession(undefined);
+      setRemotePortfolioReady(true);
+    });
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
@@ -93,6 +100,30 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    if (!session) return;
+
+    let cancelled = false;
+    api.getDefaultPortfolio()
+      .then((snapshot) => {
+        if (cancelled) return;
+        const remoteHasData = snapshot.holdings.length > 0 || snapshot.watchlist.length > 0;
+        if (remoteHasData) {
+          setHoldings(snapshot.holdings);
+          setWatchlist(snapshot.watchlist);
+        }
+        setRemotePortfolioReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setRemotePortfolioReady(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session, storageReady]);
 
   useEffect(() => {
     const syncPageFromHash = () => setActivePage(pageFromHash(window.location.hash));
@@ -162,12 +193,12 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
   }, [watchlist, storageReady]);
 
   useEffect(() => {
-    if (!storageReady || !session) return;
+    if (!storageReady || !session || !remotePortfolioReady) return;
     const handle = setTimeout(() => {
       api.syncPortfolio(holdings, watchlist).catch(() => undefined);
     }, 600);
     return () => clearTimeout(handle);
-  }, [holdings, watchlist, storageReady, session]);
+  }, [holdings, watchlist, remotePortfolioReady, storageReady, session]);
 
   const summary = useMemo(() => calculatePortfolioSummary(holdings, quotes, holdingHistories), [holdings, quotes, holdingHistories]);
 
@@ -338,6 +369,7 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
       await api.logout();
       api.clearSessionToken();
       setSession(undefined);
+      setRemotePortfolioReady(true);
     } finally {
       setAuthPending('idle');
     }

@@ -1,4 +1,4 @@
-import type { FundAnalysisResponse, FundHistoryPoint, FundHoldings, FundIntradayPoint, FundQuote, IndexQuote } from './types';
+import type { ExportedLocalData, FundAnalysisResponse, FundHistoryPoint, FundHoldings, FundIntradayPoint, FundQuote, IndexQuote } from './types';
 
 const SESSION_TOKEN_KEY = 'gg_fund_session_token';
 const CACHE_PREFIX = 'gg_fund_api_cache:';
@@ -185,6 +185,15 @@ export type OAuthUrlResponse = {
   callback: string;
 };
 
+export type PortfolioSnapshotResponse = ExportedLocalData & {
+  portfolio?: {
+    id: string;
+    name: string;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+};
+
 export const api = {
   saveSessionToken: (token: string) => {
     memorySessionToken = token;
@@ -214,7 +223,8 @@ export const api = {
   analyzeFund: (code: string) => postJson<FundAnalysisResponse>('/api/ai/analyze-fund', { code }),
     analyzeFundStream: (code: string, handlers?: { onStatus?: (message: string) => void; onDelta?: (delta: string) => void }) => postStreamedAnalyzeFund(code, handlers),
   syncPortfolio: (holdings: unknown[], watchlist: unknown[]) =>
-    putJson<unknown>('/api/portfolio/default', { holdings, watchlist }),
+    putJson<PortfolioSnapshotResponse>('/api/portfolio/default', { holdings, watchlist }),
+  getDefaultPortfolio: () => getJson<PortfolioSnapshotResponse>('/api/portfolio/default'),
   getCurrentUser: () => getJson<AuthSessionResponse>('/api/auth/me'),
   logout: () => postJson<{ ok: true }>('/api/auth/logout', {}),
   startAuthChallenge: (provider: AuthProvider, identifier: string) => postJson<AuthChallengeResponse>('/api/auth/challenge', { provider, identifier }),

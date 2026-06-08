@@ -3,6 +3,7 @@ import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
+import { api } from './api';
 
 const fund = { code: '000001', name: '华夏成长混合', netValue: 1.35, quoteDate: '2026-05-29', quoteType: 'estimate' as const, source: 'test' };
 
@@ -25,6 +26,7 @@ vi.mock('./api', () => ({
     getFundHoldings: vi.fn(async () => ({ reportDate: '2026-03-31', stocks: [] })),
     getCachedFundHoldings: vi.fn(() => undefined),
     syncPortfolio: vi.fn(async () => ({})),
+    getDefaultPortfolio: vi.fn(async () => ({ portfolio: null, holdings: [], watchlist: [] })),
     hasSessionToken: vi.fn(() => false),
     getCurrentUser: vi.fn(async () => undefined),
     logout: vi.fn(),
@@ -49,6 +51,7 @@ describe('App', () => {
   }
 
   afterEach(() => {
+    vi.useRealTimers();
     act(() => root?.unmount());
     container?.remove();
     root = undefined;
@@ -115,5 +118,49 @@ describe('App', () => {
 
     expect(errorSpy.mock.calls.some((call) => String(call[0]).includes('Hydration failed'))).toBe(false);
     errorSpy.mockRestore();
+  });
+
+  it('loads the authenticated portfolio before syncing local state', async () => {
+    vi.mocked(api.getCurrentUser).mockResolvedValueOnce({
+      user: { id: 'user-1', provider: 'email', identifier: 'test@example.com', displayName: 'test@example.com' },
+      session: { token: 'session_test', expiresAt: '2026-06-30T00:00:00.000Z' },
+    });
+    vi.mocked(api.getDefaultPortfolio).mockResolvedValueOnce({
+      portfolio: { id: 'portfolio-1', name: '默认组合', createdAt: '2026-05-29T00:00:00.000Z', updatedAt: '2026-05-29T00:00:00.000Z' },
+      holdings: [{
+        id: 'remote-holding-1',
+        fundCode: fund.code,
+        fundName: fund.name,
+        shares: 1000,
+        costAmount: 2000,
+        createdAt: '2026-05-29T00:00:00.000Z',
+        updatedAt: '2026-05-29T00:00:00.000Z',
+      }],
+      watchlist: [{ fundCode: '110022', fundName: '易方达消费行业股票', createdAt: '2026-05-29T00:00:00.000Z' }],
+    });
+    vi.useFakeTimers();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(<App />);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(api.getDefaultPortfolio).toHaveBeenCalledTimes(1);
+    expect(api.syncPortfolio).not.toHaveBeenCalled();
+    expect(localStorage.getItem('gg-fund:holdings')).toContain('remote-holding-1');
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(700);
+    });
+
+    expect(api.syncPortfolio).toHaveBeenCalledWith(
+      [expect.objectContaining({ id: 'remote-holding-1', fundCode: fund.code })],
+      [expect.objectContaining({ fundCode: '110022' })],
+    );
+    vi.useRealTimers();
   });
 });
