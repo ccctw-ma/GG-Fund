@@ -3,7 +3,7 @@
 import { ScanText } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { api, type RecognizedHolding } from '../api';
-import { isImageFile } from '../ocr';
+import { isImageFile, recognizeImageText, type OcrProgress } from '../ocr';
 import { ImportConfirmModal } from './ImportConfirmModal';
 import { Card } from './ui/card';
 
@@ -215,16 +215,19 @@ function readFileAsDataUrl(file: File) {
   });
 }
 
-export type ImageHoldingsRecognizer = (imageDataUrl: string) => Promise<{ model: string; holdings: RecognizedHolding[] }>;
+export type ImageTextReader = (file: File, onProgress?: OcrProgress) => Promise<string>;
+export type ImageHoldingsRecognizer = (imageText: string, imageDataUrl?: string) => Promise<{ model: string; holdings: RecognizedHolding[] }>;
 
 export function SettingsPanel({
   importError,
   onImport,
   recognizeImage = api.recognizeHoldingsFromImage,
+  ocrReader = recognizeImageText,
 }: {
   importError?: string;
   onImport: (text: string) => void;
   recognizeImage?: ImageHoldingsRecognizer;
+  ocrReader?: ImageTextReader;
 }) {
   const alipayInputRef = useRef<HTMLInputElement>(null);
   const [recognizedText, setRecognizedText] = useState('');
@@ -238,10 +241,19 @@ export function SettingsPanel({
     setAlipayUploadNotice(undefined);
     if (isImageFile(file)) {
       setRecognizePending(true);
-      setAlipayUploadNotice(`正在用 DeepSeek 识别截图 ${file.name}……`);
+      setAlipayUploadNotice(`正在读取截图文字 ${file.name}……`);
       try {
         const imageDataUrl = await readFileAsDataUrl(file);
-        const { model, holdings } = await recognizeImage(imageDataUrl);
+        const imageText = (await ocrReader(file, (status, progress) => {
+          setAlipayUploadNotice(`正在读取截图文字 ${file.name}：${status} ${Math.round(progress * 100)}%`);
+        })).trim();
+        setRecognizedText(imageText);
+        if (!imageText) {
+          setAlipayUploadNotice('未从截图中读取到文字，请换更清晰的持仓截图。');
+          return;
+        }
+        setAlipayUploadNotice(`正在用 DeepSeek 结构化识别 ${file.name}……`);
+        const { model, holdings } = await recognizeImage(imageText, imageDataUrl);
         if (holdings.length === 0) {
           setAlipayUploadNotice('未从截图中识别到持仓，请换更清晰的持仓截图。');
           return;
@@ -280,10 +292,10 @@ export function SettingsPanel({
     <Card id="settings" className="lg:col-span-2">
       <div className="settings-data-card settings-import-assistant">
         <h3><ScanText className="h-5 w-5" />多平台导入助手</h3>
-        <p>支持把支付宝、理财通、天天基金、雪球的持仓文字粘贴进来识别；也可以上传支付宝导出的文本、CSV、JSON，或直接上传持仓截图图片，由 DeepSeek 智能识别成结构化持仓，确认后导入。</p>
+        <p>支持把支付宝、理财通、天天基金、雪球的持仓文字粘贴进来识别；也可以上传支付宝导出的文本、CSV、JSON，或直接上传持仓截图图片，由 DeepSeek 智能整理成结构化持仓，确认后导入。</p>
         <div className="settings-upload-strip">
           <label>
-            <span>{recognizePending ? 'DeepSeek 识别中…' : '上传支付宝持仓文件或图片'}</span>
+            <span>{recognizePending ? '截图识别中…' : '上传支付宝持仓文件或图片'}</span>
             <input
               ref={alipayInputRef}
               aria-label="上传支付宝持仓文件或图片"
@@ -297,7 +309,7 @@ export function SettingsPanel({
               }}
             />
           </label>
-          <small>支持文本、CSV、JSON 与图片（PNG/JPG/JPEG/WebP/BMP）；图片由 DeepSeek 识别，识别后会弹出可编辑的确认弹窗，确认无误再导入。</small>
+          <small>支持文本、CSV、JSON 与图片（PNG/JPG/JPEG/WebP/BMP）；图片先读取文字，再由 DeepSeek 结构化识别，识别后会弹出可编辑的确认弹窗，确认无误再导入。</small>
         </div>
         <textarea
           className="settings-export-area"

@@ -252,7 +252,7 @@ describe('dashboard components', () => {
     expect(portfolio.container.textContent).toContain('智能定投 / 目标止盈');
     expect(settings.container.textContent).toContain('多平台导入助手');
     expect(settings.container.textContent).toContain('上传支付宝持仓文件或图片');
-    expect(settings.container.textContent).toContain('DeepSeek 识别');
+    expect(settings.container.textContent).toContain('DeepSeek 结构化识别');
     expect(settings.container.textContent).not.toContain('数据与部署说明');
     expect(settings.container.textContent).not.toContain('本地数据导出');
     expect(settings.container.textContent).not.toContain('导入 JSON 备份');
@@ -499,7 +499,8 @@ describe('dashboard components', () => {
     const settings = render(
       <SettingsPanel
         onImport={(text) => { imported = text; }}
-        recognizeImage={async () => ({
+        ocrReader={async () => '招商中证白酒指数 5,000.00 +420.00\n华夏中证电网设备主题ETF联接C 30,289.47 +2,289.47 -2.14'}
+        recognizeImage={async (_imageText) => ({
           model: 'deepseek-v4-flash',
           holdings: [
             { fundName: '招商中证白酒指数', marketValue: 5000, profit: 420 },
@@ -523,6 +524,7 @@ describe('dashboard components', () => {
 
     expect(settings.container.textContent).toContain('核对识别到的持仓');
     expect(settings.container.textContent).toContain('deepseek-v4-flash');
+    expect(settings.container.querySelector<HTMLTextAreaElement>('textarea[aria-label="多平台持仓文本"]')?.value).toContain('招商中证白酒指数');
     const nameInput = settings.container.querySelector<HTMLInputElement>('input[aria-label="第 1 行基金名称"]');
     expect(nameInput?.value).toBe('招商中证白酒指数');
 

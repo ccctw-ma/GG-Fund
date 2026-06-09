@@ -872,11 +872,11 @@ describe('app api routes', () => {
     const dataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
     const response = await recognizeHoldings(new Request('https://example.com/api/ai/recognize-holdings', {
       method: 'POST',
-      body: JSON.stringify({ imageDataUrl: dataUrl }),
+      body: JSON.stringify({ imageText: '招商中证白酒指数 5,000.00 +420.00', imageDataUrl: dataUrl }),
     }));
 
     expect(recognizeHoldingsFromImageMock).toHaveBeenCalledWith(
-      { imageDataUrl: dataUrl },
+      { imageText: '招商中证白酒指数 5,000.00 +420.00', imageDataUrl: dataUrl },
       { deepSeekApiKey: 'test-deepseek-key' },
     );
     expect(response.status).toBe(200);
@@ -889,7 +889,7 @@ describe('app api routes', () => {
   it('rejects invalid recognize-holdings payloads before calling the service', async () => {
     const response = await recognizeHoldings(new Request('https://example.com/api/ai/recognize-holdings', {
       method: 'POST',
-      body: JSON.stringify({ imageDataUrl: 'not-an-image' }),
+      body: JSON.stringify({ imageText: '招商中证白酒指数', imageDataUrl: 'not-an-image' }),
     }));
 
     expect(recognizeHoldingsFromImageMock).not.toHaveBeenCalled();

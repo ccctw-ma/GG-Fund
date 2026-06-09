@@ -1,7 +1,8 @@
 import { HttpError } from '../../lib/http';
 
 export type RecognizeHoldingsRequest = {
-  imageDataUrl: string;
+  imageText: string;
+  imageDataUrl?: string;
 };
 
 export type RecognizedHolding = {
@@ -25,12 +26,13 @@ export type RecognizeHoldingsDependencies = {
 
 const DEEPSEEK_VISION_MODEL = 'deepseek-v4-flash';
 const DATA_URL_PATTERN = /^data:image\/(png|jpe?g|webp|bmp|gif);base64,[A-Za-z0-9+/]+={0,2}$/;
+const MAX_OCR_TEXT_LENGTH = 20_000;
 
 const SYSTEM_PROMPT =
   '你是严谨的基金持仓识别助手。只根据图片中真实可见的文字识别持仓，不允许编造、补全或推测任何不存在的基金。必须输出结构化 JSON。';
 
 const USER_PROMPT = [
-  '这是一张基金 App（如支付宝/理财通/天天基金/雪球）的持仓截图。请逐行识别我的持有基金，并输出 JSON。',
+  '下面是一段从基金 App（如支付宝/理财通/天天基金/雪球）持仓截图 OCR 出来的文字。OCR 可能有空格、错别字、断行、括号识别错误，请结合上下文逐行还原我的持有基金，并输出 JSON。',
   '输出格式严格为：{"holdings":[{"fundName":"基金全名","fundCode":"6位代码或留空","marketValue":持有金额数字,"profit":持有收益数字,"dailyProfit":当日收益数字或省略}]}。',
   '规则：',
   '1. fundName 为基金完整名称，去掉括号内的 QDII/LOF 等标注与多余空格；如名称跨行请拼接完整。',
@@ -41,12 +43,20 @@ const USER_PROMPT = [
 ].join('\n');
 
 export function normalizeRecognizeHoldingsRequest(body: unknown): RecognizeHoldingsRequest {
+  const imageText =
+    typeof body === 'object' && body !== null ? String((body as { imageText?: unknown }).imageText ?? '').trim() : '';
   const imageDataUrl =
     typeof body === 'object' && body !== null ? String((body as { imageDataUrl?: unknown }).imageDataUrl ?? '') : '';
-  if (!DATA_URL_PATTERN.test(imageDataUrl)) {
+  if (!imageText) {
+    throw new HttpError(400, 'IMAGE_TEXT_INVALID', '未从截图中读取到文字，请换更清晰的持仓截图');
+  }
+  if (imageText.length > MAX_OCR_TEXT_LENGTH) {
+    throw new HttpError(400, 'IMAGE_TEXT_TOO_LARGE', '截图文字过长，请裁剪为基金持仓区域后重试');
+  }
+  if (imageDataUrl && !DATA_URL_PATTERN.test(imageDataUrl)) {
     throw new HttpError(400, 'IMAGE_DATA_INVALID', '图片数据格式不正确，请上传 PNG/JPG/WebP/BMP 截图');
   }
-  return { imageDataUrl };
+  return imageDataUrl ? { imageText, imageDataUrl } : { imageText };
 }
 
 function toFiniteNumber(value: unknown): number | undefined {
@@ -131,15 +141,10 @@ export async function recognizeHoldingsFromImage(
     },
     body: JSON.stringify({
       model: DEEPSEEK_VISION_MODEL,
+      response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: USER_PROMPT },
-            { type: 'image_url', image_url: { url: request.imageDataUrl } },
-          ],
-        },
+        { role: 'user', content: `${USER_PROMPT}\n\nOCR 原文：\n${request.imageText}` },
       ],
       temperature: 0,
     }),

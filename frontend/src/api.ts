@@ -236,8 +236,8 @@ export const api = {
   getTrendingFunds: () => getCachedJson<FundQuote[]>('/api/funds/trending', 'funds-trending', cacheTtl.trending),
   analyzeFund: (code: string) => postJson<FundAnalysisResponse>('/api/ai/analyze-fund', { code }),
     analyzeFundStream: (code: string, handlers?: { onStatus?: (message: string) => void; onDelta?: (delta: string) => void }) => postStreamedAnalyzeFund(code, handlers),
-  recognizeHoldingsFromImage: (imageDataUrl: string) =>
-    postJson<RecognizeHoldingsResponse>('/api/ai/recognize-holdings', { imageDataUrl }),
+  recognizeHoldingsFromImage: (imageText: string, imageDataUrl?: string) =>
+    postJson<RecognizeHoldingsResponse>('/api/ai/recognize-holdings', { imageText, imageDataUrl }),
   syncPortfolio: (holdings: unknown[], watchlist: unknown[]) =>
     putJson<PortfolioSnapshotResponse>('/api/portfolio/default', { holdings, watchlist }),
   getDefaultPortfolio: () => getJson<PortfolioSnapshotResponse>('/api/portfolio/default'),

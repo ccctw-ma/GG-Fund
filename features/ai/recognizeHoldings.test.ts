@@ -8,10 +8,16 @@ import {
 const sampleDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
 describe('recognize holdings service', () => {
-  it('validates the image data url payload', () => {
-    expect(normalizeRecognizeHoldingsRequest({ imageDataUrl: sampleDataUrl })).toEqual({ imageDataUrl: sampleDataUrl });
-    expect(() => normalizeRecognizeHoldingsRequest({ imageDataUrl: 'not-an-image' })).toThrow('图片数据格式不正确');
-    expect(() => normalizeRecognizeHoldingsRequest({})).toThrow('图片数据格式不正确');
+  it('validates the OCR text payload and optional image data url', () => {
+    expect(normalizeRecognizeHoldingsRequest({ imageText: '招商中证白酒指数 5,000.00 +420.00', imageDataUrl: sampleDataUrl })).toEqual({
+      imageText: '招商中证白酒指数 5,000.00 +420.00',
+      imageDataUrl: sampleDataUrl,
+    });
+    expect(normalizeRecognizeHoldingsRequest({ imageText: '招商中证白酒指数 5,000.00 +420.00' })).toEqual({
+      imageText: '招商中证白酒指数 5,000.00 +420.00',
+    });
+    expect(() => normalizeRecognizeHoldingsRequest({ imageText: '招商中证白酒指数', imageDataUrl: 'not-an-image' })).toThrow('图片数据格式不正确');
+    expect(() => normalizeRecognizeHoldingsRequest({ imageDataUrl: sampleDataUrl })).toThrow('未从截图中读取到文字');
   });
 
   it('normalizes structured holdings while ignoring fabricated codes and empty names', () => {
@@ -36,10 +42,10 @@ describe('recognize holdings service', () => {
   });
 
   it('throws when DeepSeek key is missing', async () => {
-    await expect(recognizeHoldingsFromImage({ imageDataUrl: sampleDataUrl }, { deepSeekApiKey: undefined })).rejects.toThrow('未配置 DeepSeek API Key');
+    await expect(recognizeHoldingsFromImage({ imageText: '招商中证白酒指数 5,000.00 +420.00' }, { deepSeekApiKey: undefined })).rejects.toThrow('未配置 DeepSeek API Key');
   });
 
-  it('calls DeepSeek with a vision payload and returns recognized holdings', async () => {
+  it('calls DeepSeek with an OCR text prompt and returns recognized holdings', async () => {
     let capturedBody: Record<string, unknown> = {};
     const deepSeekFetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
       capturedBody = JSON.parse(String(init?.body ?? '{}'));
@@ -52,15 +58,16 @@ describe('recognize holdings service', () => {
     }) as unknown as typeof fetch;
 
     const response = await recognizeHoldingsFromImage(
-      { imageDataUrl: sampleDataUrl },
+      { imageText: '招商中证白酒指数 5,000.00 +420.00', imageDataUrl: sampleDataUrl },
       { deepSeekApiKey: 'test-key', deepSeekFetch },
     );
 
     expect(response.model).toBe('deepseek-v4-flash');
     expect(response.holdings).toEqual([{ fundName: '招商中证白酒指数', marketValue: 5000, profit: 420 }]);
     const userMessage = (capturedBody.messages as Array<{ role: string; content: unknown }>).find((message) => message.role === 'user');
-    expect(Array.isArray(userMessage?.content)).toBe(true);
-    expect((userMessage?.content as Array<{ type: string }>).some((part) => part.type === 'image_url')).toBe(true);
+    expect(typeof userMessage?.content).toBe('string');
+    expect(userMessage?.content).toContain('OCR 原文');
+    expect(capturedBody.response_format).toEqual({ type: 'json_object' });
   });
 
   it('throws a friendly error when no holdings are recognized', async () => {
@@ -68,7 +75,7 @@ describe('recognize holdings service', () => {
       new Response(JSON.stringify({ choices: [{ message: { content: '{"holdings":[]}' } }] }), { status: 200 })) as unknown as typeof fetch;
 
     await expect(
-      recognizeHoldingsFromImage({ imageDataUrl: sampleDataUrl }, { deepSeekApiKey: 'test-key', deepSeekFetch }),
+      recognizeHoldingsFromImage({ imageText: '无法识别的截图文字', imageDataUrl: sampleDataUrl }, { deepSeekApiKey: 'test-key', deepSeekFetch }),
     ).rejects.toThrow('未能从图片中识别出持仓');
   });
 
@@ -76,7 +83,7 @@ describe('recognize holdings service', () => {
     const deepSeekFetch = (async () => new Response('error', { status: 500 })) as unknown as typeof fetch;
 
     await expect(
-      recognizeHoldingsFromImage({ imageDataUrl: sampleDataUrl }, { deepSeekApiKey: 'test-key', deepSeekFetch }),
+      recognizeHoldingsFromImage({ imageText: '招商中证白酒指数 5,000.00 +420.00', imageDataUrl: sampleDataUrl }, { deepSeekApiKey: 'test-key', deepSeekFetch }),
     ).rejects.toThrow('DeepSeek 图片识别服务暂不可用');
   });
 });
