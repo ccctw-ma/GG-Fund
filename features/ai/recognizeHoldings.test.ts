@@ -72,9 +72,11 @@ describe('recognize holdings service', () => {
   });
 
   it('extracts text from images through OCR.space when only image data is provided', async () => {
-    let capturedFormData: FormData | undefined;
+    let capturedFormData: URLSearchParams | undefined;
+    let capturedHeaders: HeadersInit | undefined;
     const ocrFetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
-      capturedFormData = init?.body as FormData;
+      capturedFormData = init?.body as URLSearchParams;
+      capturedHeaders = init?.headers;
       return new Response(JSON.stringify({
         IsErroredOnProcessing: false,
         ParsedResults: [{ ParsedText: '招商中证白酒指数 5,000.00 +420.00' }],
@@ -87,6 +89,7 @@ describe('recognize holdings service', () => {
     expect(capturedFormData?.get('apikey')).toBe('ocr-key');
     expect(capturedFormData?.get('language')).toBe('chs');
     expect(capturedFormData?.get('base64Image')).toBe(sampleDataUrl);
+    expect(capturedHeaders).toEqual({ 'content-type': 'application/x-www-form-urlencoded' });
   });
 
   it('runs OCR.space first and then asks DeepSeek to structure the text', async () => {

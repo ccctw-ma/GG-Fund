@@ -82,7 +82,7 @@ export async function extractTextFromImage(
     throw new HttpError(400, 'IMAGE_DATA_INVALID', '图片数据格式不正确，请上传 PNG/JPG/WebP/BMP 截图');
   }
 
-  const formData = new FormData();
+  const formData = new URLSearchParams();
   formData.set('apikey', dependencies.ocrSpaceApiKey || process.env.OCR_SPACE_API_KEY || OCR_SPACE_DEMO_KEY);
   formData.set('base64Image', imageDataUrl);
   formData.set('language', 'chs');
@@ -93,6 +93,7 @@ export async function extractTextFromImage(
 
   const response = await (dependencies.ocrFetch ?? fetch)(OCR_SPACE_ENDPOINT, {
     method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: formData,
   });
   if (!response.ok) {
