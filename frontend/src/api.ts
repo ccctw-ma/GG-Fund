@@ -185,6 +185,20 @@ export type OAuthUrlResponse = {
   callback: string;
 };
 
+export type RecognizedHolding = {
+  fundName: string;
+  fundCode?: string;
+  marketValue?: number;
+  profit?: number;
+  dailyProfit?: number;
+  accountName?: string;
+};
+
+export type RecognizeHoldingsResponse = {
+  model: string;
+  holdings: RecognizedHolding[];
+};
+
 export type PortfolioSnapshotResponse = ExportedLocalData & {
   portfolio?: {
     id: string;
@@ -222,6 +236,8 @@ export const api = {
   getTrendingFunds: () => getCachedJson<FundQuote[]>('/api/funds/trending', 'funds-trending', cacheTtl.trending),
   analyzeFund: (code: string) => postJson<FundAnalysisResponse>('/api/ai/analyze-fund', { code }),
     analyzeFundStream: (code: string, handlers?: { onStatus?: (message: string) => void; onDelta?: (delta: string) => void }) => postStreamedAnalyzeFund(code, handlers),
+  recognizeHoldingsFromImage: (imageDataUrl: string) =>
+    postJson<RecognizeHoldingsResponse>('/api/ai/recognize-holdings', { imageDataUrl }),
   syncPortfolio: (holdings: unknown[], watchlist: unknown[]) =>
     putJson<PortfolioSnapshotResponse>('/api/portfolio/default', { holdings, watchlist }),
   getDefaultPortfolio: () => getJson<PortfolioSnapshotResponse>('/api/portfolio/default'),

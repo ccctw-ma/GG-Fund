@@ -252,7 +252,7 @@ describe('dashboard components', () => {
     expect(portfolio.container.textContent).toContain('智能定投 / 目标止盈');
     expect(settings.container.textContent).toContain('多平台导入助手');
     expect(settings.container.textContent).toContain('上传支付宝持仓文件或图片');
-    expect(settings.container.textContent).toContain('浏览器本地 OCR');
+    expect(settings.container.textContent).toContain('DeepSeek 识别');
     expect(settings.container.textContent).not.toContain('数据与部署说明');
     expect(settings.container.textContent).not.toContain('本地数据导出');
     expect(settings.container.textContent).not.toContain('导入 JSON 备份');
@@ -494,13 +494,18 @@ describe('dashboard components', () => {
     expect(parsed.holdings[1]).toMatchObject({ fundCode: '110022', accountName: '家庭账本' });
   });
 
-  it('recognizes an uploaded Alipay screenshot through the OCR reader', async () => {
+  it('recognizes an uploaded screenshot through DeepSeek and imports after confirmation', async () => {
     let imported = '';
-    const ocrText = '支付宝 161725 招商中证白酒指数 500 420 默认账本';
     const settings = render(
       <SettingsPanel
         onImport={(text) => { imported = text; }}
-        ocrReader={async () => ocrText}
+        recognizeImage={async () => ({
+          model: 'deepseek-v4-flash',
+          holdings: [
+            { fundName: '招商中证白酒指数', marketValue: 5000, profit: 420 },
+            { fundName: '华夏中证电网设备主题ETF联接C', fundCode: '012000', marketValue: 30289.47, profit: 2289.47, dailyProfit: -2.14 },
+          ],
+        })}
       />,
     );
     roots.push(settings.root);
@@ -511,13 +516,34 @@ describe('dashboard components', () => {
 
     await act(async () => {
       input.dispatchEvent(new Event('change', { bubbles: true }));
-      await Promise.resolve();
-      await Promise.resolve();
+      for (let tick = 0; tick < 5; tick += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
     });
 
-    const parsed = JSON.parse(imported) as { holdings: Array<{ fundCode: string; platform: string }> };
-    expect(parsed.holdings[0]).toMatchObject({ fundCode: '161725', platform: 'alipay' });
-    expect(settings.container.textContent).toContain('已识别截图');
+    expect(settings.container.textContent).toContain('核对识别到的持仓');
+    expect(settings.container.textContent).toContain('deepseek-v4-flash');
+    const nameInput = settings.container.querySelector<HTMLInputElement>('input[aria-label="第 1 行基金名称"]');
+    expect(nameInput?.value).toBe('招商中证白酒指数');
+
+    // 用户二次修改第一行名称后再确认。
+    const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    act(() => {
+      if (!nameInput || !nativeSetter) return;
+      nativeSetter.call(nameInput, '招商中证白酒指数C');
+      nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    const confirmButton = Array.from(settings.container.querySelectorAll('button')).find((button) => button.textContent?.includes('确认导入'));
+    act(() => confirmButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    const parsed = JSON.parse(imported) as { holdings: Array<{ fundCode: string; fundName: string; recordedMarketValue: number; recordedDailyProfit?: number; costAmount: number; platform: string }> };
+    expect(parsed.holdings).toHaveLength(2);
+    expect(parsed.holdings[0]).toMatchObject({ fundCode: 'ALIPAY001', fundName: '招商中证白酒指数C', recordedMarketValue: 5000, platform: 'alipay' });
+    expect(parsed.holdings[0].costAmount).toBeCloseTo(5000 - 420, 2);
+    expect(parsed.holdings[1]).toMatchObject({ fundCode: '012000', recordedDailyProfit: -2.14 });
+    expect(settings.container.textContent).toContain('已确认导入 2 条持仓');
+    expect(settings.container.textContent).not.toContain('核对识别到的持仓');
   });
 
   it('recognizes a real Alipay holding screenshot without fund codes', () => {

@@ -35,10 +35,20 @@ vi.mock('../features/ai/service', async (importOriginal) => {
   };
 });
 
+vi.mock('../features/ai/recognizeHoldings', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../features/ai/recognizeHoldings')>();
+  return {
+    ...actual,
+    recognizeHoldingsFromImage: vi.fn(),
+  };
+});
+
 import { buildAnalyzeFundResponse, streamAnalyzeFundResponse } from '../features/ai/service';
+import { recognizeHoldingsFromImage } from '../features/ai/recognizeHoldings';
 import { GET as getAuth, POST as postAuth } from '../app/api/auth/[action]/route';
 import { POST as analyzeFund } from '../app/api/ai/analyze-fund/route';
 import { POST as analyzeFundStream } from '../app/api/ai/analyze-fund/stream/route';
+import { POST as recognizeHoldings } from '../app/api/ai/recognize-holdings/route';
 import { GET as getFund } from '../app/api/funds/[code]/route';
 import { GET as getFundHistory } from '../app/api/funds/[code]/history/route';
 import { GET as getFundIntraday } from '../app/api/funds/[code]/intraday/route';
@@ -186,6 +196,7 @@ class FakeD1 {
 
 const buildAnalyzeFundResponseMock = vi.mocked(buildAnalyzeFundResponse);
 const streamAnalyzeFundResponseMock = vi.mocked(streamAnalyzeFundResponse);
+const recognizeHoldingsFromImageMock = vi.mocked(recognizeHoldingsFromImage);
 
 function resetMarketServiceMocks() {
   marketService.getIndices.mockReset();
@@ -211,6 +222,7 @@ describe('app api routes', () => {
     resetMarketServiceMocks();
     buildAnalyzeFundResponseMock.mockReset();
     streamAnalyzeFundResponseMock.mockReset();
+    recognizeHoldingsFromImageMock.mockReset();
     getCloudflareContextMock.mockReset().mockRejectedValue(new Error('Cloudflare context not available'));
     delete (globalThis as { GG_FUND_DB?: unknown }).GG_FUND_DB;
     process.env.DEEPSEEK_API_KEY = 'test-deepseek-key';
@@ -848,6 +860,42 @@ describe('app api routes', () => {
       chartAnnotations: [{ label: '趋势改善', description: '净值回升', tone: 'positive' }],
       researchSources: [{ title: '东方财富基金概况', url: 'https://example.com', summary: '基金公开材料' }],
       analysis: '基金基本面稳定。',
+    });
+  });
+
+  it('recognizes holdings from an uploaded screenshot via DeepSeek', async () => {
+    recognizeHoldingsFromImageMock.mockResolvedValueOnce({
+      model: 'deepseek-v4-flash',
+      holdings: [{ fundName: '招商中证白酒指数', marketValue: 5000, profit: 420 }],
+    });
+
+    const dataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const response = await recognizeHoldings(new Request('https://example.com/api/ai/recognize-holdings', {
+      method: 'POST',
+      body: JSON.stringify({ imageDataUrl: dataUrl }),
+    }));
+
+    expect(recognizeHoldingsFromImageMock).toHaveBeenCalledWith(
+      { imageDataUrl: dataUrl },
+      { deepSeekApiKey: 'test-deepseek-key' },
+    );
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      model: 'deepseek-v4-flash',
+      holdings: [{ fundName: '招商中证白酒指数', marketValue: 5000, profit: 420 }],
+    });
+  });
+
+  it('rejects invalid recognize-holdings payloads before calling the service', async () => {
+    const response = await recognizeHoldings(new Request('https://example.com/api/ai/recognize-holdings', {
+      method: 'POST',
+      body: JSON.stringify({ imageDataUrl: 'not-an-image' }),
+    }));
+
+    expect(recognizeHoldingsFromImageMock).not.toHaveBeenCalled();
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'IMAGE_DATA_INVALID', message: '图片数据格式不正确，请上传 PNG/JPG/WebP/BMP 截图' },
     });
   });
 
