@@ -37,13 +37,14 @@ const SYSTEM_PROMPT =
 
 const USER_PROMPT = [
   '下面是一段从基金 App（如支付宝/理财通/天天基金/雪球）持仓截图 OCR 出来的文字。OCR 可能有空格、错别字、断行、括号识别错误，请结合上下文逐行还原我的持有基金，并输出 JSON。',
-  '输出格式严格为：{"holdings":[{"fundName":"基金全名","fundCode":"6位代码或留空","marketValue":持有金额数字,"profit":持有收益数字,"dailyProfit":当日收益数字或省略}]}。',
+  '输出格式严格为：{"holdings":[{"fundName":"基金全名","fundCode":"6位代码或留空","marketValue":持有金额数字,"profit":持有收益数字}]}。',
   '规则：',
   '1. fundName 为基金完整名称，去掉括号内的 QDII/LOF 等标注与多余空格；如名称跨行请拼接完整。',
-  '2. marketValue 是“持有金额/持有市值”，为正数；profit 是“持有收益”，亏损为负数；dailyProfit 是“当日收益”，没有则省略。',
+  '2. marketValue 是“持有金额/持有市值”，为正数；profit 是“持有收益/累计收益”，亏损为负数。',
   '3. 金额去掉千分位逗号，仅保留数字（可带负号和小数）。',
   '4. 截图里通常没有基金代码，没有就让 fundCode 留空字符串，不要编造代码。',
-  '5. 只输出能在图片中看到的持仓，看不清的不要输出。只返回 JSON，不要任何额外说明文字。',
+  '5. 不要输出当日收益。截图里的当日收益只代表销售平台截图日期，导入后会由系统按最新行情重新估算。',
+  '6. 只输出能在图片中看到的持仓，看不清的不要输出。只返回 JSON，不要任何额外说明文字。',
 ].join('\n');
 
 export function normalizeRecognizeHoldingsRequest(body: unknown): RecognizeHoldingsRequest {

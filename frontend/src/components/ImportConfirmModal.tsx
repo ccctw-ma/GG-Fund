@@ -18,7 +18,6 @@ type EditableRow = {
   fundCode: string;
   marketValue: string;
   profit: string;
-  dailyProfit: string;
 };
 
 function toRow(holding: RecognizedHolding): EditableRow {
@@ -27,7 +26,6 @@ function toRow(holding: RecognizedHolding): EditableRow {
     fundCode: holding.fundCode ?? '',
     marketValue: holding.marketValue !== undefined ? String(holding.marketValue) : '',
     profit: holding.profit !== undefined ? String(holding.profit) : '',
-    dailyProfit: holding.dailyProfit !== undefined ? String(holding.dailyProfit) : '',
   };
 }
 
@@ -72,12 +70,10 @@ export function ImportConfirmModal({ open, model, holdings, resolveFundCode, onC
       const codeRaw = row.fundCode.trim();
       const marketValue = parseNumber(row.marketValue);
       const profit = parseNumber(row.profit);
-      const dailyProfit = parseNumber(row.dailyProfit);
       const holding: RecognizedHolding = { fundName };
       if (/^\d{6}$/.test(codeRaw)) holding.fundCode = codeRaw;
       if (marketValue !== undefined) holding.marketValue = marketValue;
       if (profit !== undefined) holding.profit = profit;
-      if (dailyProfit !== undefined) holding.dailyProfit = dailyProfit;
       return holding;
     })
     .filter((holding) => holding.fundName.length >= 2 && holding.marketValue !== undefined && holding.marketValue > 0);
@@ -101,7 +97,6 @@ export function ImportConfirmModal({ open, model, holdings, resolveFundCode, onC
             <span>代码</span>
             <span>持有金额</span>
             <span>持有收益</span>
-            <span>当日收益</span>
             <span>确认代码</span>
             <span aria-hidden="true" />
           </div>
@@ -130,12 +125,6 @@ export function ImportConfirmModal({ open, model, holdings, resolveFundCode, onC
                 inputMode="decimal"
                 value={row.profit}
                 onChange={(event) => updateRow(index, { profit: event.target.value })}
-              />
-              <input
-                aria-label={`第 ${index + 1} 行当日收益`}
-                inputMode="decimal"
-                value={row.dailyProfit}
-                onChange={(event) => updateRow(index, { dailyProfit: event.target.value })}
               />
               <button
                 type="button"

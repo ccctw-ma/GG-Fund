@@ -55,7 +55,8 @@ function parseAmount(token: string) {
 // 避免把基金名里的 100/300/500 等编号误当成金额。
 const MONEY_TOKEN = /[+＋-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?%?|[+＋-]?\d+\.\d+%?/g;
 
-// 支付宝「我的持有」截图没有基金代码，结构为：名称 + 持有金额 + 持有收益（+ 续行的当日收益 / 收益率）。
+// 支付宝「我的持有」截图没有基金代码，结构为：名称 + 持有金额 + 持有收益。
+// 截图里的“当日收益”属于截图日期，不写入 today's daily profit；导入后由最新行情重新估算。
 function parseAlipayHoldingScreenshot(text: string, preferredPlatform: string) {
   const now = new Date().toISOString();
   const holdings: Array<Record<string, unknown>> = [];
@@ -81,13 +82,8 @@ function parseAlipayHoldingScreenshot(text: string, preferredPlatform: string) {
     }
 
     // 续行（当日收益/收益率行）：持有金额列永远是无符号正数，带 +/- 或 % 开头的首列说明这是上一只基金的涨跌续行。
+    // 该值不作为导入后的今日收益保存，避免把历史截图收益误用为今天收益。
     if (/^[+＋-]/.test(firstAmount) || firstAmount.includes('%')) {
-      const latest = holdings.at(-1);
-      const dailyProfit = parseAmount(firstAmount.replace('%', ''));
-      if (latest && !firstAmount.includes('%') && dailyProfit !== undefined) {
-        latest.recordedDailyProfit = Number(dailyProfit.toFixed(2));
-        latest.updatedAt = now;
-      }
       return;
     }
 
@@ -196,7 +192,6 @@ export function buildConfirmedImport(recognized: RecognizedHolding[], preferredP
         fundCode: hasRealCode ? item.fundCode : `ALIPAY${String(index + 1).padStart(3, '0')}`,
         fundName: item.fundName.trim(),
         recordedMarketValue: marketValue,
-        recordedDailyProfit: typeof item.dailyProfit === 'number' ? Number(item.dailyProfit.toFixed(2)) : undefined,
         costAmount: Number((marketValue - profit).toFixed(2)),
         accountName: item.accountName?.trim() || '默认账本',
         platform: preferredPlatform,

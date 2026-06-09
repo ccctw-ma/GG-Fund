@@ -552,7 +552,8 @@ describe('dashboard components', () => {
     expect(parsed.holdings).toHaveLength(2);
     expect(parsed.holdings[0]).toMatchObject({ fundCode: '161725', fundName: '招商中证白酒指数C', recordedMarketValue: 5000, platform: 'alipay' });
     expect(parsed.holdings[0].costAmount).toBeCloseTo(5000 - 420, 2);
-    expect(parsed.holdings[1]).toMatchObject({ fundCode: '012000', recordedDailyProfit: -2.14 });
+    expect(parsed.holdings[1]).toMatchObject({ fundCode: '012000' });
+    expect(parsed.holdings[1].recordedDailyProfit).toBeUndefined();
     expect(settings.container.textContent).toContain('已确认导入 2 条持仓');
     expect(settings.container.textContent).not.toContain('核对识别到的持仓');
   });
@@ -590,7 +591,7 @@ describe('dashboard components', () => {
     expect(parsed.holdings.length).toBeGreaterThanOrEqual(3);
     const first = parsed.holdings[0];
     expect(first.recordedMarketValue).toBe(19374.21);
-    expect(first.recordedDailyProfit).toBe(49.08);
+    expect(first.recordedDailyProfit).toBeUndefined();
     expect(first.costAmount).toBeCloseTo(19374.21 - 2624.21, 2);
     expect(first.platform).toBe('alipay');
     expect(first.fundName).toContain('纳斯达克');
