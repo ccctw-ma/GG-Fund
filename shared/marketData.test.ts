@@ -807,6 +807,71 @@ describe('market data service', () => {
     }));
   });
 
+  it('uses injected index fetcher and returns fallback indices when live refresh fails', async () => {
+    let currentTime = 1_000;
+    let calls = 0;
+    const service = createMarketDataService({
+      now: () => currentTime,
+      fetchIndices: async () => {
+        calls += 1;
+        if (calls > 1) throw new Error('temporary outage');
+        return [{ code: '000001.SH', name: '上证指数', value: 3100, change: 12, changePercent: 0.39, quoteTime: '2026-05-28 15:00:00' }];
+      },
+    });
+
+    await expect(service.getIndices()).resolves.toEqual([
+      expect.objectContaining({ code: '000001.SH', value: 3100 }),
+    ]);
+    currentTime += 61_000;
+    await expect(service.getIndices()).resolves.toEqual([]);
+    expect(calls).toBe(2);
+  });
+
+  it('deduplicates fund and stock search results and returns default suggestions for empty keyword', async () => {
+    const service = createMarketDataService({
+      fetchText: async () => 'jQuery123([["000001","HXCZHH","华夏成长混合","混合型","HUAXIACHENGZHANGHUNHE"],["000001","HXCZHH","华夏成长混合","混合型","HUAXIACHENGZHANGHUNHE"]]);',
+      fetchJson: async () => ({
+        data: {
+          diff: [
+            { f12: '000001', f13: '0.000001', f14: '平安银行', f2: 11.28, f3: -0.18, f4: -0.02, f124: 1779951051 },
+            { f12: '000001', f13: '0.000001', f14: '平安银行', f2: 11.28, f3: -0.18, f4: -0.02, f124: 1779951051 },
+          ],
+        },
+      }),
+    });
+
+    await expect(service.searchFunds('')).resolves.toHaveLength(5);
+    const results = await service.searchFunds('000001');
+    expect(results.filter((item) => item.code === '000001' && item.assetType === 'fund')).toHaveLength(1);
+    expect(results.filter((item) => item.code === '000001' && item.assetType === 'stock')).toHaveLength(1);
+  });
+
+  it('returns undefined for unknown fund codes after all quote fallbacks miss', async () => {
+    const service = createMarketDataService({
+      fetchText: async () => {
+        throw new Error('text source unavailable');
+      },
+      fetchJson: async () => ({}),
+    });
+
+    await expect(service.getFund('999999')).resolves.toBeUndefined();
+  });
+
+  it('falls back to built-in fund quotes when live fund and stock sources miss', async () => {
+    const service = createMarketDataService({
+      fetchText: async () => {
+        throw new Error('text source unavailable');
+      },
+      fetchJson: async () => ({}),
+    });
+
+    await expect(service.getFund('110022')).resolves.toEqual(expect.objectContaining({
+      code: '110022',
+      name: '易方达消费行业股票',
+      source: '内置示例行情',
+    }));
+  });
+
   it('caches index data within the ttl', async () => {
     let calls = 0;
     const service = createMarketDataService({
@@ -830,5 +895,154 @@ describe('market data service', () => {
     await service.getIndices();
 
     expect(calls).toBe(1);
+  });
+
+  it('deduplicates concurrent index requests while a loader is pending', async () => {
+    let calls = 0;
+    let resolveFetch: (value: Array<{ code: string; name: string; value: number; change: number; changePercent: number; quoteTime: string }>) => void = () => undefined;
+    const pending = new Promise<Array<{ code: string; name: string; value: number; change: number; changePercent: number; quoteTime: string }>>((resolve) => {
+      resolveFetch = resolve;
+    });
+    const service = createMarketDataService({
+      now: () => 1_000,
+      fetchIndices: async () => {
+        calls += 1;
+        return pending;
+      },
+    });
+
+    const first = service.getIndices();
+    const second = service.getIndices();
+    resolveFetch([{ code: '000001.SH', name: '上证指数', value: 3100, change: 1, changePercent: 0.03, quoteTime: '2026-06-09 15:00:00' }]);
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      [expect.objectContaining({ code: '000001.SH' })],
+      [expect.objectContaining({ code: '000001.SH' })],
+    ]);
+    expect(calls).toBe(1);
+  });
+
+  it('covers additional index and fund history range limits', async () => {
+    const indexUrls: string[] = [];
+    const fundPages: string[] = [];
+    const service = createMarketDataService({
+      fetchJson: async (url) => {
+        if (url.includes('push2his.eastmoney.com')) {
+          indexUrls.push(url);
+          return { data: { klines: [] } };
+        }
+        if (url.includes('api.fund.eastmoney.com/f10/lsjz')) {
+          fundPages.push(new URL(url).searchParams.get('pageIndex') ?? '');
+          return { Data: { LSJZList: [] } };
+        }
+        return {};
+      },
+      fetchText: async () => JSON.stringify({ data: { sz000001: { qfqday: [] } } }),
+    });
+
+    await service.getIndexHistory('000001.SH', '1y');
+    await service.getIndexHistory('399001.SZ', '6m');
+    await service.getIndexHistory('000300.SH', '3m');
+    await service.getIndexHistory('000688.SH', 'weird');
+    await service.getFundHistory('000001', '1y');
+    await service.getFundHistory('000002', '6m');
+    await service.getFundHistory('000003', '3m');
+    await service.getFundHistory('000004', 'bad');
+
+    expect(indexUrls).toEqual(expect.arrayContaining([
+      expect.stringContaining('lmt=260'),
+      expect.stringContaining('lmt=130'),
+      expect.stringContaining('lmt=70'),
+      expect.stringContaining('lmt=30'),
+    ]));
+    expect(fundPages.length).toBeGreaterThan(3);
+  });
+
+  it('maps Beijing and Shenzhen stock detail markets from Eastmoney detail quotes', async () => {
+    const service = createMarketDataService({
+      fetchText: async () => {
+        throw new Error('fund text unavailable');
+      },
+      fetchJson: async (url) => {
+        if (url.includes('FundMNewApi')) return {};
+        return {
+          data: {
+            f43: 1234,
+            f44: 1300,
+            f45: 1100,
+            f46: 1210,
+            f47: 100,
+            f48: 200,
+            f58: url.includes('430047') ? '北证样本' : '深市样本',
+            f59: 2,
+            f60: 1200,
+            f86: 1779951051,
+            f169: 34,
+            f170: 283,
+          },
+        };
+      },
+    });
+
+    await expect(service.getFund('430047')).resolves.toEqual(expect.objectContaining({ market: 'BJ', netValue: 12.34 }));
+    await expect(service.getFund('300750')).resolves.toEqual(expect.objectContaining({ market: 'SZ', netValue: 12.34 }));
+  });
+
+  it('falls back from malformed PC net-worth data to mobile official fund quote', async () => {
+    const service = createMarketDataService({
+      fetchText: async (url) => {
+        if (url.includes('fundgz') || url.includes('FundSearch')) throw new Error('unavailable');
+        if (url.includes('pingzhongdata')) {
+          return 'var fS_name = "测试基金";var fS_code = "000001";var Data_netWorthTrend = invalid;/*累计净值走势*/';
+        }
+        throw new Error(`unexpected text url: ${url}`);
+      },
+      fetchJson: async () => ({
+        Datas: { FCODE: '000001', SHORTNAME: '测试基金', NAV: '1.1111', NAVCHGRT: '0.1', PDATE: '2026-06-09' },
+      }),
+    });
+
+    await expect(service.getFund('000001')).resolves.toEqual(expect.objectContaining({
+      source: '东方财富公开接口',
+      netValue: 1.1111,
+    }));
+  });
+
+  it('falls back from CSI 300 to SSE Composite for OTC approximate intraday data', async () => {
+    const service = createMarketDataService({
+      fetchText: async (url) => {
+        if (url.includes('fundgz')) return 'jsonpgz({"fundcode":"016874","name":"测试基金","jzrq":"2026-06-03","dwjz":"1.000","gsz":"1.010","gszzl":"1.00","gztime":"2026-06-04 15:00"});';
+        if (url.includes('FundArchivesDatas')) return '';
+        if (url.includes('code=sh000300')) throw new Error('csi300 unavailable');
+        if (url.includes('code=sh000001')) {
+          return JSON.stringify({ data: { sh000001: { data: { data: ['0930 3100.00 10', '0931 3131.00 20'] } } } });
+        }
+        throw new Error(`unexpected text url: ${url}`);
+      },
+      fetchJson: async () => ({ Datas: { fundStocks: [] } }),
+    });
+
+    await expect(service.getFundIntraday('016874')).resolves.toEqual([
+      { time: '09:30', price: 100, volume: 10, source: '上证指数分时近似（腾讯证券）', sourceType: 'estimated' },
+      { time: '09:31', price: 101, volume: 20, source: '上证指数分时近似（腾讯证券）', sourceType: 'estimated' },
+    ]);
+  });
+
+  it('keeps all linked ETF minutes when estimate time is outside trading hours', async () => {
+    const service = createMarketDataService({
+      fetchText: async (url) => {
+        if (url.includes('fundgz')) return 'jsonpgz({"fundcode":"016186","name":"测试基金","jzrq":"2026-06-03","dwjz":"1","gsz":"1.01","gszzl":"1","gztime":"2026-06-04 16:00"});';
+        if (url.includes('code=sz159611')) {
+          return JSON.stringify({ data: { sz159611: { data: { data: ['0930 1.000 100', '1300 1.050 200', '1500 1.060 300'] } } } });
+        }
+        throw new Error(`unexpected text url: ${url}`);
+      },
+      fetchJson: async () => ({ Datas: { fundStocks: [], ETFCODE: '159611', ETFSHORTNAME: '电力ETF' } }),
+    });
+
+    const points = await service.getFundIntraday('016186');
+
+    expect(points.map((point) => point.time)).toEqual(['09:30', '13:00', '15:00']);
+    expect(points.at(-1)?.source).toBe('跟踪 ETF 电力ETF(159611) 分时近似（东方财富关联标的 + 腾讯分钟线）');
   });
 });

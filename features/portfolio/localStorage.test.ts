@@ -39,4 +39,18 @@ describe('browserPortfolioStorage', () => {
 
     expect(storage.load()).toEqual({ holdings: [], watchlist: [] });
   });
+
+  it('treats missing and non-array cache entries as empty arrays', () => {
+    localStorage.setItem('gg-fund:holdings', JSON.stringify({ stale: true }));
+    localStorage.removeItem('gg-fund:watchlist');
+    const storage = browserPortfolioStorage(() => localStorage);
+
+    expect(storage.load()).toEqual({ holdings: [], watchlist: [] });
+  });
+
+  it('skips save when storage is unavailable', () => {
+    const storage = browserPortfolioStorage(() => undefined);
+
+    expect(() => storage.save({ holdings: [], watchlist: [] })).not.toThrow();
+  });
 });

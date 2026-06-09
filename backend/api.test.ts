@@ -483,4 +483,138 @@ describe('Cloudflare API', () => {
     expect(body.report.disclaimer).toContain('不构成投资建议');
     expect(body.chartAnnotations[0]).toEqual(expect.objectContaining({ label: '本地降级', tone: 'neutral' }));
   });
+
+  it('covers route guards, market endpoints, and fund not found branches', async () => {
+    const api = createCloudflareApi({
+      marketData: {
+        ...marketData,
+        getFund: async () => undefined,
+        searchFunds: async (query: string) => query === 'missing' ? [] : marketData.searchFunds(),
+      },
+    });
+    const bindings = env();
+
+    await expect((await api.fetch(new Request('https://example.com/api/market/indices'), bindings)).json()).resolves.toEqual([
+      expect.objectContaining({ code: '000001.SH' }),
+    ]);
+    await expect((await api.fetch(new Request('https://example.com/api/funds/search?q=000001'), bindings)).json()).resolves.toEqual([
+      expect.objectContaining({ code: '000001' }),
+    ]);
+    await expect((await api.fetch(new Request('https://example.com/api/funds/trending'), bindings)).json()).resolves.toEqual([]);
+    await expect((await api.fetch(new Request('https://example.com/api/funds/000001/history?range=all'), bindings)).json()).resolves.toEqual([
+      { date: '2026-05-27', netValue: 1.333 },
+    ]);
+
+    const fundMissing = await api.fetch(new Request('https://example.com/api/funds/999999'), bindings);
+    expect(fundMissing.status).toBe(404);
+    await expect(fundMissing.json()).resolves.toEqual({ error: { code: 'FUND_NOT_FOUND', message: '未找到该基金' } });
+
+    const notFound = await api.fetch(new Request('https://example.com/api/unknown'), bindings);
+    expect(notFound.status).toBe(404);
+    const method = await api.fetch(new Request('https://example.com/api/health', { method: 'PUT' }), bindings);
+    expect(method.status).toBe(405);
+  });
+
+  it('reads sessions from cookies, rejects expired sessions, and supports no-token logout', async () => {
+    const api = createCloudflareApi({ marketData });
+    const bindings = env();
+    const challengeResponse = await api.fetch(new Request('https://example.com/api/auth/challenge', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'email', identifier: 'cookie@example.com' }),
+    }), bindings);
+    const challenge = await challengeResponse.json();
+    const verifyResponse = await api.fetch(new Request('https://example.com/api/auth/verify', {
+      method: 'POST',
+      body: JSON.stringify({ challengeId: challenge.challengeId, code: challenge.devCode }),
+    }), bindings);
+    const verified = await verifyResponse.json();
+
+    const cookieMe = await api.fetch(new Request('https://example.com/api/auth/me', {
+      headers: { Cookie: `foo=bar; gg_fund_session=${encodeURIComponent(verified.session.token)}` },
+    }), bindings);
+    expect(cookieMe.status).toBe(200);
+    await expect(cookieMe.json()).resolves.toEqual(expect.objectContaining({ user: expect.objectContaining({ identifier: 'cookie@example.com' }) }));
+
+    const stored = bindings.GG_FUND_DB.authSessions.find((session) => session.token === verified.session.token);
+    if (stored) stored.expiresAt = '2000-01-01T00:00:00.000Z';
+    const expired = await api.fetch(new Request('https://example.com/api/auth/me', {
+      headers: { Authorization: `Bearer ${verified.session.token}` },
+    }), bindings);
+    expect(expired.status).toBe(401);
+
+    const logout = await api.fetch(new Request('https://example.com/api/auth/logout', { method: 'POST' }), bindings);
+    expect(logout.status).toBe(200);
+    expect(logout.headers.get('set-cookie')).toContain('Max-Age=0');
+  });
+
+  it('rejects reused and malformed OTP verification attempts', async () => {
+    const api = createCloudflareApi({ marketData });
+    const bindings = env();
+    const challengeResponse = await api.fetch(new Request('https://example.com/api/auth/challenge', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'email', identifier: 'reuse@example.com' }),
+    }), bindings);
+    const challenge = await challengeResponse.json();
+
+    const wrong = await api.fetch(new Request('https://example.com/api/auth/verify', {
+      method: 'POST',
+      body: JSON.stringify({ challengeId: challenge.challengeId, code: '000000' }),
+    }), bindings);
+    expect(wrong.status).toBe(400);
+
+    const valid = await api.fetch(new Request('https://example.com/api/auth/verify', {
+      method: 'POST',
+      body: JSON.stringify({ challengeId: challenge.challengeId, code: challenge.devCode }),
+    }), bindings);
+    expect(valid.status).toBe(201);
+
+    const replay = await api.fetch(new Request('https://example.com/api/auth/verify', {
+      method: 'POST',
+      body: JSON.stringify({ challengeId: challenge.challengeId, code: challenge.devCode }),
+    }), bindings);
+    expect(replay.status).toBe(400);
+  });
+
+  it('handles AI analysis validation, missing funds, and DeepSeek upstream failures', async () => {
+    const invalidApi = createCloudflareApi({ marketData });
+    const invalid = await invalidApi.fetch(new Request('https://example.com/api/ai/analyze-fund', {
+      method: 'POST',
+      body: JSON.stringify({ code: 'bad' }),
+    }), env());
+    expect(invalid.status).toBe(400);
+
+    const missingApi = createCloudflareApi({ marketData: { ...marketData, getFund: async () => undefined, searchFunds: async () => [] } });
+    const missing = await missingApi.fetch(new Request('https://example.com/api/ai/analyze-fund', {
+      method: 'POST',
+      body: JSON.stringify({ code: '999999' }),
+    }), env());
+    expect(missing.status).toBe(404);
+
+    const upstreamApi = createCloudflareApi({
+      marketData,
+      deepSeekFetch: (async () => new Response('bad gateway', { status: 502 })) as unknown as typeof fetch,
+    });
+    const upstream = await upstreamApi.fetch(new Request('https://example.com/api/ai/analyze-fund', {
+      method: 'POST',
+      body: JSON.stringify({ code: '000001' }),
+    }), env());
+    expect(upstream.status).toBe(502);
+    await expect(upstream.json()).resolves.toEqual({ error: { code: 'DEEPSEEK_UPSTREAM_ERROR', message: 'DeepSeek 分析服务暂不可用' } });
+  });
+
+  it('returns upstream errors when route handlers throw unexpectedly', async () => {
+    const api = createCloudflareApi({
+      marketData: {
+        ...marketData,
+        getIndices: async () => {
+          throw new Error('network');
+        },
+      },
+    });
+
+    const response = await api.fetch(new Request('https://example.com/api/market/indices'), env());
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({ error: { code: 'UPSTREAM_ERROR', message: 'Cloudflare 后端服务暂不可用，请稍后重试' } });
+  });
 });

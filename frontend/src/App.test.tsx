@@ -38,9 +38,25 @@ vi.mock('./api', () => ({
   },
 }));
 
+vi.mock('echarts-for-react', () => ({
+  default: () => null,
+}));
+
 describe('App', () => {
   let root: Root | undefined;
   let container: HTMLDivElement | undefined;
+
+  async function renderApp(props?: { initialData?: Parameters<typeof App>[0]['initialData'] }) {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(<App initialData={props?.initialData} />);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    return container;
+  }
 
   function clickButton(label: string) {
     const button = Array.from(container?.querySelectorAll('button') ?? []).find((item) => item.textContent?.includes(label));
@@ -57,42 +73,38 @@ describe('App', () => {
     root = undefined;
     container = undefined;
     localStorage.clear();
+    window.history.replaceState(null, '', '/');
+    vi.clearAllMocks();
   });
 
   it('renders the market page first and keeps account navigation focused', async () => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    root = createRoot(container);
+    const view = await renderApp();
 
-    await act(async () => {
-      root?.render(<App />);
-    });
+    expect(view.textContent).toContain('行情');
+    expect(view.textContent).toContain('全球指数行情');
+    expect(view.textContent).toContain('金融资产搜索');
+    expect(view.textContent).not.toContain('基金研究操作系统');
+    expect(view.textContent).not.toContain('账户总览');
+    expect(view.textContent).not.toContain('交易与基金工具');
+    expect(view.textContent).not.toContain('工具宇宙');
+    expect(view.querySelector('[aria-current="page"]')?.textContent).toContain('行情');
+    expect(view.textContent).not.toContain('基金小白决策地图');
+    expect(view.textContent).not.toContain('查看组合');
 
-    expect(container.textContent).toContain('行情');
-    expect(container.textContent).toContain('全球指数行情');
-    expect(container.textContent).toContain('金融资产搜索');
-    expect(container.textContent).not.toContain('基金研究操作系统');
-    expect(container.textContent).not.toContain('账户总览');
-    expect(container.textContent).not.toContain('交易与基金工具');
-    expect(container.textContent).not.toContain('工具宇宙');
-    expect(container.querySelector('[aria-current="page"]')?.textContent).toContain('行情');
-    expect(container.textContent).not.toContain('基金小白决策地图');
-    expect(container.textContent).not.toContain('查看组合');
-
-    expect(container.textContent).not.toContain('登录设置');
-    expect(container.textContent).not.toContain('个人信息');
-    expect(container.textContent).not.toContain('右侧登录状态');
-    expect(container.textContent).not.toContain('智能投研');
+    expect(view.textContent).not.toContain('登录设置');
+    expect(view.textContent).not.toContain('个人信息');
+    expect(view.textContent).not.toContain('右侧登录状态');
+    expect(view.textContent).not.toContain('智能投研');
     clickButton('账户');
-    expect(container.textContent).not.toContain('安全与隐私');
-    expect(container.textContent).not.toContain('下载移动端');
-    expect(container.textContent).not.toContain('移动端');
-    expect(container.textContent).toContain('未登录');
-    expect(container.textContent).not.toContain('Resend 邮箱验证码登录');
-    expect(container.textContent).not.toContain('发送验证码');
-    expect(container.textContent).not.toContain('OTP / OAuth 登录');
-    expect(container.textContent).toContain('账户');
-    expect(container.textContent).toContain('自选基金');
+    expect(view.textContent).not.toContain('安全与隐私');
+    expect(view.textContent).not.toContain('下载移动端');
+    expect(view.textContent).not.toContain('移动端');
+    expect(view.textContent).toContain('未登录');
+    expect(view.textContent).not.toContain('Resend 邮箱验证码登录');
+    expect(view.textContent).not.toContain('发送验证码');
+    expect(view.textContent).not.toContain('OTP / OAuth 登录');
+    expect(view.textContent).toContain('账户');
+    expect(view.textContent).toContain('自选基金');
   });
 
   it('hydrates without mismatching locally cached holdings', async () => {
@@ -162,5 +174,30 @@ describe('App', () => {
       [expect.objectContaining({ fundCode: '110022' })],
     );
     vi.useRealTimers();
+  });
+
+  it('logs out authenticated users from the header', async () => {
+    vi.mocked(api.getCurrentUser).mockResolvedValueOnce({
+      user: { id: 'user-2', provider: 'email', identifier: 'logout@example.com', displayName: 'logout@example.com' },
+      session: { token: 'session_logout', expiresAt: '2026-06-30T00:00:00.000Z' },
+    });
+    vi.mocked(api.getDefaultPortfolio).mockResolvedValueOnce({ portfolio: null, holdings: [], watchlist: [] });
+
+    const view = await renderApp();
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(view.textContent).toContain('logout');
+    const logoutButton = view.querySelector<HTMLButtonElement>('button[aria-label="退出登录"]');
+    await act(async () => {
+      logoutButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    expect(api.logout).toHaveBeenCalledTimes(1);
+    expect(api.clearSessionToken).toHaveBeenCalledTimes(1);
+    expect(view.textContent).toContain('未登录');
   });
 });

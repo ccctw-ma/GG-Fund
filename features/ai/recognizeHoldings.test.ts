@@ -19,6 +19,8 @@ describe('recognize holdings service', () => {
     });
     expect(() => normalizeRecognizeHoldingsRequest({ imageText: '招商中证白酒指数', imageDataUrl: 'not-an-image' })).toThrow('图片数据格式不正确');
     expect(normalizeRecognizeHoldingsRequest({ imageDataUrl: sampleDataUrl })).toEqual({ imageText: '', imageDataUrl: sampleDataUrl });
+    expect(() => normalizeRecognizeHoldingsRequest(undefined)).toThrow('请上传图片或提供截图文字');
+    expect(() => normalizeRecognizeHoldingsRequest({ imageText: 'x'.repeat(20_001) })).toThrow('截图文字过长');
   });
 
   it('normalizes structured holdings while ignoring fabricated codes and empty names', () => {
@@ -40,6 +42,22 @@ describe('recognize holdings service', () => {
     const content = '好的，识别结果如下：\n```json\n{"holdings":[{"fundName":"招商中证白酒指数","marketValue":5000}]}\n```';
     const holdings = normalizeRecognizedHoldings(content);
     expect(holdings).toEqual([{ fundName: '招商中证白酒指数', marketValue: 5000 }]);
+  });
+
+  it('normalizes array roots, field aliases, account names, and invalid records', () => {
+    const holdings = normalizeRecognizedHoldings(JSON.stringify([
+      { name: '中银国有企业债债券C', amount: '43,919.06', profit: '+1,034.94', accountName: ' 家庭账本 ' },
+      { fundName: 'A', value: 100 },
+      null,
+      { fundName: '华夏绿色电力ETF联接C', value: 'not-a-number', dailyProfit: '＋35.26' },
+    ]));
+
+    expect(holdings).toEqual([
+      { fundName: '中银国有企业债债券C', marketValue: 43919.06, profit: 1034.94, accountName: '家庭账本' },
+      { fundName: '华夏绿色电力ETF联接C', dailyProfit: 35.26 },
+    ]);
+    expect(normalizeRecognizedHoldings('no json here')).toEqual([]);
+    expect(normalizeRecognizedHoldings('prefix {"holdings": [bad]} suffix')).toEqual([]);
   });
 
   it('throws when DeepSeek key is missing', async () => {
@@ -92,6 +110,30 @@ describe('recognize holdings service', () => {
     expect(capturedHeaders).toEqual({ 'content-type': 'application/x-www-form-urlencoded' });
   });
 
+  it('maps OCR.space error and empty text branches', async () => {
+    await expect(extractTextFromImage('bad-data-url')).rejects.toThrow('图片数据格式不正确');
+
+    await expect(extractTextFromImage(sampleDataUrl, {
+      ocrFetch: (async () => new Response('offline', { status: 503 })) as unknown as typeof fetch,
+    })).rejects.toThrow('OCR.space 识别服务暂不可用');
+
+    await expect(extractTextFromImage(sampleDataUrl, {
+      ocrFetch: (async () => new Response(JSON.stringify({ IsErroredOnProcessing: true, ErrorMessage: ['限流', '图片过大'] }), { status: 200 })) as unknown as typeof fetch,
+    })).rejects.toThrow('OCR.space 识别失败：限流；图片过大');
+
+    await expect(extractTextFromImage(sampleDataUrl, {
+      ocrFetch: (async () => new Response(JSON.stringify({ IsErroredOnProcessing: true }), { status: 200 })) as unknown as typeof fetch,
+    })).rejects.toThrow('OCR.space 识别失败，请换更清晰的持仓截图');
+
+    await expect(extractTextFromImage(sampleDataUrl, {
+      ocrFetch: (async () => new Response(JSON.stringify({ ParsedResults: [{ ParsedText: '   ' }] }), { status: 200 })) as unknown as typeof fetch,
+    })).rejects.toThrow('未从截图中读取到文字');
+
+    await expect(extractTextFromImage(sampleDataUrl, {
+      ocrFetch: (async () => new Response(JSON.stringify({ ParsedResults: [{ ParsedText: 'x'.repeat(20_001) }] }), { status: 200 })) as unknown as typeof fetch,
+    })).rejects.toThrow('截图文字过长');
+  });
+
   it('runs OCR.space first and then asks DeepSeek to structure the text', async () => {
     const ocrFetch = (async () =>
       new Response(JSON.stringify({
@@ -131,5 +173,11 @@ describe('recognize holdings service', () => {
     await expect(
       recognizeHoldingsFromImage({ imageText: '招商中证白酒指数 5,000.00 +420.00', imageDataUrl: sampleDataUrl }, { deepSeekApiKey: 'test-key', deepSeekFetch }),
     ).rejects.toThrow('DeepSeek 图片识别服务暂不可用');
+  });
+
+  it('rejects requests that still have no OCR text after normalization', async () => {
+    await expect(
+      recognizeHoldingsFromImage({ imageText: '' }, { deepSeekApiKey: 'test-key', deepSeekFetch: (async () => new Response('{}')) as unknown as typeof fetch }),
+    ).rejects.toThrow('未从截图中读取到文字');
   });
 });

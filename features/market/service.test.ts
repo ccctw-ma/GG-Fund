@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createMarketService } from './service';
 
 const buildService = () =>
@@ -101,5 +101,76 @@ describe('market service', () => {
     await expect(service.getFund('000001')).resolves.toEqual(
       expect.objectContaining({ name: '缓存基金', source: 'KV缓存' }),
     );
+  });
+
+  it('caches live fund quotes and ignores invalid cached payloads', async () => {
+    const put = vi.fn(async () => undefined);
+    const service = createMarketService({
+      marketData: {
+        getIndices: async () => [],
+        getIndexHistory: async () => [],
+        searchFunds: async () => [],
+        getFund: async () => ({ code: '000001', name: '实时基金', netValue: 1.2, quoteDate: '2026-06-09', source: '实时源' }),
+        getFundHistory: async () => [],
+        getFundIntraday: async () => [],
+        getFundHoldings: async () => ({ stocks: [] }),
+        getTrendingFunds: async () => [],
+      },
+      cache: {
+        get: async () => '{',
+        put,
+      },
+    });
+
+    await expect(service.getFund('000001')).resolves.toEqual(expect.objectContaining({ name: '实时基金' }));
+    expect(put).toHaveBeenCalledWith(
+      'fund:000001',
+      expect.stringContaining('实时基金'),
+      { expirationTtl: 60 },
+    );
+  });
+
+  it('falls back to exact search results before returning not found', async () => {
+    const put = vi.fn(async () => undefined);
+    const service = createMarketService({
+      marketData: {
+        getIndices: async () => [],
+        getIndexHistory: async () => [],
+        searchFunds: async () => [
+          { code: '000001', name: '搜索基金', netValue: 1.1, quoteDate: '2026-06-09', source: '搜索源' },
+        ],
+        getFund: async () => undefined,
+        getFundHistory: async () => [],
+        getFundIntraday: async () => [],
+        getFundHoldings: async () => ({ stocks: [] }),
+        getTrendingFunds: async () => [],
+      },
+      cache: {
+        get: async () => JSON.stringify({ code: '000001', name: '内置基金', netValue: 1, quoteDate: '2026-06-09', source: '内置示例行情' }),
+        put,
+      },
+    });
+
+    await expect(service.getFund('000001')).resolves.toEqual(expect.objectContaining({ name: '搜索基金' }));
+    expect(put).toHaveBeenCalledWith('fund:000001', expect.stringContaining('搜索基金'), { expirationTtl: 60 });
+  });
+
+  it('returns not found and validates fund-dependent routes', async () => {
+    const service = createMarketService({
+      marketData: {
+        getIndices: async () => [],
+        getIndexHistory: async () => [],
+        searchFunds: async () => [],
+        getFund: async () => undefined,
+        getFundHistory: async () => [],
+        getFundIntraday: async () => [],
+        getFundHoldings: async () => ({ stocks: [] }),
+        getTrendingFunds: async () => [],
+      },
+    });
+
+    await expect(service.getFund('999999')).rejects.toThrow('未找到该基金');
+    await expect(service.getFundHistory('bad')).rejects.toThrow('基金代码格式不正确');
+    await expect(service.getFundIntraday('bad')).rejects.toThrow('基金代码格式不正确');
   });
 });

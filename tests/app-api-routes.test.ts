@@ -240,6 +240,9 @@ describe('app api routes', () => {
     } else {
       process.env.DEEPSEEK_API_KEY = previousDeepSeekApiKey;
     }
+    delete process.env.RESEND_API_KEY;
+    delete process.env.AUTH_EMAIL_FROM;
+    vi.restoreAllMocks();
   });
 
   it('returns the health readiness payload', async () => {
@@ -255,6 +258,38 @@ describe('app api routes', () => {
       ai: 'deepseek-ready',
       auth: 'resend-email-otp',
     });
+  });
+
+  it('prefers Cloudflare env AI readiness over process env', async () => {
+    delete process.env.DEEPSEEK_API_KEY;
+    getCloudflareContextMock.mockResolvedValueOnce({
+      env: { DEEPSEEK_API_KEY: 'cf-key' },
+      cf: undefined,
+      ctx: {},
+    });
+
+    const response = await getHealth();
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(expect.objectContaining({
+      ai: 'deepseek-ready',
+    }));
+  });
+
+  it('handles missing Cloudflare env when checking AI readiness', async () => {
+    delete process.env.DEEPSEEK_API_KEY;
+    getCloudflareContextMock.mockResolvedValueOnce({
+      env: undefined,
+      cf: undefined,
+      ctx: {},
+    });
+
+    const response = await getHealth();
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(expect.objectContaining({
+      ai: 'local-fallback',
+    }));
   });
 
   it('returns fallback ai status when DeepSeek key is unavailable', async () => {
@@ -304,6 +339,65 @@ describe('app api routes', () => {
     if (previousEmailFrom) process.env.AUTH_EMAIL_FROM = previousEmailFrom;
   });
 
+  it('validates local auth challenge payloads and unsupported actions', async () => {
+    const unsupportedProvider = await postAuth(new Request('https://example.com/api/auth/challenge', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'github', identifier: 'demo@example.com' }),
+    }), { params: Promise.resolve({ action: 'challenge' }) });
+    expect(unsupportedProvider.status).toBe(400);
+    await expect(unsupportedProvider.json()).resolves.toEqual({
+      error: { code: 'AUTH_PROVIDER_UNSUPPORTED', message: '暂不支持该登录方式' },
+    });
+
+    const invalidEmail = await postAuth(new Request('https://example.com/api/auth/challenge', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'email', identifier: 'bad-email' }),
+    }), { params: Promise.resolve({ action: 'challenge' }) });
+    expect(invalidEmail.status).toBe(400);
+    await expect(invalidEmail.json()).resolves.toEqual({
+      error: { code: 'AUTH_IDENTIFIER_INVALID', message: '邮箱格式不正确' },
+    });
+
+    const missingRoute = await getAuth(new Request('https://example.com/api/auth/unknown'), {
+      params: Promise.resolve({ action: 'unknown' }),
+    });
+    expect(missingRoute.status).toBe(404);
+  });
+
+  it('reads local auth sessions from cookies and clears them on logout', async () => {
+    delete process.env.RESEND_API_KEY;
+    delete process.env.AUTH_EMAIL_FROM;
+    const challengeResponse = await postAuth(new Request('https://example.com/api/auth/challenge', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'email', identifier: 'cookie@example.com' }),
+    }), { params: Promise.resolve({ action: 'challenge' }) });
+    const challenge = await challengeResponse.json() as { challengeId: string; devCode: string };
+    const verifyResponse = await postAuth(new Request('https://example.com/api/auth/verify', {
+      method: 'POST',
+      body: JSON.stringify({ challengeId: challenge.challengeId, code: challenge.devCode }),
+    }), { params: Promise.resolve({ action: 'verify' }) });
+    const cookie = verifyResponse.headers.get('set-cookie') ?? '';
+
+    const meResponse = await getAuth(new Request('https://example.com/api/auth/me', {
+      headers: { Cookie: cookie },
+    }), { params: Promise.resolve({ action: 'me' }) });
+    expect(meResponse.status).toBe(200);
+    await expect(meResponse.json()).resolves.toEqual(expect.objectContaining({
+      user: expect.objectContaining({ identifier: 'cookie@example.com' }),
+    }));
+
+    const logoutResponse = await postAuth(new Request('https://example.com/api/auth/logout', {
+      method: 'POST',
+      headers: { Cookie: cookie },
+    }), { params: Promise.resolve({ action: 'logout' }) });
+    expect(logoutResponse.headers.get('set-cookie')).toContain('Max-Age=0');
+
+    const loggedOut = await getAuth(new Request('https://example.com/api/auth/me', {
+      headers: { Cookie: cookie },
+    }), { params: Promise.resolve({ action: 'me' }) });
+    expect(loggedOut.status).toBe(401);
+  });
+
   it('returns market indices', async () => {
     marketService.getIndices.mockResolvedValueOnce([
       { code: '000001.SH', name: '上证指数', value: 3200, change: 10, changePercent: 0.31, quoteTime: '2026-05-30 15:00:00' },
@@ -326,6 +420,17 @@ describe('app api routes', () => {
     expect(response.status).toBe(502);
     await expect(response.json()).resolves.toEqual({
       error: { code: 'UPSTREAM_ERROR', message: 'Cloudflare 后端服务暂不可用，请稍后重试' },
+    });
+  });
+
+  it('maps HttpErrors from index quote lookups', async () => {
+    marketService.getIndices.mockRejectedValueOnce(new HttpError(503, 'MARKET_UNAVAILABLE', '行情源暂不可用'));
+
+    const response = await getIndices();
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'MARKET_UNAVAILABLE', message: '行情源暂不可用' },
     });
   });
 
@@ -376,6 +481,17 @@ describe('app api routes', () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
       error: { code: 'FUND_QUERY_INVALID', message: '查询词不能为空' },
+    });
+  });
+
+  it('maps unexpected fund search failures to 502', async () => {
+    marketService.searchFunds.mockRejectedValueOnce(new Error('search timeout'));
+
+    const response = await searchFunds(new Request('https://example.com/api/funds/search?q=消费'));
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'UPSTREAM_ERROR', message: 'Cloudflare 后端服务暂不可用，请稍后重试' },
     });
   });
 
@@ -473,6 +589,26 @@ describe('app api routes', () => {
     ]);
   });
 
+  it('maps HttpErrors and unexpected failures from intraday fund lookups', async () => {
+    marketService.getFundIntraday.mockRejectedValueOnce(new HttpError(400, 'FUND_CODE_INVALID', '基金代码格式不正确'));
+    const httpErrorResponse = await getFundIntraday(new Request('https://example.com/api/funds/bad/intraday'), {
+      params: Promise.resolve({ code: 'bad' }),
+    });
+    expect(httpErrorResponse.status).toBe(400);
+    await expect(httpErrorResponse.json()).resolves.toEqual({
+      error: { code: 'FUND_CODE_INVALID', message: '基金代码格式不正确' },
+    });
+
+    marketService.getFundIntraday.mockRejectedValueOnce(new Error('intraday timeout'));
+    const upstreamResponse = await getFundIntraday(new Request('https://example.com/api/funds/000001/intraday'), {
+      params: Promise.resolve({ code: '000001' }),
+    });
+    expect(upstreamResponse.status).toBe(502);
+    await expect(upstreamResponse.json()).resolves.toEqual({
+      error: { code: 'UPSTREAM_ERROR', message: 'Cloudflare 后端服务暂不可用，请稍后重试' },
+    });
+  });
+
   it('reads the code param before returning fund holdings', async () => {
     marketService.getFundHoldings.mockResolvedValueOnce({
       reportDate: '2026-03-31',
@@ -526,6 +662,17 @@ describe('app api routes', () => {
     expect(response.status).toBe(502);
     await expect(response.json()).resolves.toEqual({
       error: { code: 'UPSTREAM_ERROR', message: 'Cloudflare 后端服务暂不可用，请稍后重试' },
+    });
+  });
+
+  it('maps HttpErrors from trending fund lookups', async () => {
+    marketService.getTrendingFunds.mockRejectedValueOnce(new HttpError(503, 'TRENDING_UNAVAILABLE', '热门基金暂不可用'));
+
+    const response = await getTrendingFunds();
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'TRENDING_UNAVAILABLE', message: '热门基金暂不可用' },
     });
   });
 
@@ -886,6 +1033,41 @@ describe('app api routes', () => {
     });
   });
 
+  it('passes Cloudflare AI and OCR secrets to holding recognition', async () => {
+    getCloudflareContextMock
+      .mockResolvedValueOnce({ env: { DEEPSEEK_API_KEY: 'cf-deepseek' }, cf: undefined, ctx: {} })
+      .mockResolvedValueOnce({ env: { OCR_SPACE_API_KEY: 'cf-ocr' }, cf: undefined, ctx: {} });
+    recognizeHoldingsFromImageMock.mockResolvedValueOnce({
+      model: 'deepseek-v4-flash',
+      holdings: [{ fundName: '南方纳斯达克100', marketValue: 1000 }],
+    });
+
+    const response = await recognizeHoldings(new Request('https://example.com/api/ai/recognize-holdings', {
+      method: 'POST',
+      body: JSON.stringify({ imageText: '南方纳斯达克100 1000' }),
+    }));
+
+    expect(response.status).toBe(200);
+    expect(recognizeHoldingsFromImageMock).toHaveBeenCalledWith(
+      { imageText: '南方纳斯达克100 1000' },
+      { deepSeekApiKey: 'cf-deepseek', ocrSpaceApiKey: 'cf-ocr' },
+    );
+  });
+
+  it('maps unexpected holding recognition failures to generic upstream errors', async () => {
+    recognizeHoldingsFromImageMock.mockRejectedValueOnce(new Error('recognition crashed'));
+
+    const response = await recognizeHoldings(new Request('https://example.com/api/ai/recognize-holdings', {
+      method: 'POST',
+      body: JSON.stringify({ imageText: '招商中证白酒指数 5000' }),
+    }));
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'UPSTREAM_ERROR', message: 'Cloudflare 后端服务暂不可用，请稍后重试' },
+    });
+  });
+
   it('rejects invalid recognize-holdings payloads before calling the service', async () => {
     const response = await recognizeHoldings(new Request('https://example.com/api/ai/recognize-holdings', {
       method: 'POST',
@@ -984,6 +1166,45 @@ describe('app api routes', () => {
     expect(events[0]).toEqual({ type: 'status', message: '正在连接 DeepSeek...' });
     expect(events[1]?.delta).toContain('核心判断');
     expect(events.at(-1)?.data?.agent.model).toBe('deepseek-v4-flash');
+  });
+
+  it('streams service HttpErrors as NDJSON error events', async () => {
+    streamAnalyzeFundResponseMock.mockRejectedValueOnce(new HttpError(503, 'DEEPSEEK_UPSTREAM_ERROR', 'DeepSeek 暂不可用'));
+
+    const response = await analyzeFundStream(new Request('https://example.com/api/ai/analyze-fund/stream', {
+      method: 'POST',
+      body: JSON.stringify({ code: '000001' }),
+    }));
+    const events = (await response.text()).trim().split('\n').map((line) => JSON.parse(line) as { type: string; code?: string; message?: string });
+
+    expect(response.headers.get('content-type')).toContain('application/x-ndjson');
+    expect(events).toEqual([{ type: 'error', code: 'DEEPSEEK_UPSTREAM_ERROR', message: 'DeepSeek 暂不可用' }]);
+  });
+
+  it('streams unexpected service failures as generic NDJSON error events', async () => {
+    streamAnalyzeFundResponseMock.mockRejectedValueOnce(new Error('network reset'));
+
+    const response = await analyzeFundStream(new Request('https://example.com/api/ai/analyze-fund/stream', {
+      method: 'POST',
+      body: JSON.stringify({ code: '000001' }),
+    }));
+    const events = (await response.text()).trim().split('\n').map((line) => JSON.parse(line) as { type: string; code?: string; message?: string });
+
+    expect(events).toEqual([{ type: 'error', code: 'UPSTREAM_ERROR', message: 'Cloudflare 后端服务暂不可用，请稍后重试' }]);
+  });
+
+  it('maps invalid streaming analysis requests before opening the stream', async () => {
+    const response = await analyzeFundStream(new Request('https://example.com/api/ai/analyze-fund/stream', {
+      method: 'POST',
+      body: JSON.stringify({ code: 'bad' }),
+    }));
+
+    expect(streamAnalyzeFundResponseMock).not.toHaveBeenCalled();
+    expect(response.status).toBe(400);
+    expect(response.headers.get('content-type')).toContain('application/json');
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'FUND_CODE_INVALID', message: '基金代码格式不正确' },
+    });
   });
 
   it('maps unexpected analysis upstream failures to 502', async () => {

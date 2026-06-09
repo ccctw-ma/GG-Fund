@@ -21,6 +21,8 @@ bun run build
 bun run test:e2e
 ```
 
+`bun run coverage` is a hard gate: Statements, Branches, Functions, and Lines must all be at least 90% within the configured unit-coverage scope. Large UI orchestration, route glue, and external market-adapter files excluded from the unit gate must remain covered by focused tests and the E2E suite; do not report work complete if the 90% coverage gate fails.
+
 When Midscene behavior changes, also run:
 
 ```bash

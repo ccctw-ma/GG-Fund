@@ -76,6 +76,8 @@ bun run test:e2e
 
 `bun run test:e2e` 会运行 Next 核心 smoke spec 和 `tests/fund-flow.spec.ts` 的基金工作台 E2E。
 
+`bun run coverage` 是硬门槛：配置范围内的 Statements、Branches、Functions、Lines 都必须达到 90% 以上。大型 UI 编排、Route glue 和外部行情适配器不计入单测硬门槛，但仍需通过聚焦单测和 E2E 覆盖关键行为。
+
 如需运行 Midscene：
 
 ```bash

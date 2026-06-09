@@ -4,8 +4,13 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { calculatePortfolioSummary } from '../portfolio';
 import { decisionSteps } from '../decisionSteps';
+import type { FundAnalysisResponse } from '../types';
 import { BeginnerGuide } from './BeginnerGuide';
+import { FundAnalysisPanel } from './FundAnalysisPanel';
 import { FundSearch } from './FundSearch';
+import { Header } from './Header';
+import { ImportConfirmModal } from './ImportConfirmModal';
+import { IntradayTrendChart } from './IntradayTrendChart';
 import { MarketOverview } from './MarketOverview';
 import { PortfolioPanel } from './PortfolioPanel';
 import { SettingsPanel, buildFundCodeSearchQueries, buildRecognizedImport, findFundCodeAlias, pickBestFundCodeMatch } from './SettingsPanel';
@@ -124,6 +129,8 @@ describe('dashboard components', () => {
     document.body.replaceChildren();
     localStorage.clear();
     vi.clearAllMocks();
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 768 });
   });
 
   it('renders market and fund sections with selected quote state', async () => {
@@ -201,6 +208,93 @@ describe('dashboard components', () => {
     expect(onSelectCodes).toContain('600519');
   });
 
+  it('covers header account labels and navigation actions', () => {
+    const pageChanges: string[] = [];
+    const logoutEvents: string[] = [];
+    const anonymous = render(
+      <Header
+        activePage="workspace"
+        onPageChange={(page) => pageChanges.push(page)}
+        onLogout={() => logoutEvents.push('logout')}
+      />,
+    );
+    roots.push(anonymous.root);
+
+    expect(anonymous.container.textContent).toContain('未登录');
+    const brandButton = anonymous.container.querySelector<HTMLButtonElement>('button[aria-label="GG Fund 行情"]');
+    act(() => brandButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const portfolioButton = Array.from(anonymous.container.querySelectorAll('button')).find((button) => button.textContent?.includes('账户'));
+    act(() => portfolioButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(pageChanges).toEqual(['workspace', 'portfolio']);
+
+    const loggedIn = render(
+      <Header
+        activePage="portfolio"
+        session={{ user: { id: 'user-1', provider: 'email', identifier: 'verylongname@example.com', displayName: '' }, session: { token: 'session-1', expiresAt: '2026-06-10T00:00:00.000Z' } }}
+        logoutPending
+        onPageChange={(page) => pageChanges.push(page)}
+        onLogout={() => logoutEvents.push('logout')}
+      />,
+    );
+    roots.push(loggedIn.root);
+
+    expect(loggedIn.container.textContent).toContain('verylong@example.com');
+    expect(loggedIn.container.textContent).toContain('Resend OTP');
+    const logoutButton = loggedIn.container.querySelector<HTMLButtonElement>('button[aria-label="退出登录"]');
+    expect(logoutButton?.disabled).toBe(true);
+    expect(logoutButton?.textContent).toContain('退出中');
+  });
+
+  it('covers beginner guide market and portfolio decision branches', () => {
+    const profitableSummary = calculatePortfolioSummary(
+      [{
+        id: 'profit',
+        fundCode: '000001',
+        fundName: '华夏成长混合',
+        shares: 100,
+        costAmount: 100,
+        createdAt: '2026-06-01T00:00:00.000Z',
+        updatedAt: '2026-06-01T00:00:00.000Z',
+      }],
+      { '000001': { ...fund, netValue: 1.2 } },
+    );
+    const lossSummary = calculatePortfolioSummary(
+      [{
+        id: 'loss',
+        fundCode: '000001',
+        fundName: '华夏成长混合',
+        shares: 100,
+        costAmount: 200,
+        createdAt: '2026-06-01T00:00:00.000Z',
+        updatedAt: '2026-06-01T00:00:00.000Z',
+      }],
+      { '000001': { ...fund, netValue: 1.2 } },
+    );
+
+    const hot = render(
+      <BeginnerGuide
+        leadingIndex={{ code: '000001.SH', name: '上证指数', value: 4098.64, change: 70, changePercent: 1.72, quoteTime: '2026-06-09 15:00:00' }}
+        summary={profitableSummary}
+      />,
+    );
+    roots.push(hot.root);
+    expect(hot.container.textContent).toContain('市场情绪偏暖');
+    expect(hot.container.textContent).toContain('波动较大');
+    expect(hot.container.textContent).toContain('优先考虑分批止盈');
+
+    const cold = render(
+      <BeginnerGuide
+        selectedFund={fund}
+        leadingIndex={{ code: '000001.SH', name: '上证指数', value: 3900, change: -80, changePercent: -2.01, quoteTime: '2026-06-09 15:00:00' }}
+        summary={lossSummary}
+      />,
+    );
+    roots.push(cold.root);
+    expect(cold.container.textContent).toContain('市场情绪偏冷');
+    expect(cold.container.textContent).toContain('组合当前回撤');
+    expect(cold.container.textContent).toContain('分批减仓');
+  });
+
   it('renders stock quote details without the fund trend matrix', () => {
     const stock = {
       code: '600519',
@@ -242,11 +336,244 @@ describe('dashboard components', () => {
     expect(search.container.textContent).not.toContain('Fund Signal Matrix');
   });
 
+  it('covers FundSearch loading, official fund, watchlist, keyboard search, and sparse stock branches', async () => {
+    const searches: string[] = [];
+    const queryUpdates: string[] = [];
+    const selectedCodes: string[] = [];
+    const addEvents: string[] = [];
+    const watchEvents: string[] = [];
+    const officialFund = {
+      code: '110022',
+      name: '易方达消费行业股票',
+      netValue: 0,
+      quoteDate: '',
+      source: 'test',
+      quoteType: 'official' as const,
+      dailyChangePercent: 0,
+    };
+    const official = render(
+      <FundSearch
+        query="消费"
+        setQuery={(value) => queryUpdates.push(value)}
+        results={[officialFund]}
+        selectedFund={officialFund}
+        history={[]}
+        loading
+        error="搜索失败"
+        onSearch={() => searches.push('search')}
+        onSelect={(code) => selectedCodes.push(code)}
+        onAddHolding={(item) => addEvents.push(item.code)}
+        onToggleWatch={(item) => watchEvents.push(item.code)}
+        watchlist={[{ fundCode: '110022', fundName: '易方达消费行业股票', createdAt: '2026-06-09T00:00:00.000Z' }]}
+      />,
+    );
+    roots.push(official.root);
+
+    expect(official.container.textContent).toContain('正在查询金融数据');
+    expect(official.container.textContent).toContain('搜索失败');
+    expect(official.container.textContent).toContain('官方净值');
+    expect(official.container.textContent).toContain('最新官方净值 --');
+    expect(official.container.textContent).toContain('日期 待更新');
+    expect(official.container.textContent).toContain('移出自选');
+    const input = official.container.querySelector<HTMLInputElement>('input[aria-label="基金、股票代码或名称"]');
+    const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    act(() => {
+      nativeSetter?.call(input, '白酒');
+      input?.dispatchEvent(new Event('input', { bubbles: true }));
+      input?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+    });
+    expect(queryUpdates).toContain('白酒');
+    expect(searches).toEqual(['search']);
+    const resultButton = official.container.querySelector<HTMLButtonElement>('.fund-result-tab');
+    act(() => resultButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(selectedCodes).toEqual(['110022']);
+    const addButton = Array.from(official.container.querySelectorAll('button')).find((button) => button.textContent?.includes('加入持仓'));
+    const watchButton = Array.from(official.container.querySelectorAll('button')).find((button) => button.textContent?.includes('移出自选'));
+    act(() => {
+      addButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      watchButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(addEvents).toEqual(['110022']);
+    expect(watchEvents).toEqual(['110022']);
+
+    const sparseStock = render(
+      <FundSearch
+        query="300750"
+        setQuery={() => undefined}
+        results={[]}
+        selectedFund={{ code: '300750', name: '宁德时代', assetType: 'stock', netValue: 218.36, quoteDate: '', source: 'test-stock' }}
+        history={[]}
+        loading={false}
+        onSearch={() => undefined}
+        onSelect={() => undefined}
+        onAddHolding={() => undefined}
+        onToggleWatch={() => undefined}
+        watchlist={[]}
+      />,
+    );
+    roots.push(sparseStock.root);
+    expect(sparseStock.container.textContent).toContain('最新价 218.36 · 日期 待更新');
+    expect(sparseStock.container.textContent).toContain('日涨跌：--%');
+    expect(sparseStock.container.textContent).toContain('成交量 / 成交额');
+  });
+
+  it('renders FundAnalysisPanel branches for loading, errors, scenarios, and mobile layout', async () => {
+    const hidden = render(<FundAnalysisPanel onClose={() => undefined} />);
+    roots.push(hidden.root);
+    expect(hidden.container.textContent).toBe('');
+
+    const closeEvents: string[] = [];
+    const analysis: FundAnalysisResponse = {
+      fund,
+      analysis: 'AI 判断',
+      chartAnnotations: [],
+      researchSources: [],
+      agent: {
+        model: 'deepseek-v4-flash',
+        steps: [],
+        indicators: { totalReturn: 1, maxDrawdown: -1, shortMomentum: 1, volatility: 1, trendSlope: 1, sampleSize: 10 },
+      },
+      report: {
+        summary: '核心判断摘要',
+        trend: '趋势震荡',
+        marketDrivers: '驱动不足',
+        outlook: '继续观察',
+        risk: '注意风险',
+        beginnerGuide: {
+          riskLevel: 'R3',
+          riskExplanation: '中等风险',
+          netValueExplanation: '看净值',
+          trendExplanation: '看趋势',
+          suggestedAction: '观察等待',
+          actionPath: [],
+          suitableFor: [],
+          avoid: [],
+        },
+        scenarios: [
+          { name: '乐观', probability: 'high', description: '修复继续' },
+          { name: '压力', probability: 'low', description: '回撤扩大' },
+          { name: '中性', probability: 'medium', description: '震荡' },
+        ],
+        watchPoints: ['最大回撤', '估值'],
+        sourceNotes: [],
+        disclaimer: '不构成投资建议',
+      },
+    };
+    const panel = render(
+      <FundAnalysisPanel
+        target={{ code: '000001', name: '华夏成长混合' }}
+        analysis={analysis}
+        loadingCode="000001"
+        streamingStatus="正在生成"
+        streamingDraft="【核心判断】草稿"
+        error="分析失败"
+        onClose={() => closeEvents.push('closed')}
+      />,
+    );
+    roots.push(panel.root);
+    await act(async () => { await Promise.resolve(); });
+
+    expect(panel.container.textContent).toContain('正在生成');
+    expect(panel.container.textContent).toContain('分析失败');
+    expect(panel.container.textContent).toContain('流式草稿');
+    expect(panel.container.textContent).toContain('高概率');
+    expect(panel.container.textContent).toContain('低概率');
+    expect(panel.container.textContent).not.toContain('中性情景震荡');
+    expect(panel.container.textContent).toContain('本次未读取到可用公开网页材料');
+    act(() => panel.container.querySelector<HTMLButtonElement>('button[aria-label="关闭智能分析"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(closeEvents).toEqual(['closed']);
+
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 640 });
+    const mobile = render(
+      <FundAnalysisPanel
+        target={{ code: '000001', name: '华夏成长混合' }}
+        analysis={analysis}
+        onClose={() => undefined}
+      />,
+    );
+    roots.push(mobile.root);
+    await act(async () => {
+      window.dispatchEvent(new Event('resize'));
+      await Promise.resolve();
+    });
+    expect(mobile.container.querySelector('.fund-ai-panel')?.className).toContain('is-mobile');
+    expect(mobile.container.querySelector('.fund-ai-resize-handle')).toBeNull();
+  });
+
+  it('restores, clamps, moves, and resizes the fund analysis panel', async () => {
+    localStorage.setItem('gg-fund:analysis-panel-rect', JSON.stringify({ x: -100, y: -80, width: 9999, height: 9999 }));
+    const analysis: FundAnalysisResponse = {
+      fund,
+      analysis: 'AI 判断',
+      chartAnnotations: [],
+      researchSources: [{ title: '来源 A', url: 'https://example.com/a', summary: '摘要' }],
+      agent: {
+        model: 'deepseek-v4-flash',
+        steps: [],
+        indicators: { totalReturn: 1, maxDrawdown: -1, shortMomentum: 1, volatility: 1, trendSlope: 1, sampleSize: 10 },
+      },
+      report: {
+        summary: '核心判断摘要',
+        trend: '趋势震荡',
+        marketDrivers: '驱动充足',
+        outlook: '继续观察',
+        risk: '注意风险',
+        beginnerGuide: {
+          riskLevel: 'R3',
+          riskExplanation: '中等风险',
+          netValueExplanation: '看净值',
+          trendExplanation: '看趋势',
+          suggestedAction: '观察等待',
+          actionPath: [],
+          suitableFor: [],
+          avoid: [],
+        },
+        scenarios: [],
+        watchPoints: [],
+        sourceNotes: [],
+        disclaimer: '不构成投资建议',
+      },
+    };
+    const panel = render(
+      <FundAnalysisPanel
+        target={{ code: '000001', name: '华夏成长混合' }}
+        analysis={analysis}
+        onClose={() => undefined}
+      />,
+    );
+    roots.push(panel.root);
+    await act(async () => { await Promise.resolve(); });
+
+    const aside = panel.container.querySelector<HTMLElement>('.fund-ai-panel');
+    expect(aside?.className).toContain('is-floating');
+    expect(aside?.getAttribute('style')).toContain('width: 1000px');
+    expect(panel.container.textContent).toContain('来源 A');
+
+    const header = panel.container.querySelector<HTMLElement>('.fund-ai-panel-head');
+    await act(async () => {
+      header?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 100, clientY: 100 }));
+      window.dispatchEvent(new PointerEvent('pointermove', { clientX: 160, clientY: 180 }));
+      window.dispatchEvent(new PointerEvent('pointerup'));
+      await Promise.resolve();
+    });
+    expect(document.body.style.userSelect).toBe('');
+
+    const rightHandle = panel.container.querySelector<HTMLElement>('.fund-ai-resize-handle.is-right');
+    await act(async () => {
+      rightHandle?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 100, clientY: 100 }));
+      window.dispatchEvent(new PointerEvent('pointermove', { clientX: 80, clientY: 100 }));
+      window.dispatchEvent(new PointerEvent('pointercancel'));
+      await Promise.resolve();
+    });
+    expect(localStorage.getItem('gg-fund:analysis-panel-rect')).toContain('"width"');
+  });
+
   it('renders portfolio and settings empty states', () => {
     const portfolio = render(
       <PortfolioPanel
         summary={emptySummary}
         watchlist={[]}
+        quotesRefreshing
         onRemoveHolding={() => undefined}
         onUpdateHolding={() => undefined}
       />,
@@ -257,8 +584,15 @@ describe('dashboard components', () => {
     roots.push(settings.root);
 
     expect(portfolio.container.textContent).toContain('还没有持仓');
+    expect(portfolio.container.textContent).toContain('刷新中');
     expect(portfolio.container.textContent).toContain('多平台账本');
     expect(portfolio.container.textContent).toContain('智能定投 / 目标止盈');
+    const emptyDailyButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-controls="portfolio-insight-detail"]')).find((button) => button.textContent?.includes('今日估算收益'));
+    act(() => emptyDailyButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(portfolio.container.textContent).toContain('暂无可用日涨跌行情');
+    const emptyProfitButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-controls="portfolio-insight-detail"]')).find((button) => button.textContent?.includes('累计盈亏'));
+    act(() => emptyProfitButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(portfolio.container.textContent).toContain('暂无可拆解的累计盈亏');
     expect(settings.container.textContent).toContain('导入持仓');
     expect(settings.container.textContent).toContain('上传截图或文件');
     expect(settings.container.textContent).toContain('云端 OCR + DeepSeek');
@@ -336,6 +670,9 @@ describe('dashboard components', () => {
     const toggledDailySortButton = portfolio.container.querySelector<HTMLButtonElement>('[aria-label="今日收益排序"] .yb-sort-chip.is-active');
     expect(toggledDailySortButton?.getAttribute('aria-label')).toContain('当前倒序');
     expect(toggledDailySortButton?.querySelector('.yb-sort-arrow.is-selected')?.textContent).toBe('↓');
+    const dailyNameSortButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-label="今日收益排序"] .yb-sort-chip')).find((button) => button.textContent?.includes('按名称'));
+    act(() => dailyNameSortButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(dailyNameSortButton?.getAttribute('aria-label')).toContain('当前正序');
     expect(portfolio.container.querySelector('[data-testid="portfolio-insight-detail"]')?.textContent).toContain('华夏成长混合');
     expect(portfolio.container.querySelector('[data-testid="portfolio-holdings-detail"]')).toBeNull();
     expect(portfolio.container.querySelector('.yb-tone-down, .yb-tone-up')).not.toBeNull();
@@ -366,6 +703,9 @@ describe('dashboard components', () => {
     const toggledProfitSortButton = portfolio.container.querySelector<HTMLButtonElement>('[aria-label="累计盈亏排序"] .yb-sort-chip.is-active');
     expect(toggledProfitSortButton?.getAttribute('aria-label')).toContain('当前倒序');
     expect(toggledProfitSortButton?.querySelector('.yb-sort-arrow.is-selected')?.textContent).toBe('↓');
+    const profitMarketSortButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-label="累计盈亏排序"] .yb-sort-chip')).find((button) => button.textContent?.includes('按市值'));
+    act(() => profitMarketSortButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(profitMarketSortButton?.getAttribute('aria-label')).toContain('当前倒序');
     expect(portfolio.container.querySelector('[data-testid="portfolio-holdings-detail"]')).toBeNull();
     act(() => holdingsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(holdingsButton?.getAttribute('aria-pressed')).toBe('true');
@@ -378,6 +718,9 @@ describe('dashboard components', () => {
     const toggledHoldingSortButton = portfolio.container.querySelector<HTMLButtonElement>('[aria-label="持仓排序"] .yb-sort-chip.is-active');
     expect(toggledHoldingSortButton?.getAttribute('aria-label')).toContain('当前正序');
     expect(toggledHoldingSortButton?.querySelector('.yb-sort-arrow.is-selected')?.textContent).toBe('↑');
+    const returnRateSortButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-label="持仓排序"] .yb-sort-chip')).find((button) => button.textContent?.includes('按收益率'));
+    act(() => returnRateSortButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(returnRateSortButton?.getAttribute('aria-label')).toContain('当前倒序');
     const refreshButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('手动刷新'));
     act(() => refreshButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(refreshCount).toBe(1);
@@ -408,8 +751,209 @@ describe('dashboard components', () => {
     expect(portfolio.container.textContent).toContain('风险诊断');
   });
 
+  it('covers portfolio stale daily rows, keyboard intraday toggle, and pending code details', async () => {
+    const staleSummary = calculatePortfolioSummary(
+      [
+        {
+          id: 'fresh',
+          fundCode: '000001',
+          fundName: '华夏成长混合',
+          recordedMarketValue: 1200,
+          costAmount: 1000,
+          createdAt: '2026-06-09T00:00:00.000Z',
+          updatedAt: '2026-06-09T00:00:00.000Z',
+        },
+        {
+          id: 'pending',
+          fundCode: 'ALIPAY001',
+          fundName: '截图基金',
+          recordedMarketValue: 800,
+          costAmount: 850,
+          createdAt: '2026-06-08T00:00:00.000Z',
+          updatedAt: '2026-06-08T00:00:00.000Z',
+        },
+      ],
+      {
+        '000001': { ...fund, dailyChangePercent: 1.2, quoteDate: '2026-06-09', estimateTime: '2026-06-09 14:30:00' },
+      },
+      {},
+      new Date('2026-06-09T15:00:00+08:00'),
+    );
+    const portfolio = render(
+      <PortfolioPanel
+        summary={staleSummary}
+        watchlist={[]}
+        onRemoveHolding={() => undefined}
+        onUpdateHolding={() => undefined}
+      />,
+    );
+    roots.push(portfolio.root);
+
+    const dailyButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-controls="portfolio-insight-detail"]')).find((button) => button.textContent?.includes('今日估算收益'));
+    act(() => dailyButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(portfolio.container.textContent).toContain('待更新 1 只');
+    expect(portfolio.container.textContent).toContain('今日行情待更新');
+    const freshRow = Array.from(portfolio.container.querySelectorAll<HTMLElement>('.yb-daily-profit-row')).find((row) => row.textContent?.includes('华夏成长混合'));
+    await act(async () => {
+      freshRow?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+      await Promise.resolve();
+    });
+    expect(mockApi.getFundIntraday).toHaveBeenCalledWith('000001');
+    await act(async () => {
+      freshRow?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
+      await Promise.resolve();
+    });
+    expect(portfolio.container.querySelector('[data-testid="intraday-trend-chart"]')).not.toBeNull();
+    await act(async () => {
+      freshRow?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: ' ' }));
+      await Promise.resolve();
+    });
+    expect(portfolio.container.querySelector('[data-testid="intraday-trend-chart"]')).toBeNull();
+
+    const holdingsButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('.yb-metric-card')).find((button) => button.textContent?.includes('持仓'));
+    act(() => holdingsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const pendingDetailButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('button')).find((button) => button.getAttribute('aria-label') === '截图基金 持仓详情');
+    act(() => pendingDetailButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(portfolio.container.textContent).toContain('待补全');
+    expect(portfolio.container.textContent).toContain('自填估值');
+    expect(portfolio.container.querySelector('[data-testid="holding-positions"]')).toBeNull();
+  });
+
+  it('renders non-current daily profit, manual code detail, holding days, and holdings failure', async () => {
+    const getFundHoldingsMock = mockApi.getFundHoldings as unknown as { mockRejectedValueOnce(value: unknown): void };
+    getFundHoldingsMock.mockRejectedValueOnce(new Error('holdings unavailable'));
+    const nonCurrentSummary = calculatePortfolioSummary(
+      [{
+        id: 'manual-holding',
+        fundCode: '000001',
+        fundName: '手动确认基金',
+        shares: 1000,
+        costAmount: 1000,
+        codeSource: 'manual',
+        purchaseDate: '2026-06-01',
+        createdAt: '2026-06-01T00:00:00.000Z',
+        updatedAt: '2026-06-01T00:00:00.000Z',
+      }],
+      { '000001': { ...fund, dailyChangePercent: 0.5, quoteDate: '2026-06-08' } },
+      {},
+      new Date('2026-06-09T15:00:00+08:00'),
+    );
+    const portfolio = render(
+      <PortfolioPanel
+        summary={nonCurrentSummary}
+        watchlist={[]}
+        onRemoveHolding={() => undefined}
+        onUpdateHolding={() => undefined}
+      />,
+    );
+    roots.push(portfolio.root);
+
+    const dailyButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-controls="portfolio-insight-detail"]')).find((button) => button.textContent?.includes('最近估算收益'));
+    act(() => dailyButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(portfolio.container.textContent).toContain('最近收益拆解');
+    expect(portfolio.container.textContent).toContain('非交易日沿用');
+
+    const holdingsButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('.yb-metric-card')).find((button) => button.textContent?.includes('持仓'));
+    act(() => holdingsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const detailButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('button')).find((button) => button.getAttribute('aria-label')?.includes('持仓详情'));
+    expect(detailButton).not.toBeUndefined();
+    act(() => detailButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(portfolio.container.textContent).toContain('000001（手动确认）');
+    expect(portfolio.container.textContent).toContain('9 天');
+    expect(portfolio.container.textContent).toContain('暂无该基金的持仓组成数据');
+  });
+
+  it('loads market history from cache, switches active index, and handles failed history fetches', async () => {
+    const getCachedIndexHistoryMock = mockApi.getCachedIndexHistory as unknown as { mockReturnValueOnce(value: unknown): void };
+    const getIndexHistoryMock = mockApi.getIndexHistory as unknown as {
+      mockResolvedValueOnce(value: unknown): { mockRejectedValueOnce(value: unknown): void };
+    };
+    getCachedIndexHistoryMock.mockReturnValueOnce([{ date: '2026-06-01', netValue: 4000 }]);
+    getIndexHistoryMock
+      .mockResolvedValueOnce([{ date: '2026-06-02', netValue: 4100 }])
+      .mockRejectedValueOnce(new Error('history unavailable'));
+    const market = render(
+      <MarketOverview
+        loading
+        indices={[
+          { code: '000001.SH', name: '上证指数', value: 4098.64, change: 4.91, changePercent: 0.12, quoteTime: '2026-06-09 15:00:00' },
+          { code: 'NDX.US', name: '纳斯达克100', value: 25709.43, change: -1121.53, changePercent: -4.18, quoteTime: '2026-06-06 05:30:00' },
+          { code: 'HSI.HK', name: '恒生指数', value: 24961.95, change: -291.45, changePercent: -1.15, quoteTime: '2026-06-05 16:10:06' },
+          { code: 'N225.JP', name: '日经225', value: 66587.9, change: -882.79, changePercent: -1.31, quoteTime: '2026-06-05 14:30:03' },
+          { code: 'KS11.KR', name: '韩国KOSPI', value: 8160.59, change: -478.82, changePercent: -5.54, quoteTime: '2026-06-05 14:30:40' },
+        ]}
+      />,
+    );
+    roots.push(market.root);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(market.container.textContent).toContain('正在加载市场数据');
+    expect(market.container.textContent).toContain('多市场数据');
+    expect(market.container.textContent).toContain('▲');
+    expect(market.container.textContent).toContain('▼');
+    const nasdaqButton = Array.from(market.container.querySelectorAll('button')).find((button) => button.textContent?.includes('纳斯达克100'));
+    act(() => nasdaqButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(mockApi.getIndexHistory).toHaveBeenCalledWith('NDX.US', 'all');
+    expect(market.container.textContent).toContain('暂无该指数的历史数据');
+  });
+
+  it('renders intraday empty, direct, estimated, and fallback branches', () => {
+    const loading = render(<IntradayTrendChart title="空走势" points={[]} loading />);
+    roots.push(loading.root);
+    expect(loading.container.textContent).toContain('正在加载当日分时走势');
+
+    const empty = render(<IntradayTrendChart title="无分钟" points={[]} />);
+    roots.push(empty.root);
+    expect(empty.container.textContent).toContain('当前公开接口只返回单点实时估算');
+
+    const direct = render(
+      <IntradayTrendChart
+        title="真实走势"
+        points={[
+          { time: '09:30', price: 1.2 },
+          { time: '09:31', price: 1.18 },
+        ]}
+      />,
+    );
+    roots.push(direct.root);
+    expect(direct.container.textContent).toContain('真实分时');
+    expect(direct.container.textContent).toContain('-0.0200');
+    expect(direct.container.textContent).toContain('数据来源：公开行情接口');
+
+    const estimated = render(
+      <IntradayTrendChart
+        title="近似走势"
+        dailyChangePercent={1.23}
+        estimateTime="2026-06-09 09:31:00"
+        points={[
+          { time: '09:30', price: 1.2, average: 1.19, source: '持仓加权', sourceType: 'estimated' },
+          { time: '09:31', price: 1.22, average: 1.2, source: '持仓加权', sourceType: 'estimated' },
+          { time: '09:32', price: 1.25, average: 1.21, source: '持仓加权', sourceType: 'estimated' },
+        ]}
+      />,
+    );
+    roots.push(estimated.root);
+    expect(estimated.container.textContent).toContain('近似走势');
+    expect(estimated.container.textContent).toContain('09:30 - 09:31 · 2 个分时点');
+    expect(estimated.container.textContent).toContain('收益口径：按日涨跌 +1.23%');
+    expect(estimated.container.textContent).not.toContain('09:32');
+  });
+
   it('edits a holding code and name through the inline editor', () => {
     const edits: Array<{ id: string; patch: { fundCode: string; fundName: string } }> = [];
+    const updates: Array<{ id: string; patch: { recordedMarketValue: number; costAmount: number } }> = [];
+    const removals: string[] = [];
     const populatedSummary = calculatePortfolioSummary(
       [{
         id: 'holding-2',
@@ -429,8 +973,8 @@ describe('dashboard components', () => {
       <PortfolioPanel
         summary={populatedSummary}
         watchlist={[]}
-        onRemoveHolding={() => undefined}
-        onUpdateHolding={() => undefined}
+        onRemoveHolding={(id) => removals.push(id)}
+        onUpdateHolding={(id, patch) => updates.push({ id, patch })}
         onEditIdentity={(id, patch) => edits.push({ id, patch })}
       />,
     );
@@ -440,12 +984,18 @@ describe('dashboard components', () => {
     act(() => editButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
     const codeInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="某只截图基金 基金代码"]');
+    const valueInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="某只截图基金 持有金额"]');
+    const costInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="某只截图基金 成本金额"]');
     expect(codeInput).not.toBeNull();
     const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
     act(() => {
-      if (!codeInput || !nativeSetter) return;
+      if (!codeInput || !valueInput || !costInput || !nativeSetter) return;
       nativeSetter.call(codeInput, '110022');
       codeInput.dispatchEvent(new Event('input', { bubbles: true }));
+      nativeSetter.call(valueInput, '1300.456');
+      valueInput.dispatchEvent(new Event('input', { bubbles: true }));
+      nativeSetter.call(costInput, '999.994');
+      costInput.dispatchEvent(new Event('input', { bubbles: true }));
     });
 
     const saveButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('保存'));
@@ -453,6 +1003,199 @@ describe('dashboard components', () => {
 
     expect(edits).toHaveLength(1);
     expect(edits[0]?.patch.fundCode).toBe('110022');
+    expect(updates).toEqual([{ id: 'holding-2', patch: { recordedMarketValue: 1300.46, costAmount: 999.99 } }]);
+
+    act(() => editButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const invalidValueInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="某只截图基金 持有金额"]');
+    act(() => {
+      if (!invalidValueInput || !nativeSetter) return;
+      nativeSetter.call(invalidValueInput, '-1');
+      invalidValueInput.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    act(() => saveButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(updates).toHaveLength(1);
+
+    const cancelButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('取消'));
+    act(() => cancelButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(portfolio.container.querySelector('input[aria-label="某只截图基金 持有金额"]')).toBeNull();
+
+    const deleteButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('删除'));
+    act(() => deleteButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(removals).toEqual(['holding-2']);
+  });
+
+  it('expands disclosed fund holdings and loads stock quote details', async () => {
+    const getFundHoldingsMock = mockApi.getFundHoldings as unknown as { mockResolvedValueOnce(value: unknown): void };
+    const getFundMock = mockApi.getFund as unknown as { mockResolvedValueOnce(value: unknown): void };
+    const getFundHistoryMock = mockApi.getFundHistory as unknown as { mockResolvedValueOnce(value: unknown): void };
+    getFundHoldingsMock.mockResolvedValueOnce({
+      reportDate: '2026-03-31',
+      stocks: [
+        { code: '600519', name: '贵州茅台', weight: 18.33, rank: 1, isTopTen: true, shares: 508.34, industry: '食品饮料', changeType: '增持' },
+        { code: '000568', name: '泸州老窖', weight: 1.8, rank: 11, isTopTen: false },
+      ],
+    });
+    getFundMock.mockResolvedValueOnce({
+      code: '600519',
+      name: '贵州茅台',
+      assetType: 'stock',
+      market: 'SH',
+      netValue: 1668.88,
+      dailyChangePercent: 0.72,
+      open: 1650,
+      previousClose: 1656.94,
+      high: 1688,
+      low: 1648,
+      quoteDate: '2026-06-09',
+      source: '东方财富 A股行情',
+    });
+    getFundHistoryMock.mockResolvedValueOnce([{ date: '2026-06-09', netValue: 1668.88 }]);
+    const populatedSummary = calculatePortfolioSummary(
+      [{
+        id: 'holding-stock-detail',
+        fundCode: '000001',
+        fundName: '华夏成长混合',
+        shares: 1000,
+        costAmount: 1000,
+        createdAt: '2026-06-01T00:00:00.000Z',
+        updatedAt: '2026-06-01T00:00:00.000Z',
+      }],
+      { '000001': fund },
+    );
+
+    const portfolio = render(
+      <PortfolioPanel
+        summary={populatedSummary}
+        watchlist={[]}
+        benchmarkHistory={[{ date: '2026-06-09', netValue: 4800 }]}
+        onRemoveHolding={() => undefined}
+        onUpdateHolding={() => undefined}
+      />,
+    );
+    roots.push(portfolio.root);
+
+    const detailButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('详情'));
+    act(() => detailButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const positions = portfolio.container.querySelector('[data-testid="holding-positions"]');
+    expect(positions?.textContent).toContain('报告期 2026-03-31');
+    expect(positions?.textContent).toContain('已披露股票合计 20.13%');
+    expect(positions?.textContent).toContain('前十大 18.33%');
+    expect(positions?.textContent).toContain('前十大以外已披露 1.80%');
+    expect(positions?.textContent).toContain('未逐项披露或非股票资产约 79.87%');
+    expect(positions?.textContent).toContain('持股 508.34万股');
+
+    const stockButton = portfolio.container.querySelector<HTMLButtonElement>('button[aria-label="查看 贵州茅台 详情"]');
+    act(() => stockButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const stockDetail = portfolio.container.querySelector('[data-testid="holding-stock-detail"]');
+    expect(mockApi.getFund).toHaveBeenCalledWith('600519');
+    expect(stockDetail?.textContent).toContain('股票 · SH');
+    expect(stockDetail?.textContent).toContain('最新价');
+    expect(stockDetail?.textContent).toContain('+0.72%');
+    expect(stockDetail?.textContent).toContain('今开');
+    expect(stockDetail?.textContent).toContain('昨收');
+    expect(stockDetail?.textContent).toContain('最高 / 最低');
+    expect(stockDetail?.textContent).toContain('东方财富 A股行情');
+    expect(portfolio.container.querySelector('[data-testid="holding-stock-chart"]')).not.toBeNull();
+  });
+
+  it('shows portfolio analysis errors and closes the analysis panel', async () => {
+    const analyzeMock = mockApi.analyzeFundStream as unknown as { mockRejectedValueOnce(value: unknown): void };
+    analyzeMock.mockRejectedValueOnce('stream failed');
+    const populatedSummary = calculatePortfolioSummary(
+      [{
+        id: 'holding-analysis-error',
+        fundCode: '000001',
+        fundName: '华夏成长混合',
+        shares: 1000,
+        costAmount: 1000,
+        createdAt: '2026-06-01T00:00:00.000Z',
+        updatedAt: '2026-06-01T00:00:00.000Z',
+      }],
+      { '000001': fund },
+    );
+    const portfolio = render(
+      <PortfolioPanel
+        summary={populatedSummary}
+        watchlist={[]}
+        onRemoveHolding={() => undefined}
+        onUpdateHolding={() => undefined}
+      />,
+    );
+    roots.push(portfolio.root);
+
+    const analysisButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('智能分析'));
+    await act(async () => {
+      analysisButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(portfolio.container.textContent).toContain('智能分析暂不可用');
+    const closeButton = portfolio.container.querySelector<HTMLButtonElement>('button[aria-label="关闭智能分析"]');
+    act(() => closeButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(portfolio.container.textContent).not.toContain('智能分析暂不可用');
+  });
+
+  it('shows retry UI when stock quote lookup fails repeatedly', async () => {
+    vi.useFakeTimers();
+    const getFundHoldingsMock = mockApi.getFundHoldings as unknown as { mockResolvedValueOnce(value: unknown): void };
+    const getFundMock = mockApi.getFund as unknown as { mockRejectedValue(value: unknown): void };
+    getFundHoldingsMock.mockResolvedValueOnce({
+      reportDate: '2026-03-31',
+      stocks: [{ code: '600519', name: '贵州茅台', weight: 18.33, rank: 1, isTopTen: true }],
+    });
+    getFundMock.mockRejectedValue(new Error('quote unavailable'));
+    const populatedSummary = calculatePortfolioSummary(
+      [{
+        id: 'holding-stock-retry',
+        fundCode: '000001',
+        fundName: '华夏成长混合',
+        shares: 1000,
+        costAmount: 1000,
+        createdAt: '2026-06-01T00:00:00.000Z',
+        updatedAt: '2026-06-01T00:00:00.000Z',
+      }],
+      { '000001': fund },
+    );
+    const portfolio = render(
+      <PortfolioPanel
+        summary={populatedSummary}
+        watchlist={[]}
+        onRemoveHolding={() => undefined}
+        onUpdateHolding={() => undefined}
+      />,
+    );
+    roots.push(portfolio.root);
+
+    const detailButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('详情'));
+    act(() => detailButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const stockButton = portfolio.container.querySelector<HTMLButtonElement>('button[aria-label="查看 贵州茅台 详情"]');
+    act(() => stockButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_300);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(portfolio.container.textContent).toContain('多次查找仍未获取到 贵州茅台 的行情');
+    const retryButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('重新查找'));
+    act(() => retryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(mockApi.getFund).toHaveBeenCalledWith('600519');
+    vi.useRealTimers();
   });
 
   it('renders beginner decision guidance for selected funds', () => {
@@ -558,6 +1301,101 @@ describe('dashboard components', () => {
     expect(settings.container.textContent).not.toContain('核对识别到的持仓');
   });
 
+  it('imports uploaded text files as Alipay ledger data', async () => {
+    let imported = '';
+    const settings = render(<SettingsPanel importError="导入格式错误" onImport={(text) => { imported = text; }} />);
+    roots.push(settings.root);
+
+    const input = settings.container.querySelector('input[aria-label="上传支付宝持仓文件或图片"]') as HTMLInputElement;
+    const file = new File(['支付宝 000001 华夏成长混合 100 1200 家庭账本'], 'holdings.txt', { type: 'text/plain' });
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+
+    await act(async () => {
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    expect(settings.container.textContent).toContain('导入格式错误');
+    expect(settings.container.textContent).toContain('已读取 holdings.txt');
+    expect(JSON.parse(imported).holdings[0]).toMatchObject({
+      fundCode: '000001',
+      platform: 'alipay',
+      accountName: '家庭账本',
+    });
+    expect(input.value).toBe('');
+  });
+
+  it('falls back to local OCR and cancels confirmation when cloud image recognition fails', async () => {
+    const settings = render(
+      <SettingsPanel
+        onImport={() => undefined}
+        recognizeImage={vi.fn()
+          .mockRejectedValueOnce(new Error('cloud quota'))
+          .mockResolvedValueOnce({
+            model: 'deepseek-v4-flash',
+            holdings: [{ fundName: '永赢科技智选混合C', marketValue: 2000, profit: 100 }],
+          })}
+        ocrReader={async (_file, onProgress) => {
+          onProgress?.('recognizing', 0.42);
+          return '永赢科技智选混合C 2,000.00 +100.00';
+        }}
+      />,
+    );
+    roots.push(settings.root);
+
+    const input = settings.container.querySelector('input[aria-label="上传支付宝持仓文件或图片"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [new File([new Uint8Array([1])], 'fallback.webp', { type: 'image/webp' })], configurable: true });
+    await act(async () => {
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      for (let tick = 0; tick < 6; tick += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    });
+
+    expect(settings.container.textContent).toContain('核对识别到的持仓');
+    expect(settings.container.querySelector<HTMLInputElement>('input[aria-label="第 1 行基金代码"]')?.value).toBe('022365');
+    const cancelButton = Array.from(settings.container.querySelectorAll('button')).find((button) => button.textContent?.includes('取消'));
+    act(() => cancelButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(settings.container.textContent).toContain('已取消本次导入');
+  });
+
+  it('shows OCR empty and recognition empty notices for image imports', async () => {
+    const localEmpty = render(
+      <SettingsPanel
+        onImport={() => undefined}
+        recognizeImage={async () => { throw new Error('cloud unavailable'); }}
+        ocrReader={async () => '   '}
+      />,
+    );
+    roots.push(localEmpty.root);
+    const emptyInput = localEmpty.container.querySelector('input[aria-label="上传支付宝持仓文件或图片"]') as HTMLInputElement;
+    Object.defineProperty(emptyInput, 'files', { value: [new File([new Uint8Array([1])], 'empty.png', { type: 'image/png' })], configurable: true });
+    await act(async () => {
+      emptyInput.dispatchEvent(new Event('change', { bubbles: true }));
+      for (let tick = 0; tick < 4; tick += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    });
+    expect(localEmpty.container.textContent).toContain('未从截图中读取到文字');
+
+    const noHoldings = render(
+      <SettingsPanel
+        onImport={() => undefined}
+        recognizeImage={async () => ({ model: 'deepseek-v4-flash', holdings: [] })}
+      />,
+    );
+    roots.push(noHoldings.root);
+    const noHoldingsInput = noHoldings.container.querySelector('input[aria-label="上传支付宝持仓文件或图片"]') as HTMLInputElement;
+    Object.defineProperty(noHoldingsInput, 'files', { value: [new File([new Uint8Array([1])], 'blank.jpg', { type: 'image/jpeg' })], configurable: true });
+    await act(async () => {
+      noHoldingsInput.dispatchEvent(new Event('change', { bubbles: true }));
+      for (let tick = 0; tick < 4; tick += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    });
+    expect(noHoldings.container.textContent).toContain('未从截图中识别到持仓');
+  });
+
   it('builds resilient fund code matches from noisy holding names', () => {
     expect(findFundCodeAlias('南方纳斯达克100指数C')).toMatchObject({ code: '016453' });
     expect(findFundCodeAlias('中国国有企业债债券C')).toMatchObject({ code: '006331', name: '中银国有企业债C' });
@@ -596,5 +1434,75 @@ describe('dashboard components', () => {
     expect(first.platform).toBe('alipay');
     expect(first.fundName).toContain('纳斯达克');
     expect(parsed.holdings.every((holding) => holding.recordedMarketValue > 0)).toBe(true);
+  });
+
+  it('keeps the import confirmation modal hidden when closed', () => {
+    const modal = render(
+      <ImportConfirmModal
+        open={false}
+        holdings={[{ fundName: '招商中证白酒指数', marketValue: 1000 }]}
+        onConfirm={() => undefined}
+        onCancel={() => undefined}
+      />,
+    );
+    roots.push(modal.root);
+
+    expect(modal.container.textContent).toBe('');
+  });
+
+  it('edits, resolves, removes, and confirms recognized import rows', async () => {
+    const confirmed: unknown[] = [];
+    const resolveFundCode = vi.fn(async () => ({
+      fundCode: '016452',
+      fundName: '南方纳斯达克100指数发起(QDII)A',
+    }));
+    const modal = render(
+      <ImportConfirmModal
+        open
+        model="deepseek-v4-flash"
+        holdings={[
+          { fundName: '南方纳斯达克100指数A', marketValue: 1000, profit: 20 },
+          { fundName: '无效行', marketValue: 0 },
+        ]}
+        resolveFundCode={resolveFundCode}
+        onConfirm={(holdings) => confirmed.push(...holdings)}
+        onCancel={() => undefined}
+      />,
+    );
+    roots.push(modal.root);
+
+    const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    const amountInput = modal.container.querySelector<HTMLInputElement>('input[aria-label="第 1 行持有金额"]');
+    const profitInput = modal.container.querySelector<HTMLInputElement>('input[aria-label="第 1 行持有收益"]');
+    act(() => {
+      nativeSetter?.call(amountInput, '1,234.50');
+      amountInput?.dispatchEvent(new Event('input', { bubbles: true }));
+      nativeSetter?.call(profitInput, '-10.5');
+      profitInput?.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    const resolveButton = Array.from(modal.container.querySelectorAll('button')).find((button) => button.textContent?.includes('查代码'));
+    await act(async () => {
+      resolveButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    expect(resolveFundCode).toHaveBeenCalledWith('南方纳斯达克100指数A');
+    expect(modal.container.querySelector<HTMLInputElement>('input[aria-label="第 1 行基金代码"]')?.value).toBe('016452');
+
+    const removeButton = modal.container.querySelector<HTMLButtonElement>('button[aria-label="删除第 2 行"]');
+    act(() => removeButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    const confirmButton = Array.from(modal.container.querySelectorAll('button')).find((button) => button.textContent?.includes('确认导入'));
+    act(() => confirmButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    expect(confirmed).toEqual([
+      {
+        fundName: '南方纳斯达克100指数发起(QDII)A',
+        fundCode: '016452',
+        marketValue: 1234.5,
+        profit: -10.5,
+      },
+    ]);
   });
 });
