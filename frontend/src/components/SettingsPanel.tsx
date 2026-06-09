@@ -311,7 +311,6 @@ export function SettingsPanel({
   ocrReader?: ImageTextReader;
 }) {
   const alipayInputRef = useRef<HTMLInputElement>(null);
-  const [recognizedText, setRecognizedText] = useState('');
   const [alipayUploadNotice, setAlipayUploadNotice] = useState<string>();
   const [recognizePending, setRecognizePending] = useState(false);
   const [confirmModel, setConfirmModel] = useState<string>();
@@ -333,7 +332,6 @@ export function SettingsPanel({
           const imageText = (await ocrReader(file, (status, progress) => {
             setAlipayUploadNotice(`正在本地读取截图文字 ${file.name}：${status} ${Math.round(progress * 100)}%`);
           })).trim();
-          setRecognizedText(imageText);
           if (!imageText) {
             setAlipayUploadNotice('未从截图中读取到文字，请换更清晰的持仓截图。');
             return;
@@ -399,7 +397,7 @@ export function SettingsPanel({
     <Card id="settings" className="lg:col-span-2">
       <div className="settings-data-card settings-import-assistant">
         <h3><ScanText className="h-5 w-5" />导入持仓</h3>
-        <p>上传支付宝等持仓截图，或粘贴文本 / JSON。系统识别后先确认名称、代码、金额，再写入账本。</p>
+        <p>上传支付宝等持仓截图或导出的持仓文件。系统识别后先确认名称、代码、金额，再写入账本。</p>
         <div className="settings-upload-strip">
           <label>
             <span>{recognizePending ? '截图识别中…' : '上传截图或文件'}</span>
@@ -418,25 +416,9 @@ export function SettingsPanel({
           </label>
           <small>图片走云端 OCR + DeepSeek，失败自动本地兜底；导入时不会使用截图里的历史当日收益。</small>
         </div>
-        <textarea
-          className="settings-export-area"
-          aria-label="多平台持仓文本"
-          placeholder="可选：粘贴持仓文本或 JSON"
-          value={recognizedText}
-          onChange={(event) => setRecognizedText(event.target.value)}
-        />
-        <button
-          type="button"
-          className="settings-import-button"
-          onClick={() => onImport(buildRecognizedImport(recognizedText))}
-          disabled={!recognizedText.trim()}
-        >
-          识别文本
-        </button>
         {importError && <p className="mt-3 rounded-3xl bg-red-50 p-3 text-sm font-semibold text-red-700">{importError}</p>}
         {alipayUploadNotice && <p className="settings-import-notice">{alipayUploadNotice}</p>}
       </div>
-      <p className="settings-disclaimer">免责声明：本网站展示的数据仅用于学习和参考，不构成投资建议、收益承诺或交易依据。</p>
       <ImportConfirmModal
         key={confirmKey}
         open={Boolean(confirmHoldings)}

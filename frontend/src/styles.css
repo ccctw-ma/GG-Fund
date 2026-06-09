@@ -1045,22 +1045,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   font-size: 1.05rem;
   font-weight: 950;
 }
-.settings-export-area {
-  min-height: 13rem;
-  width: 100%;
-  resize: vertical;
-  border: 1px solid rgba(244,183,64,.22);
-  border-radius: 1.35rem;
-  background: rgba(2,12,22,.88);
-  padding: 16px;
-  color: #eff6ff;
-  font-family: "SFMono-Regular", ui-monospace, Menlo, monospace;
-  font-size: .78rem;
-  font-weight: 800;
-  line-height: 1.65;
-  outline: none;
-}
-.settings-export-area:focus { border-color: rgba(125,226,184,.55); box-shadow: 0 0 0 4px rgba(125,226,184,.12); }
 .settings-file-input {
   width: 100%;
   border: 1px dashed rgba(244,183,64,.38);
@@ -1146,17 +1130,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   font-size: .82rem !important;
   font-weight: 900 !important;
 }
-.settings-disclaimer {
-  margin: 20px 0 0;
-  border: 1px solid rgba(244,183,64,.24);
-  border-radius: 1.35rem;
-  background: rgba(244,183,64,.16);
-  padding: 16px;
-  color: var(--gold-soft);
-  font-size: .9rem;
-  font-weight: 900;
-}
-
 .import-confirm-overlay {
   position: fixed;
   inset: 0;
