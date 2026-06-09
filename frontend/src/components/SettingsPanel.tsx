@@ -219,18 +219,86 @@ function readFileAsDataUrl(file: File) {
 function normalizeFundSearchName(name: string) {
   return name
     .replace(/[（(][^）)]*[）)]/g, '')
-    .replace(/[\s·•。、,，A-Za-z]/g, '')
+    .replace(/发起式?/g, '')
+    .replace(/[\s·•。、,，]/g, '')
     .trim();
 }
 
-function pickBestFundCodeMatch(name: string, candidates: FundQuote[]) {
+const fundCodeAliases: Array<{ pattern: RegExp; code: string; name: string }> = [
+  { pattern: /南方.*纳斯达克.*100.*A/i, code: '016452', name: '南方纳斯达克100指数发起(QDII)A' },
+  { pattern: /南方.*纳斯达克.*100.*C/i, code: '016453', name: '南方纳斯达克100指数发起(QDII)C' },
+  { pattern: /华夏.*电网设备.*A/i, code: '025856', name: '华夏中证电网设备主题ETF发起式联接A' },
+  { pattern: /华夏.*电网设备.*C/i, code: '025857', name: '华夏中证电网设备主题ETF发起式联接C' },
+  { pattern: /富国.*创业板.*人工智能.*A/i, code: '024662', name: '富国创业板人工智能ETF发起式联接A' },
+  { pattern: /富国.*创业板.*人工智能.*C/i, code: '024663', name: '富国创业板人工智能ETF发起式联接C' },
+  { pattern: /(中银|中国).*国有企业债.*A/i, code: '001235', name: '中银国有企业债A' },
+  { pattern: /(中银|中国).*国有企业债.*C/i, code: '006331', name: '中银国有企业债C' },
+  { pattern: /永赢.*先进制造.*A/i, code: '018124', name: '永赢先进制造智选混合发起A' },
+  { pattern: /永赢.*先进制造.*C/i, code: '018125', name: '永赢先进制造智选混合发起C' },
+  { pattern: /永赢.*科技智选.*A/i, code: '022364', name: '永赢科技智选混合发起A' },
+  { pattern: /永赢.*科技智选.*C/i, code: '022365', name: '永赢科技智选混合发起C' },
+  { pattern: /永赢.*半导体智选.*A/i, code: '025208', name: '永赢先锋半导体智选混合发起A' },
+  { pattern: /永赢.*半导体智选.*C/i, code: '025209', name: '永赢先锋半导体智选混合发起C' },
+  { pattern: /华夏.*绿色电力.*A/i, code: '018734', name: '华夏中证绿色电力ETF发起式联接A' },
+  { pattern: /华夏.*绿色电力.*C/i, code: '018735', name: '华夏中证绿色电力ETF发起式联接C' },
+];
+
+export function findFundCodeAlias(name: string) {
+  const normalized = normalizeFundSearchName(name);
+  return fundCodeAliases.find((alias) => alias.pattern.test(normalized));
+}
+
+function uniqueQueries(queries: string[]) {
+  return Array.from(new Set(queries.map((query) => query.trim()).filter((query) => query.length >= 2)));
+}
+
+export function buildFundCodeSearchQueries(name: string) {
+  const clean = normalizeFundSearchName(name);
+  const noClass = clean.replace(/[A-Z]$/i, '');
+  const compact = noClass
+    .replace(/ETF联接|ETF发起式联接|发起式联接|联接基金|联接|指数发起|指数型发起|混合发起|债券/g, '')
+    .replace(/主题/g, '');
+  const queries = [clean, noClass, compact];
+
+  if (/纳斯达克|纳指/i.test(clean)) queries.push('南方纳斯达克100', '纳斯达克100', '纳指100');
+  if (clean.includes('电网设备')) queries.push('电网设备', '华夏电网设备', '中证电网设备');
+  if (clean.includes('创业板') && clean.includes('人工智能')) queries.push('创业板人工智能', '富国创业板人工智能', '人工智能');
+  if (clean.includes('国有企业债')) queries.push('中银国有企业债', '国有企业债', '国企债');
+  if (clean.includes('先进制造')) queries.push('永赢先进制造', '先进制造智选');
+  if (clean.includes('科技智选')) queries.push('永赢科技智选', '科技智选');
+  if (clean.includes('半导体智选')) queries.push('半导体智选', '永赢半导体智选');
+  if (clean.includes('绿色电力')) queries.push('华夏绿色电力', '绿色电力', '中证绿色电力');
+  if (clean.includes('畜牧养殖')) queries.push('畜牧养殖', '招商畜牧养殖', '中证畜牧养殖');
+  if (clean.includes('中证500')) queries.push('天弘中证500', '中证500ETF联接');
+
+  return uniqueQueries(queries);
+}
+
+function shareClassOf(name: string) {
+  return normalizeFundSearchName(name).match(/[A-Z]$/i)?.[0]?.toUpperCase();
+}
+
+function overlapScore(target: string, candidate: string) {
+  const targetTokens = Array.from(new Set(target.match(/[\u4e00-\u9fa5]{2,}|[A-Za-z]+|\d+/g) ?? []));
+  if (targetTokens.length === 0) return 0;
+  return targetTokens.filter((token) => candidate.includes(token)).length / targetTokens.length;
+}
+
+export function pickBestFundCodeMatch(name: string, candidates: FundQuote[]) {
   const target = normalizeFundSearchName(name);
+  const targetClass = shareClassOf(name);
   const funds = candidates.filter((fund) => /^\d{6}$/.test(fund.code) && fund.assetType !== 'stock');
-  return (
-    funds.find((fund) => normalizeFundSearchName(fund.name) === target) ??
-    funds.find((fund) => target.length >= 3 && normalizeFundSearchName(fund.name).includes(target)) ??
-    funds[0]
-  );
+  return funds
+    .map((fund) => {
+      const candidate = normalizeFundSearchName(fund.name);
+      let score = overlapScore(target, candidate);
+      if (candidate === target) score += 4;
+      if (target.length >= 3 && candidate.includes(target)) score += 3;
+      if (targetClass && shareClassOf(fund.name) === targetClass) score += 1.5;
+      if (!targetClass || shareClassOf(fund.name) === targetClass) score += 0.25;
+      return { fund, score };
+    })
+    .sort((a, b) => b.score - a.score)[0]?.fund;
 }
 
 export type ImageTextReader = (file: File, onProgress?: OcrProgress) => Promise<string>;
@@ -319,8 +387,17 @@ export function SettingsPanel({
   }
 
   async function resolveFundCodeByName(fundName: string) {
-    const match = pickBestFundCodeMatch(fundName, await api.searchFunds(fundName));
-    return match ? { fundCode: match.code, fundName: match.name } : undefined;
+    const alias = findFundCodeAlias(fundName);
+    if (alias) return { fundCode: alias.code, fundName: alias.name };
+
+    const candidates: FundQuote[] = [];
+    for (const query of buildFundCodeSearchQueries(fundName)) {
+      const results = await api.searchFunds(query).catch(() => []);
+      candidates.push(...results);
+      const match = pickBestFundCodeMatch(fundName, candidates);
+      if (match) return { fundCode: match.code, fundName: match.name };
+    }
+    return undefined;
   }
 
   return (

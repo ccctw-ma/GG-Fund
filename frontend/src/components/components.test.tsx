@@ -8,7 +8,7 @@ import { BeginnerGuide } from './BeginnerGuide';
 import { FundSearch } from './FundSearch';
 import { MarketOverview } from './MarketOverview';
 import { PortfolioPanel } from './PortfolioPanel';
-import { SettingsPanel, buildRecognizedImport } from './SettingsPanel';
+import { SettingsPanel, buildFundCodeSearchQueries, buildRecognizedImport, findFundCodeAlias, pickBestFundCodeMatch } from './SettingsPanel';
 
 const mockApi = vi.hoisted(() => ({
   getCachedIndexHistory: vi.fn(),
@@ -555,6 +555,19 @@ describe('dashboard components', () => {
     expect(parsed.holdings[1]).toMatchObject({ fundCode: '012000', recordedDailyProfit: -2.14 });
     expect(settings.container.textContent).toContain('已确认导入 2 条持仓');
     expect(settings.container.textContent).not.toContain('核对识别到的持仓');
+  });
+
+  it('builds resilient fund code matches from noisy holding names', () => {
+    expect(findFundCodeAlias('南方纳斯达克100指数C')).toMatchObject({ code: '016453' });
+    expect(findFundCodeAlias('中国国有企业债债券C')).toMatchObject({ code: '006331', name: '中银国有企业债C' });
+    expect(findFundCodeAlias('华夏中证电网设备主题ETF联接C')).toMatchObject({ code: '025857' });
+    expect(buildFundCodeSearchQueries('永赢先锋半导体智选混合C')).toEqual(expect.arrayContaining(['半导体智选', '永赢半导体智选']));
+    expect(buildFundCodeSearchQueries('富国创业板人工智能ETF联接C')).toEqual(expect.arrayContaining(['创业板人工智能', '富国创业板人工智能']));
+    const match = pickBestFundCodeMatch('永赢科技智选混合C', [
+      { code: '022364', name: '永赢科技智选混合发起A', netValue: 1, quoteDate: '2026-06-09', source: 'test', assetType: 'fund' },
+      { code: '022365', name: '永赢科技智选混合发起C', netValue: 1, quoteDate: '2026-06-09', source: 'test', assetType: 'fund' },
+    ]);
+    expect(match?.code).toBe('022365');
   });
 
   it('recognizes a real Alipay holding screenshot without fund codes', () => {
