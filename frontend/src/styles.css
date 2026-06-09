@@ -656,6 +656,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   display: grid;
   gap: 10px;
 }
+.yb-daily-profit-item.is-stale {
+  opacity: .72;
+}
 .yb-daily-profit-list article {
   display: flex;
   align-items: center;

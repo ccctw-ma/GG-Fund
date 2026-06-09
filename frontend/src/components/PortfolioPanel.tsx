@@ -204,15 +204,14 @@ export function PortfolioPanel({
   const historyLoadingRef = useRef<Set<string>>(new Set());
   const sortedItems = useMemo(() => sortItems(summary.items, holdingSort), [holdingSort, summary.items]);
   const dailyProfitItems = useMemo(
-    () => sortDailyItems(
-      summary.items.filter((item) => item.dailyProfitAvailable && item.dailyProfitDate === summary.dailyProfitDate),
-      dailySort,
-    ),
-    [dailySort, summary.dailyProfitDate, summary.items],
+    () => sortDailyItems(summary.items, dailySort),
+    [dailySort, summary.items],
   );
+  const currentDailyProfitItems = dailyProfitItems.filter((item) => item.dailyProfitAvailable && item.dailyProfitDate === summary.dailyProfitDate);
+  const staleDailyItems = dailyProfitItems.length - currentDailyProfitItems.length;
   const cumulativeProfitItems = useMemo(() => sortProfitItems(summary.items, profitSort), [profitSort, summary.items]);
-  const dailyLosers = dailyProfitItems.filter((item) => item.estimatedDailyProfit < 0);
-  const dailyGainers = dailyProfitItems.filter((item) => item.estimatedDailyProfit > 0);
+  const dailyLosers = currentDailyProfitItems.filter((item) => item.estimatedDailyProfit < 0);
+  const dailyGainers = currentDailyProfitItems.filter((item) => item.estimatedDailyProfit > 0);
   const quoteRefreshLabel = quotesUpdatedAt ? `最近刷新 ${timeFormat.format(new Date(quotesUpdatedAt))}` : '等待行情刷新';
   const dailyMeta = dailyProfitMeta(summary);
 
@@ -458,7 +457,7 @@ export function PortfolioPanel({
           <div className="yb-holding-toolbar yb-insight-toolbar">
             <div>
               <strong>{summary.dailyProfitIsCurrent ? '今日收益拆解' : '最近收益拆解'}</strong>
-              <span>{summary.dailyProfitAvailable ? `${dailyMeta} · 亏损 ${dailyLosers.length} 只 · 盈利 ${dailyGainers.length} 只 · ${quoteRefreshLabel}` : `暂无可用日涨跌行情 · ${quoteRefreshLabel}`}</span>
+              <span>{summary.dailyProfitAvailable ? `${dailyMeta} · 亏损 ${dailyLosers.length} 只 · 盈利 ${dailyGainers.length} 只 · 待更新 ${staleDailyItems} 只 · ${quoteRefreshLabel}` : `暂无可用日涨跌行情 · ${quoteRefreshLabel}`}</span>
             </div>
             <div className="yb-sort-group" role="group" aria-label="今日收益排序">
               {dailySortOptions.map((option) => (
@@ -481,8 +480,10 @@ export function PortfolioPanel({
           ) : (
             <>
             <div className="yb-daily-profit-list">
-              {dailyProfitItems.map((item) => (
-                <div key={item.id} className="yb-daily-profit-item">
+              {dailyProfitItems.map((item) => {
+                const includedInDailyTotal = item.dailyProfitAvailable && item.dailyProfitDate === summary.dailyProfitDate;
+                return (
+                <div key={item.id} className={includedInDailyTotal ? 'yb-daily-profit-item' : 'yb-daily-profit-item is-stale'}>
                   <article
                     className={intradayCode === item.fundCode ? 'yb-daily-profit-row is-active' : 'yb-daily-profit-row'}
                     role="button"
@@ -499,14 +500,16 @@ export function PortfolioPanel({
                       <strong>{item.fundName}</strong>
                       <span className="yb-value-line">
                         <em>{item.fundCode}</em>
-                        <em className={toneClass(item.quote?.dailyChangePercent)}>
-                          {item.dailyProfitDate ? `${item.dailyProfitDate} 涨跌` : '日涨跌'} {item.dailyProfitAvailable && item.quote?.dailyChangePercent !== undefined ? `${item.quote.dailyChangePercent >= 0 ? '+' : ''}${item.quote.dailyChangePercent.toFixed(2)}%` : '--'}
+                        <em className={includedInDailyTotal ? toneClass(item.quote?.dailyChangePercent) : 'yb-tone-muted'}>
+                          {includedInDailyTotal && item.quote?.dailyChangePercent !== undefined
+                            ? `${item.dailyProfitDate} 涨跌 ${item.quote.dailyChangePercent >= 0 ? '+' : ''}${item.quote.dailyChangePercent.toFixed(2)}%`
+                            : item.dailyProfitDate ? `${item.dailyProfitDate} 旧行情 · 不计入合计` : '今日行情待更新'}
                         </em>
                         <em>市值 {money.format(item.marketValue)}</em>
                       </span>
                     </div>
-                    <strong className={`yb-daily-profit-amount ${dailyProfitClass(item.estimatedDailyProfit, item.dailyProfitAvailable)}`}>
-                      {dailyProfitText(item.estimatedDailyProfit, item.dailyProfitAvailable)}
+                    <strong className={`yb-daily-profit-amount ${dailyProfitClass(item.estimatedDailyProfit, includedInDailyTotal)}`}>
+                      {dailyProfitText(item.estimatedDailyProfit, includedInDailyTotal)}
                     </strong>
                   </article>
                   {intradayCode === item.fundCode && (
@@ -519,7 +522,8 @@ export function PortfolioPanel({
                     />
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
             </>
           )}
