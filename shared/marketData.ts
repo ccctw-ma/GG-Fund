@@ -14,6 +14,7 @@ const EASTMONEY_SOURCE = '东方财富公开接口';
 const EASTMONEY_SEARCH_SOURCE = '东方财富搜索接口';
 const EASTMONEY_STOCK_SOURCE = '东方财富 A股行情';
 const EASTMONEY_F10_HOLDINGS_SOURCE = '东方财富 F10 持仓明细';
+const EASTMONEY_PINGZHONG_SOURCE = '东方财富 PC 净值页';
 const TENCENT_STOCK_SOURCE = '腾讯证券行情';
 const TIANTIAN_ESTIMATE_SOURCE = '天天基金实时估算';
 const FETCH_TIMEOUT_MS = 8_000;
@@ -549,6 +550,51 @@ function quoteFromTiantianEstimate(text: string, code: string): FundQuote | unde
   };
 }
 
+function extractJsString(text: string, name: string) {
+  const match = text.match(new RegExp(`var\\s+${name}\\s*=\\s*"([^"]*)"\\s*;`));
+  return match?.[1];
+}
+
+function quoteFromEastmoneyPingzhongdata(text: string, code: string): FundQuote | undefined {
+  const name = extractJsString(text, 'fS_name');
+  const fundCode = extractJsString(text, 'fS_code') ?? code;
+  const trendMatch = text.match(/var\s+Data_netWorthTrend\s*=\s*(\[[\s\S]*?\]);\/\*/);
+  if (!name || !trendMatch) return undefined;
+  let trend: unknown;
+  try {
+    trend = JSON.parse(trendMatch[1]);
+  } catch {
+    return undefined;
+  }
+  if (!Array.isArray(trend)) return undefined;
+  const latest = [...trend].reverse().find((item) => {
+    if (typeof item !== 'object' || item === null) return false;
+    const record = item as Record<string, unknown>;
+    return toNumber(record.y) !== undefined && toNumber(record.x) !== undefined;
+  }) as Record<string, unknown> | undefined;
+  if (!latest) return undefined;
+  const netValue = toNumber(latest.y);
+  const timestamp = toNumber(latest.x);
+  if (!netValue || !timestamp) return undefined;
+  const quoteDate = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(timestamp));
+  return {
+    code: fundCode,
+    name,
+    assetType: 'fund',
+    netValue,
+    officialNetValue: netValue,
+    dailyChangePercent: toNumber(latest.equityReturn),
+    quoteDate,
+    quoteType: 'official',
+    source: EASTMONEY_PINGZHONG_SOURCE,
+  };
+}
+
 function holdingsFromEastmoney(data: unknown): FundHoldings {
   const empty: FundHoldings = { stocks: [] };
   if (typeof data !== 'object' || data === null || !('Datas' in data)) return empty;
@@ -1018,6 +1064,34 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
     return quoteFromEastmoneyDetail(await fetchJson(url), code);
   }
 
+  async function getEastmoneyPingzhongFund(code: string): Promise<FundQuote | undefined> {
+    const url = `https://fund.eastmoney.com/pingzhongdata/${encodeURIComponent(code)}.js?v=${now()}`;
+    const headers = {
+      'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+      referer: `https://fund.eastmoney.com/${code}.html`,
+    };
+    return quoteFromEastmoneyPingzhongdata(await fetchText(url, headers), code);
+  }
+
+  async function getExactSearchFund(code: string): Promise<FundQuote | undefined> {
+    const result = await searchEastmoneyFunds(code);
+    return result.find((item) => item.code === code && item.assetType !== 'stock');
+  }
+
+  function quoteFreshness(quote: FundQuote) {
+    const estimateDate = quote.estimateTime?.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+    const date = estimateDate ?? quote.quoteDate;
+    const timestamp = date ? Date.parse(`${date}T00:00:00+08:00`) : 0;
+    const typeBonus = quote.quoteType === 'estimate' ? 1_000 : 0;
+    return (Number.isFinite(timestamp) ? timestamp : 0) + typeBonus;
+  }
+
+  function pickBestFundQuote(candidates: Array<FundQuote | undefined>) {
+    return candidates
+      .filter((quote): quote is FundQuote => Boolean(quote?.netValue && quote.netValue > 0))
+      .sort((a, b) => quoteFreshness(b) - quoteFreshness(a))[0];
+  }
+
   async function getEastmoneyFundHoldings(code: string): Promise<FundHoldings> {
     const url = `https://fundmobapi.eastmoney.com/FundMNewApi/FundMNInverstPosition?FCODE=${encodeURIComponent(code)}&deviceid=gg-fund&plat=Web&product=EFund&version=1.0.0`;
     return holdingsFromEastmoney(await fetchJson(url));
@@ -1246,33 +1320,37 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
       });
     },
     async getFund(code: string): Promise<FundQuote | undefined> {
-      return cached(`fund:${code}`, 300_000, async () => {
-        try {
-          const estimate = await getTiantianEstimate(code);
-          if (estimate) return estimate;
-        } catch {
-          // fall through to official net value
-        }
-        try {
-          const quote = await getEastmoneyFund(code);
-          if (quote) return quote;
-        } catch {
-          // fall through to stock quote
-        }
-        try {
-          const stock = await getEastmoneyStock(code);
-          if (stock) return stock;
-        } catch {
-          // fall through to Tencent stock quote
-        }
-        try {
-          const stock = await getTencentStock(code);
-          if (stock) return stock;
-        } catch {
-          // fall through to local fallback
-        }
-        return fallbackFunds.find((fund) => fund.code === code);
-      });
+      try {
+        return await cached(`fund:${code}`, 300_000, async () => {
+          const fundCandidates = await Promise.all([
+            getTiantianEstimate(code).catch(() => undefined),
+            getEastmoneyFund(code).catch(() => undefined),
+            getEastmoneyPingzhongFund(code).catch(() => undefined),
+            getExactSearchFund(code).catch(() => undefined),
+          ]);
+          const fundQuote = pickBestFundQuote(fundCandidates);
+          if (fundQuote) return fundQuote;
+
+          try {
+            const stock = await getEastmoneyStock(code);
+            if (stock) return stock;
+          } catch {
+            // fall through to Tencent stock quote
+          }
+          try {
+            const stock = await getTencentStock(code);
+            if (stock) return stock;
+          } catch {
+            // fall through to local fallback
+          }
+          const fallback = fallbackFunds.find((fund) => fund.code === code);
+          if (fallback) return fallback;
+          throw new Error(`FUND_QUOTE_NOT_FOUND:${code}`);
+        });
+      } catch (error) {
+        if (error instanceof Error && error.message.startsWith('FUND_QUOTE_NOT_FOUND:')) return undefined;
+        throw error;
+      }
     },
     async getFundHistory(code: string, range = '1m'): Promise<FundHistoryPoint[]> {
       const normalizedRange = String(range).toLowerCase();

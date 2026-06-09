@@ -208,6 +208,73 @@ describe('market data service', () => {
     );
   });
 
+  it('falls back to Eastmoney PC net worth data when quote APIs miss an OTC fund', async () => {
+    const service = createMarketDataService({
+      fetchText: async (url) => {
+        if (url.includes('fundgz') || url.includes('FundSearch')) throw new Error('fund quote unavailable');
+        if (url.includes('pingzhongdata/016452')) {
+          return [
+            'var fS_name = "南方纳斯达克100指数发起(QDII)A";',
+            'var fS_code = "016452";',
+            'var Data_netWorthTrend = [{"x":1780502400000,"y":2.3753,"equityReturn":-0.44,"unitMoney":""},{"x":1780588800000,"y":2.2661,"equityReturn":-4.6,"unitMoney":""}];/*累计净值走势*/',
+          ].join('');
+        }
+        throw new Error(`unexpected text url: ${url}`);
+      },
+      fetchJson: async () => ({}),
+    });
+
+    await expect(service.getFund('016452')).resolves.toEqual(
+      expect.objectContaining({
+        code: '016452',
+        name: '南方纳斯达克100指数发起(QDII)A',
+        netValue: 2.2661,
+        dailyChangePercent: -4.6,
+        quoteDate: '2026-06-05',
+        source: '东方财富 PC 净值页',
+      }),
+    );
+  });
+
+  it('keeps the fresher Tiantian estimate when official fund sources are older', async () => {
+    const service = createMarketDataService({
+      fetchText: async (url) => {
+        if (url.includes('fundgz')) {
+          return 'jsonpgz({"fundcode":"016452","name":"南方纳斯达克100指数发起(QDII)A","jzrq":"2026-06-05","dwjz":"2.2661","gsz":"2.3000","gszzl":"1.50","gztime":"2026-06-09 04:00"});';
+        }
+        if (url.includes('pingzhongdata/016452')) {
+          return [
+            'var fS_name = "南方纳斯达克100指数发起(QDII)A";',
+            'var fS_code = "016452";',
+            'var Data_netWorthTrend = [{"x":1780588800000,"y":2.2661,"equityReturn":-4.6,"unitMoney":""}];/*累计净值走势*/',
+          ].join('');
+        }
+        return 'jQuery123([]);';
+      },
+      fetchJson: async () => ({
+        Datas: {
+          FCODE: '016452',
+          SHORTNAME: '南方纳斯达克100指数发起(QDII)A',
+          NAV: '2.2661',
+          NAVCHGRT: '-4.6',
+          PDATE: '2026-06-05',
+        },
+      }),
+    });
+
+    await expect(service.getFund('016452')).resolves.toEqual(
+      expect.objectContaining({
+        code: '016452',
+        netValue: 2.3,
+        dailyChangePercent: 1.5,
+        quoteDate: '2026-06-05',
+        estimateTime: '2026-06-09 04:00',
+        quoteType: 'estimate',
+        source: '天天基金实时估算',
+      }),
+    );
+  });
+
   it('falls through to A-share stock quote when fund endpoints do not return a fund', async () => {
     const service = createMarketDataService({
       fetchText: async () => {
