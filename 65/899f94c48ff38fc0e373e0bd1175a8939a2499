@@ -1,0 +1,226 @@
+features/ai/recognizeHoldings.ts
+  s_c981320c71dabb::t_6e73092ef6d69f 40,43,46-47 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a27defa19f76048bbe8d5ef","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Single":40},{"Single":43},{"Range":[46,47]}]}]}
+frontend/src/styles.css
+  s_c981320c71dabb::t_405b3b5fa8cb8f 1233 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a27df2719f76048bbe8d625","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Single":1233}]}]}
+frontend/src/components/components.test.tsx
+  s_c981320c71dabb::t_17b9d04c69fd44 555-556,594 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a27df3a19f76048bbe8d63a","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[555,556]},{"Single":594}]}]}
+frontend/src/components/SettingsPanel.tsx
+  s_c981320c71dabb::t_00f5dcd6403fe9 58-59,85 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a27df1a19f76048bbe8d60c","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[58,59]},{"Single":85}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "65899f94c48ff38fc0e373e0bd1175a8939a2499",
+  "prompts": {},
+  "sessions": {
+    "s_c981320c71dabb": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a27b76619f76048bbe8caa4",
+        "model": "gpt-5.5__max"
+      },
+      "human_author": "mashichen <mashichen.msc@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "features/ai/recognizeHoldings.ts": [
+      {
+        "hash": "s_c981320c71dabb::t_6e73092ef6d69f",
+        "line_ranges": [
+          {
+            "Single": 40
+          },
+          {
+            "Single": 43
+          },
+          {
+            "Range": [
+              46,
+              47
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a27defa19f76048bbe8d5ef",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Single": 40
+              },
+              {
+                "Single": 43
+              },
+              {
+                "Range": [
+                  46,
+                  47
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "frontend/src/components/SettingsPanel.tsx": [
+      {
+        "hash": "s_c981320c71dabb::t_00f5dcd6403fe9",
+        "line_ranges": [
+          {
+            "Range": [
+              58,
+              59
+            ]
+          },
+          {
+            "Single": 85
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a27df1a19f76048bbe8d60c",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  58,
+                  59
+                ]
+              },
+              {
+                "Single": 85
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "frontend/src/components/components.test.tsx": [
+      {
+        "hash": "s_c981320c71dabb::t_17b9d04c69fd44",
+        "line_ranges": [
+          {
+            "Range": [
+              555,
+              556
+            ]
+          },
+          {
+            "Single": 594
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a27df3a19f76048bbe8d63a",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  555,
+                  556
+                ]
+              },
+              {
+                "Single": 594
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "frontend/src/styles.css": [
+      {
+        "hash": "s_c981320c71dabb::t_405b3b5fa8cb8f",
+        "line_ranges": [
+          {
+            "Single": 1233
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a27df2719f76048bbe8d625",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Single": 1233
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_c981320c71dabb": {
+      "tool": "trae",
+      "conversation_id": "6a27b76619f76048bbe8caa4",
+      "session_id": "6a27b76619f76048bbe8caa4",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_c981320c71dabb::t_00f5dcd6403fe9": {
+      "tool": "trae",
+      "conversation_id": "6a27b76619f76048bbe8caa4",
+      "session_id": "6a27b76619f76048bbe8caa4",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_c981320c71dabb::t_17b9d04c69fd44": {
+      "tool": "trae",
+      "conversation_id": "6a27b76619f76048bbe8caa4",
+      "session_id": "6a27b76619f76048bbe8caa4",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_c981320c71dabb::t_405b3b5fa8cb8f": {
+      "tool": "trae",
+      "conversation_id": "6a27b76619f76048bbe8caa4",
+      "session_id": "6a27b76619f76048bbe8caa4",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_c981320c71dabb::t_48ec5111cae4b4": {
+      "tool": "trae",
+      "conversation_id": "6a27b76619f76048bbe8caa4",
+      "session_id": "6a27b76619f76048bbe8caa4",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_c981320c71dabb::t_4d16c3ed1157f1": {
+      "tool": "trae",
+      "conversation_id": "6a27b76619f76048bbe8caa4",
+      "session_id": "6a27b76619f76048bbe8caa4",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_c981320c71dabb::t_6e73092ef6d69f": {
+      "tool": "trae",
+      "conversation_id": "6a27b76619f76048bbe8caa4",
+      "session_id": "6a27b76619f76048bbe8caa4",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_c981320c71dabb::t_bb3618127abc8f": {
+      "tool": "trae",
+      "conversation_id": "6a27b76619f76048bbe8caa4",
+      "session_id": "6a27b76619f76048bbe8caa4",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_c981320c71dabb::t_cc929d0484d1de": {
+      "tool": "trae",
+      "conversation_id": "6a27b76619f76048bbe8caa4",
+      "session_id": "6a27b76619f76048bbe8caa4",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
