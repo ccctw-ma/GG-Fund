@@ -83,42 +83,6 @@ function latestNetValue(history: FundHistoryPoint[] | undefined, quote?: FundQuo
   return quote?.netValue ?? history?.at(-1)?.netValue;
 }
 
-function officialHistoryDailyChange(history: FundHistoryPoint[] | undefined) {
-  if (!history || history.length < 2) return undefined;
-  const sorted = [...history].filter((point) => point.netValue > 0).sort((a, b) => a.date.localeCompare(b.date));
-  const latest = sorted.at(-1);
-  const previous = sorted.at(-2);
-  if (!latest || !previous) return undefined;
-  return {
-    date: latest.date,
-    netValue: latest.netValue,
-    dailyChangePercent: ((latest.netValue - previous.netValue) / previous.netValue) * 100,
-  };
-}
-
-function shouldUseConfirmedNavForDailyProfit(holding: Holding, quote?: FundQuote) {
-  const name = `${holding.fundName} ${quote?.name ?? ''}`;
-  return Boolean(
-    quote?.quoteType === 'estimate'
-    && /(QDII|纳斯达克|纳指|标普|道琼斯|美国|海外)/i.test(name),
-  );
-}
-
-function confirmedQuoteForPortfolioDailyProfit(holding: Holding, quote?: FundQuote, history?: FundHistoryPoint[]) {
-  if (!quote || !shouldUseConfirmedNavForDailyProfit(holding, quote)) return quote;
-  const confirmed = officialHistoryDailyChange(history);
-  if (!confirmed) return quote;
-  return {
-    ...quote,
-    netValue: confirmed.netValue,
-    dailyChangePercent: confirmed.dailyChangePercent,
-    quoteDate: confirmed.date,
-    estimateTime: undefined,
-    quoteType: 'official' as const,
-    source: `${quote.source}（组合收益按最新官方净值确认）`,
-  };
-}
-
 function recordedDailyProfitDate(holding: Holding) {
   const direct = (holding.updatedAt || holding.createdAt).match(/\d{4}-\d{2}-\d{2}/)?.[0];
   return direct ?? dateKey(holding.updatedAt || holding.createdAt);
@@ -294,7 +258,7 @@ export function calculatePortfolioSummary(
 ): PortfolioSummary {
   const totalMarketValue = holdings.reduce((sum, holding) => {
     const history = histories[holding.fundCode];
-    const quote = confirmedQuoteForPortfolioDailyProfit(holding, quotes[holding.fundCode], history);
+    const quote = quotes[holding.fundCode];
     return sum + holdingMarketValue(holding, quote, history);
   }, 0);
   const totalCost = holdings.reduce((sum, holding) => sum + holding.costAmount, 0);
@@ -302,7 +266,7 @@ export function calculatePortfolioSummary(
   const items = holdings.map((holding) => {
     const rawQuote = quotes[holding.fundCode];
     const history = histories[holding.fundCode];
-    const quote = confirmedQuoteForPortfolioDailyProfit(holding, rawQuote, history);
+    const quote = rawQuote;
     const marketValue = holdingMarketValue(holding, quote, history);
     const profit = marketValue - holding.costAmount;
     const returnRate = holding.costAmount > 0 ? percent(profit / holding.costAmount) : 0;

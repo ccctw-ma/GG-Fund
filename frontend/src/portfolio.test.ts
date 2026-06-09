@@ -250,7 +250,7 @@ describe('calculatePortfolioSummary', () => {
     expect(summary.estimatedDailyProfit).toBeCloseTo(20, 2);
   });
 
-  it('uses confirmed NAV history instead of intraday estimates for Nasdaq QDII daily profit', () => {
+  it('uses the latest intraday estimate for Nasdaq QDII daily profit when available', () => {
     const summary = calculatePortfolioSummary(
       [{
         id: 'h-nasdaq',
@@ -283,10 +283,10 @@ describe('calculatePortfolioSummary', () => {
       new Date('2026-06-08T23:00:00+08:00'),
     );
 
-    expect(summary.dailyProfitDate).toBe('2026-06-05');
-    expect(summary.items[0].quote?.quoteType).toBe('official');
-    expect(summary.items[0].quote?.dailyChangePercent).toBeCloseTo(-4.5784, 4);
-    expect(summary.items[0].estimatedDailyProfit).toBeLessThan(0);
+    expect(summary.dailyProfitDate).toBe('2026-06-08');
+    expect(summary.items[0].quote?.quoteType).toBe('estimate');
+    expect(summary.items[0].quote?.dailyChangePercent).toBeCloseTo(1.59, 4);
+    expect(summary.items[0].estimatedDailyProfit).toBeGreaterThan(0);
   });
 
   it('prefers same-day recorded platform daily profit when imported from Alipay', () => {
