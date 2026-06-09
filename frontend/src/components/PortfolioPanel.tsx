@@ -205,10 +205,10 @@ export function PortfolioPanel({
   const sortedItems = useMemo(() => sortItems(summary.items, holdingSort), [holdingSort, summary.items]);
   const dailyProfitItems = useMemo(
     () => sortDailyItems(
-      summary.items.filter((item) => item.dailyProfitAvailable),
+      summary.items.filter((item) => item.dailyProfitAvailable && item.dailyProfitDate === summary.dailyProfitDate),
       dailySort,
     ),
-    [dailySort, summary.items],
+    [dailySort, summary.dailyProfitDate, summary.items],
   );
   const cumulativeProfitItems = useMemo(() => sortProfitItems(summary.items, profitSort), [profitSort, summary.items]);
   const dailyLosers = dailyProfitItems.filter((item) => item.estimatedDailyProfit < 0);

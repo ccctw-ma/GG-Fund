@@ -259,9 +259,9 @@ describe('dashboard components', () => {
     expect(portfolio.container.textContent).toContain('还没有持仓');
     expect(portfolio.container.textContent).toContain('多平台账本');
     expect(portfolio.container.textContent).toContain('智能定投 / 目标止盈');
-    expect(settings.container.textContent).toContain('多平台导入助手');
-    expect(settings.container.textContent).toContain('上传支付宝持仓文件或图片');
-    expect(settings.container.textContent).toContain('DeepSeek 结构化识别');
+    expect(settings.container.textContent).toContain('导入持仓');
+    expect(settings.container.textContent).toContain('上传截图或文件');
+    expect(settings.container.textContent).toContain('云端 OCR + DeepSeek');
     expect(settings.container.textContent).not.toContain('数据与部署说明');
     expect(settings.container.textContent).not.toContain('本地数据导出');
     expect(settings.container.textContent).not.toContain('导入 JSON 备份');

@@ -187,6 +187,69 @@ describe('calculatePortfolioSummary', () => {
     expect(summary.dailyProfitIsCurrent).toBe(false);
   });
 
+  it('summarizes daily profit only for the latest available profit date', () => {
+    const summary = calculatePortfolioSummary(
+      [
+        { ...holdings[0], fundCode: '000001', shares: 1000 },
+        { ...holdings[1], fundCode: '110022', shares: 1000 },
+      ],
+      {
+        '000001': {
+          code: '000001',
+          name: '华夏成长混合',
+          netValue: 1.01,
+          dailyChangePercent: 1,
+          quoteDate: '2026-06-09',
+          source: 'test',
+        },
+        '110022': {
+          code: '110022',
+          name: '易方达消费行业股票',
+          netValue: 2,
+          dailyChangePercent: 10,
+          quoteDate: '2026-06-05',
+          source: 'test',
+        },
+      },
+      {},
+      new Date('2026-06-09T10:30:00+08:00'),
+    );
+
+    expect(summary.dailyProfitDate).toBe('2026-06-09');
+    expect(summary.estimatedDailyProfit).toBeCloseTo(10, 2);
+    expect(summary.items.find((item) => item.fundCode === '110022')?.estimatedDailyProfit).toBeCloseTo(181.8181, 3);
+  });
+
+  it('treats imported amount-only screenshot values as previous close when same-day quote is available', () => {
+    const summary = calculatePortfolioSummary(
+      [{
+        id: 'shot-1',
+        fundCode: '000001',
+        fundName: '华夏成长混合',
+        recordedMarketValue: 1000,
+        costAmount: 900,
+        createdAt: '2026-06-09T01:00:00.000Z',
+        updatedAt: '2026-06-09T01:00:00.000Z',
+      }],
+      {
+        '000001': {
+          code: '000001',
+          name: '华夏成长混合',
+          netValue: 1.02,
+          dailyChangePercent: 2,
+          quoteDate: '2026-06-09',
+          source: 'test',
+        },
+      },
+      {},
+      new Date('2026-06-09T10:30:00+08:00'),
+    );
+
+    expect(summary.totalMarketValue).toBeCloseTo(1020, 2);
+    expect(summary.totalProfit).toBeCloseTo(120, 2);
+    expect(summary.estimatedDailyProfit).toBeCloseTo(20, 2);
+  });
+
   it('uses confirmed NAV history instead of intraday estimates for Nasdaq QDII daily profit', () => {
     const summary = calculatePortfolioSummary(
       [{

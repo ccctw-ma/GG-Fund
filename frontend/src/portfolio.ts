@@ -132,9 +132,25 @@ function hasFreshRecordedDailyProfit(holding: Holding, asOf: Date) {
   );
 }
 
+function importedSnapshotDate(holding: Holding) {
+  const direct = holding.createdAt.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+  return direct ?? dateKey(holding.createdAt);
+}
+
+function previousNetValueFromDailyChange(quote?: FundQuote) {
+  if (!quote?.netValue || quote.dailyChangePercent === undefined) return undefined;
+  const ratio = 1 + quote.dailyChangePercent / 100;
+  if (!Number.isFinite(ratio) || ratio <= 0) return undefined;
+  return quote.netValue / ratio;
+}
+
 function estimatedShares(holding: Holding, quote?: FundQuote, history?: FundHistoryPoint[]) {
   if (holding.shares) return holding.shares;
   if (!holding.recordedMarketValue) return undefined;
+  const previousNetValue = dailyProfitDateKey(quote) === importedSnapshotDate(holding)
+    ? previousNetValueFromDailyChange(quote)
+    : undefined;
+  if (previousNetValue && previousNetValue > 0) return holding.recordedMarketValue / previousNetValue;
   const baseline = baselineNetValue(history, holding.purchaseDate ?? holding.createdAt) ?? latestNetValue(history, quote);
   if (!baseline || baseline <= 0) return undefined;
   return holding.recordedMarketValue / baseline;
@@ -316,13 +332,17 @@ export function calculatePortfolioSummary(
 
   const totalProfit = totalMarketValue - totalCost;
   const totalReturnRate = totalCost > 0 ? percent(totalProfit / totalCost) : 0;
-  const estimatedDailyProfit = items.reduce((sum, item) => sum + item.estimatedDailyProfit, 0);
-  const dailyProfitAvailable = items.some((item) => item.dailyProfitAvailable);
   const dailyProfitDates = items
     .filter((item) => item.dailyProfitAvailable)
     .map((item) => item.dailyProfitDate)
     .filter((date): date is string => Boolean(date));
   const dailyProfitDate = dailyProfitDates.sort((a, b) => b.localeCompare(a))[0];
+  const estimatedDailyProfit = dailyProfitDate
+    ? items
+      .filter((item) => item.dailyProfitAvailable && item.dailyProfitDate === dailyProfitDate)
+      .reduce((sum, item) => sum + item.estimatedDailyProfit, 0)
+    : 0;
+  const dailyProfitAvailable = Boolean(dailyProfitDate);
   const dailyProfitIsCurrent = isCurrentTradingDay(dailyProfitDate, asOf);
   const liveQuoteRatio = holdings.length > 0 ? percent(items.filter((item) => item.quoteStatus === 'ok').length / holdings.length) : 0;
   const ledgers = buildLedgers(items);

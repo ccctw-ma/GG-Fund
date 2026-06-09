@@ -398,11 +398,11 @@ export function SettingsPanel({
   return (
     <Card id="settings" className="lg:col-span-2">
       <div className="settings-data-card settings-import-assistant">
-        <h3><ScanText className="h-5 w-5" />多平台导入助手</h3>
-        <p>支持把支付宝、理财通、天天基金、雪球的持仓文字粘贴进来识别；也可以上传支付宝导出的文本、CSV、JSON，或直接上传持仓截图图片，由云端 OCR + DeepSeek 智能整理成结构化持仓，确认后导入。</p>
+        <h3><ScanText className="h-5 w-5" />导入持仓</h3>
+        <p>上传支付宝等持仓截图，或粘贴文本 / JSON。系统识别后先确认名称、代码、金额，再写入账本。</p>
         <div className="settings-upload-strip">
           <label>
-            <span>{recognizePending ? '截图识别中…' : '上传支付宝持仓文件或图片'}</span>
+            <span>{recognizePending ? '截图识别中…' : '上传截图或文件'}</span>
             <input
               ref={alipayInputRef}
               aria-label="上传支付宝持仓文件或图片"
@@ -416,12 +416,12 @@ export function SettingsPanel({
               }}
             />
           </label>
-          <small>支持文本、CSV、JSON 与图片（PNG/JPG/JPEG/WebP/BMP）；图片优先用云端 OCR 读取文字，再由 DeepSeek 结构化识别，识别后会弹出可编辑的确认弹窗，确认无误再导入。</small>
+          <small>图片走云端 OCR + DeepSeek，失败自动本地兜底；导入时不会使用截图里的历史当日收益。</small>
         </div>
         <textarea
           className="settings-export-area"
           aria-label="多平台持仓文本"
-          placeholder="示例：支付宝 000001 华夏成长混合 1000 1235 默认账本"
+          placeholder="可选：粘贴持仓文本或 JSON"
           value={recognizedText}
           onChange={(event) => setRecognizedText(event.target.value)}
         />
@@ -431,7 +431,7 @@ export function SettingsPanel({
           onClick={() => onImport(buildRecognizedImport(recognizedText))}
           disabled={!recognizedText.trim()}
         >
-          识别并导入本地账本
+          识别文本
         </button>
         {importError && <p className="mt-3 rounded-3xl bg-red-50 p-3 text-sm font-semibold text-red-700">{importError}</p>}
         {alipayUploadNotice && <p className="settings-import-notice">{alipayUploadNotice}</p>}
