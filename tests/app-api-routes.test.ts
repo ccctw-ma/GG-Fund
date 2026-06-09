@@ -872,12 +872,12 @@ describe('app api routes', () => {
     const dataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
     const response = await recognizeHoldings(new Request('https://example.com/api/ai/recognize-holdings', {
       method: 'POST',
-      body: JSON.stringify({ imageText: '招商中证白酒指数 5,000.00 +420.00', imageDataUrl: dataUrl }),
+      body: JSON.stringify({ imageDataUrl: dataUrl }),
     }));
 
     expect(recognizeHoldingsFromImageMock).toHaveBeenCalledWith(
-      { imageText: '招商中证白酒指数 5,000.00 +420.00', imageDataUrl: dataUrl },
-      { deepSeekApiKey: 'test-deepseek-key' },
+      { imageText: '', imageDataUrl: dataUrl },
+      { deepSeekApiKey: 'test-deepseek-key', ocrSpaceApiKey: undefined },
     );
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({

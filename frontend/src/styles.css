@@ -1195,7 +1195,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   font-weight: 800;
 }
 .import-confirm-close,
-.import-confirm-remove {
+.import-confirm-remove,
+.import-confirm-code {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1208,6 +1209,19 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .import-confirm-close:hover,
 .import-confirm-remove:hover { background: rgba(248,113,113,.2); color: #fecaca; }
+.import-confirm-code {
+  min-width: 76px;
+  background: rgba(125,226,184,.12);
+  color: var(--mint);
+  font-size: .76rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.import-confirm-code:hover { background: rgba(125,226,184,.22); }
+.import-confirm-code:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
 .import-confirm-table {
   overflow-y: auto;
   display: grid;
@@ -1216,7 +1230,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .import-confirm-row {
   display: grid;
-  grid-template-columns: minmax(0,2.4fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1.2fr) auto;
+  grid-template-columns: minmax(0,2.4fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1.2fr) auto auto;
   gap: 8px;
   align-items: center;
 }

@@ -8,6 +8,7 @@ export type ImportConfirmModalProps = {
   open: boolean;
   model?: string;
   holdings: RecognizedHolding[];
+  resolveFundCode?: (fundName: string) => Promise<{ fundCode: string; fundName: string } | undefined>;
   onConfirm: (holdings: RecognizedHolding[]) => void;
   onCancel: () => void;
 };
@@ -37,8 +38,9 @@ function parseNumber(value: string): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-export function ImportConfirmModal({ open, model, holdings, onConfirm, onCancel }: ImportConfirmModalProps) {
+export function ImportConfirmModal({ open, model, holdings, resolveFundCode, onConfirm, onCancel }: ImportConfirmModalProps) {
   const [rows, setRows] = useState<EditableRow[]>(() => holdings.map(toRow));
+  const [resolvingIndex, setResolvingIndex] = useState<number>();
 
   if (!open) return null;
 
@@ -48,6 +50,20 @@ export function ImportConfirmModal({ open, model, holdings, onConfirm, onCancel 
 
   function removeRow(index: number) {
     setRows((current) => current.filter((_, rowIndex) => rowIndex !== index));
+  }
+
+  async function confirmCode(index: number) {
+    const row = rows[index];
+    if (!row?.fundName.trim() || !resolveFundCode) return;
+    setResolvingIndex(index);
+    try {
+      const match = await resolveFundCode(row.fundName);
+      if (match) {
+        updateRow(index, { fundName: match.fundName, fundCode: match.fundCode });
+      }
+    } finally {
+      setResolvingIndex(undefined);
+    }
   }
 
   const normalized = rows
@@ -86,6 +102,7 @@ export function ImportConfirmModal({ open, model, holdings, onConfirm, onCancel 
             <span>持有金额</span>
             <span>持有收益</span>
             <span>当日收益</span>
+            <span>确认代码</span>
             <span aria-hidden="true" />
           </div>
           {rows.length === 0 && <p className="import-confirm-empty">没有可导入的持仓，请取消后重试。</p>}
@@ -120,6 +137,14 @@ export function ImportConfirmModal({ open, model, holdings, onConfirm, onCancel 
                 value={row.dailyProfit}
                 onChange={(event) => updateRow(index, { dailyProfit: event.target.value })}
               />
+              <button
+                type="button"
+                className="import-confirm-code"
+                disabled={!resolveFundCode || resolvingIndex === index || !row.fundName.trim()}
+                onClick={() => confirmCode(index)}
+              >
+                {resolvingIndex === index ? '查询中' : /^\d{6}$/.test(row.fundCode) ? '重新确认' : '查代码'}
+              </button>
               <button type="button" className="import-confirm-remove" aria-label={`删除第 ${index + 1} 行`} onClick={() => removeRow(index)}>
                 <X className="h-4 w-4" />
               </button>

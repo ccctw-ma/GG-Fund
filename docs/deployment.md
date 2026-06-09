@@ -41,6 +41,7 @@ bunx wrangler login
 RESEND_API_KEY=re_your_key
 AUTH_EMAIL_FROM="GG Fund <onboarding@resend.dev>"
 DEEPSEEK_API_KEY=sk_your_key
+OCR_SPACE_API_KEY=your_ocr_space_key # 可选；未配置时使用 OCR.space 公共 demo key
 ```
 
 如需继续使用现有 Cloudflare D1/KV 资源：
@@ -97,6 +98,7 @@ curl https://gg-fund.workers.dev/api/funds/000001
 - `RESEND_API_KEY`
 - `AUTH_EMAIL_FROM`
 - `DEEPSEEK_API_KEY`
+- `OCR_SPACE_API_KEY`（可选，用于提升截图导入的 OCR.space 额度与稳定性）
 - `CF_WORKER_NAME`
 - `CF_D1_DATABASE`
 - `CF_VERIFY_BASE_URL`
@@ -106,4 +108,5 @@ curl https://gg-fund.workers.dev/api/funds/000001
 - `app/api/portfolio/default/route.ts` 会优先读取 OpenNext Cloudflare runtime context 中的 `GG_FUND_DB`，并保留对 dev/test 全局 binding 的兼容；部署前需确保 `wrangler.jsonc` 与实际 Worker binding 保持一致。
 - Resend 登录依赖 `RESEND_API_KEY` 与 `AUTH_EMAIL_FROM`；缺失时本地开发会返回 `devCode`，生产环境应配置 Cloudflare Secret。
 - 基金智能分析依赖 `DEEPSEEK_API_KEY`；Next Route Handlers 会优先从 OpenNext Cloudflare runtime context 读取该 secret。缺失时 `/api/ai/analyze-fund` 与 `/api/ai/analyze-fund/stream` 都会保留行情、历史走势和公开网页抓取步骤，但最终明确回退到本地确定性指标报告；`/api/health` 的 `ai` 字段会返回 `local-fallback` 而不是伪装成 `ready`。
+- 截图导入的云端 OCR 优先读取 `OCR_SPACE_API_KEY` 调用 OCR.space；未配置时使用公共 demo key，适合低频试用但频控更严格。生产环境建议配置 Cloudflare Secret：`bunx wrangler secret put OCR_SPACE_API_KEY`。
 - Secret 泄露后必须立即在提供商控制台吊销并重新配置。

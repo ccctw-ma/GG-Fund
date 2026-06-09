@@ -22,11 +22,15 @@ export type RecognizeHoldingsResponse = {
 export type RecognizeHoldingsDependencies = {
   deepSeekApiKey?: string;
   deepSeekFetch?: typeof fetch;
+  ocrSpaceApiKey?: string;
+  ocrFetch?: typeof fetch;
 };
 
 const DEEPSEEK_VISION_MODEL = 'deepseek-v4-flash';
 const DATA_URL_PATTERN = /^data:image\/(png|jpe?g|webp|bmp|gif);base64,[A-Za-z0-9+/]+={0,2}$/;
 const MAX_OCR_TEXT_LENGTH = 20_000;
+const OCR_SPACE_ENDPOINT = 'https://api.ocr.space/parse/image';
+const OCR_SPACE_DEMO_KEY = 'helloworld';
 
 const SYSTEM_PROMPT =
   '你是严谨的基金持仓识别助手。只根据图片中真实可见的文字识别持仓，不允许编造、补全或推测任何不存在的基金。必须输出结构化 JSON。';
@@ -47,8 +51,8 @@ export function normalizeRecognizeHoldingsRequest(body: unknown): RecognizeHoldi
     typeof body === 'object' && body !== null ? String((body as { imageText?: unknown }).imageText ?? '').trim() : '';
   const imageDataUrl =
     typeof body === 'object' && body !== null ? String((body as { imageDataUrl?: unknown }).imageDataUrl ?? '') : '';
-  if (!imageText) {
-    throw new HttpError(400, 'IMAGE_TEXT_INVALID', '未从截图中读取到文字，请换更清晰的持仓截图');
+  if (!imageText && !imageDataUrl) {
+    throw new HttpError(400, 'IMAGE_INPUT_INVALID', '请上传图片或提供截图文字');
   }
   if (imageText.length > MAX_OCR_TEXT_LENGTH) {
     throw new HttpError(400, 'IMAGE_TEXT_TOO_LARGE', '截图文字过长，请裁剪为基金持仓区域后重试');
@@ -57,6 +61,60 @@ export function normalizeRecognizeHoldingsRequest(body: unknown): RecognizeHoldi
     throw new HttpError(400, 'IMAGE_DATA_INVALID', '图片数据格式不正确，请上传 PNG/JPG/WebP/BMP 截图');
   }
   return imageDataUrl ? { imageText, imageDataUrl } : { imageText };
+}
+
+type OcrSpaceResponse = {
+  ParsedResults?: Array<{ ParsedText?: string }>;
+  IsErroredOnProcessing?: boolean;
+  ErrorMessage?: string | string[];
+};
+
+function formatOcrSpaceError(payload: OcrSpaceResponse) {
+  const message = Array.isArray(payload.ErrorMessage) ? payload.ErrorMessage.join('；') : payload.ErrorMessage;
+  return message ? `OCR.space 识别失败：${message}` : 'OCR.space 识别失败，请换更清晰的持仓截图';
+}
+
+export async function extractTextFromImage(
+  imageDataUrl: string,
+  dependencies: Pick<RecognizeHoldingsDependencies, 'ocrSpaceApiKey' | 'ocrFetch'> = {},
+) {
+  if (!DATA_URL_PATTERN.test(imageDataUrl)) {
+    throw new HttpError(400, 'IMAGE_DATA_INVALID', '图片数据格式不正确，请上传 PNG/JPG/WebP/BMP 截图');
+  }
+
+  const formData = new FormData();
+  formData.set('apikey', dependencies.ocrSpaceApiKey || process.env.OCR_SPACE_API_KEY || OCR_SPACE_DEMO_KEY);
+  formData.set('base64Image', imageDataUrl);
+  formData.set('language', 'chs');
+  formData.set('OCREngine', '2');
+  formData.set('isOverlayRequired', 'false');
+  formData.set('scale', 'true');
+  formData.set('detectOrientation', 'true');
+
+  const response = await (dependencies.ocrFetch ?? fetch)(OCR_SPACE_ENDPOINT, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!response.ok) {
+    throw new HttpError(502, 'OCR_UPSTREAM_ERROR', 'OCR.space 识别服务暂不可用');
+  }
+
+  const payload = (await response.json()) as OcrSpaceResponse;
+  if (payload.IsErroredOnProcessing) {
+    throw new HttpError(502, 'OCR_UPSTREAM_ERROR', formatOcrSpaceError(payload));
+  }
+
+  const text = (payload.ParsedResults ?? [])
+    .map((result) => result.ParsedText ?? '')
+    .join('\n')
+    .trim();
+  if (!text) {
+    throw new HttpError(400, 'IMAGE_TEXT_INVALID', '未从截图中读取到文字，请换更清晰的持仓截图');
+  }
+  if (text.length > MAX_OCR_TEXT_LENGTH) {
+    throw new HttpError(400, 'IMAGE_TEXT_TOO_LARGE', '截图文字过长，请裁剪为基金持仓区域后重试');
+  }
+  return text;
 }
 
 function toFiniteNumber(value: unknown): number | undefined {
@@ -132,6 +190,11 @@ export async function recognizeHoldingsFromImage(
     throw new HttpError(503, 'DEEPSEEK_KEY_MISSING', '未配置 DeepSeek API Key，无法进行图片智能识别');
   }
 
+  const imageText = request.imageText || (request.imageDataUrl ? await extractTextFromImage(request.imageDataUrl, dependencies) : '');
+  if (!imageText) {
+    throw new HttpError(400, 'IMAGE_TEXT_INVALID', '未从截图中读取到文字，请换更清晰的持仓截图');
+  }
+
   const deepSeekFetch = dependencies.deepSeekFetch ?? fetch;
   const response = await deepSeekFetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
@@ -144,7 +207,7 @@ export async function recognizeHoldingsFromImage(
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: `${USER_PROMPT}\n\nOCR 原文：\n${request.imageText}` },
+        { role: 'user', content: `${USER_PROMPT}\n\nOCR 原文：\n${imageText}` },
       ],
       temperature: 0,
     }),

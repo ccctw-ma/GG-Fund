@@ -9,7 +9,7 @@ GG Fund 现已以 Cloudflare-first 的 Next.js App Router 架构为主：`app/` 
 - Next.js App Router 页面：根路径 `/` 会直接跳转到 `/app` 工作台，`/login` 提供独立邮箱验证码登录页，`/settings` 目前提供基础说明入口，`/app/portfolio` 当前作为组合落地页；本地持仓与自选能力继续在工作台内使用。
 - 顶部导航工作台：`/app` 内通过固定顶部导航在“行情、账户”之间切换，右上角展示紧凑账户状态卡片；未登录时点击右上角“登录”进入 `/login`。原“总览”落地页和功能卡片区已移除，进入 `/app` 默认展示行情页。
 - 养基宝式账本能力：账户页已接入今日估算收益、多平台账本、盈亏周报/月报摘要、贡献拆解、集中度风险、净值缺失、7 天赎回提醒、目标权重偏离、教育型定投计划和目标止盈提醒。
-- 多平台导入助手：账户页仅保留导入助手作为本地录入入口，支持粘贴支付宝、理财通、天天基金、雪球等持仓文字，支持上传支付宝 `.txt` / `.csv` / `.json` 文本类持仓文件，也支持直接上传支付宝持仓截图图片（PNG/JPG/JPEG/WebP/BMP）。图片会先在浏览器本地 OCR 成文字，再经 `POST /api/ai/recognize-holdings` 用 DeepSeek（`deepseek-v4-flash`）对 OCR 文本做结构化持仓识别与纠错；识别成功后会弹出可二次编辑的确认弹窗，用户可逐行修改基金名称、代码、持有金额、收益后再点击「确认导入」写入本地账本。服务端从 Cloudflare runtime context 读取 `DEEPSEEK_API_KEY`，未配置时图片识别会返回明确错误而不伪造结果。平台授权同步、真实交易下单和全网用户加减仓榜仍标注为路线图，不伪造生产能力。
+- 多平台导入助手：账户页仅保留导入助手作为本地录入入口，支持粘贴支付宝、理财通、天天基金、雪球等持仓文字，支持上传支付宝 `.txt` / `.csv` / `.json` 文本类持仓文件，也支持直接上传支付宝持仓截图图片（PNG/JPG/JPEG/WebP/BMP）。图片优先经 `POST /api/ai/recognize-holdings` 在服务端调用 OCR.space（可配置 `OCR_SPACE_API_KEY`，未配置时使用公共 demo key）识别文字，再用 DeepSeek（`deepseek-v4-flash`）对 OCR 文本做结构化持仓识别与纠错；云端 OCR 不可用时前端会回退浏览器本地 OCR。识别成功后会按基金名称自动查询并回填 6 位基金代码，再弹出可二次编辑的确认弹窗，用户可逐行修改基金名称、代码、持有金额、收益，也可点击「查代码 / 重新确认」按名称再次确认基金代码，最后点击「确认导入」写入本地账本。服务端从 Cloudflare runtime context 读取 `DEEPSEEK_API_KEY` 与可选 `OCR_SPACE_API_KEY`，缺少 DeepSeek key 时图片识别会返回明确错误而不伪造结果。平台授权同步、真实交易下单和全网用户加减仓榜仍标注为路线图，不伪造生产能力。
 - 全球指数行情：行情页首屏以横向可点击卡片展示 A 股、港股、美股、日经、韩国和欧洲主要指数，默认选中上证指数，并在卡片下方用全宽走势图展示当前指数历史走势；实时点位优先使用东方财富 `push2` 的 `ulist.np/get`，全球指数使用 `100.{code}` 形式的 secid，例如 `100.DJIA`、`100.SPX`、`100.NDX`、`100.N225`、`100.KS11`、`100.FTSE`、`100.GDAXI`、`100.FCHI`、`100.HSI`；当东方财富在 Worker 出口不可用时，接口会合并腾讯 A 股指数和新浪全球指数行情作为兜底，并用历史日线补齐科创 50、北证 50、纳斯达克 100 等必备指数卡片。全球指数历史走势优先尝试东方财富 `push2his`，失败后使用 Naver Chart API 的公开日线接口（如 `.DJI`、`.INX`、`.IXIC`、`.NDX`、`.N225`、`KOSPI`、`.HSI`、`.FTSE`、`.GDAXI`、`.FCHI`）；北证 50 历史走势额外使用搜狐历史行情接口兜底，避免腾讯仅返回单日 K 线。
 - 金融资产搜索：作为工作台第二板块放在指数行情下方，按代码或名称查询公开基金数据和 A 股实时行情，搜索结果以横向可切换卡片展示，接口失败时自动回退内置示例行情。
 - 基金详情：优先展示天天基金盘中估算净值、估算涨跌和估算时间，同时保留上一交易日官方净值；详情动作区和持仓明细都提供「智能分析」入口，点击后会打开可拖拽、可缩放的右侧浮层，位置和尺寸会写入浏览器本地 `localStorage` 以便下次恢复。前端默认调用 `/api/ai/analyze-fund/stream` 读取流式分析草稿，服务端会从 Cloudflare runtime context 读取 `DEEPSEEK_API_KEY`，联网抓取基金行情、历史走势、主要指数和东方财富公开网页材料，再交给 Deepseek 流式生成涨跌驱动、后续走势因素、关注点和来源链接；缺少 key 时会明确降级到本地确定性报告，不再伪装成 AI 已就绪。
@@ -59,6 +59,7 @@ bun run dev
 RESEND_API_KEY=re_your_key
 AUTH_EMAIL_FROM="GG Fund <onboarding@resend.dev>"
 DEEPSEEK_API_KEY=sk_your_key
+OCR_SPACE_API_KEY=your_ocr_space_key # 可选；未配置时使用 OCR.space 公共 demo key，频控更严格
 ```
 
 本地 `bun run dev` 默认使用内存登录状态，即使 OpenNext 读取到 `wrangler.jsonc` 的 D1 绑定也不会走远端 D1；如果需要在本地调试 D1 登录链路，可额外设置 `GG_FUND_AUTH_USE_D1=1`。使用 `onboarding@resend.dev` 时，Resend 只允许发送到账号自己的测试邮箱；清空 `RESEND_API_KEY` 和 `AUTH_EMAIL_FROM` 可回到页面显示 `devCode` 的开发验证码模式。

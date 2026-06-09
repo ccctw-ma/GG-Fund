@@ -4,6 +4,7 @@ import { ScanText } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { api, type RecognizedHolding } from '../api';
 import { isImageFile, recognizeImageText, type OcrProgress } from '../ocr';
+import type { FundQuote } from '../types';
 import { ImportConfirmModal } from './ImportConfirmModal';
 import { Card } from './ui/card';
 
@@ -215,8 +216,25 @@ function readFileAsDataUrl(file: File) {
   });
 }
 
+function normalizeFundSearchName(name: string) {
+  return name
+    .replace(/[（(][^）)]*[）)]/g, '')
+    .replace(/[\s·•。、,，A-Za-z]/g, '')
+    .trim();
+}
+
+function pickBestFundCodeMatch(name: string, candidates: FundQuote[]) {
+  const target = normalizeFundSearchName(name);
+  const funds = candidates.filter((fund) => /^\d{6}$/.test(fund.code) && fund.assetType !== 'stock');
+  return (
+    funds.find((fund) => normalizeFundSearchName(fund.name) === target) ??
+    funds.find((fund) => target.length >= 3 && normalizeFundSearchName(fund.name).includes(target)) ??
+    funds[0]
+  );
+}
+
 export type ImageTextReader = (file: File, onProgress?: OcrProgress) => Promise<string>;
-export type ImageHoldingsRecognizer = (imageText: string, imageDataUrl?: string) => Promise<{ model: string; holdings: RecognizedHolding[] }>;
+export type ImageHoldingsRecognizer = (imageDataUrl: string, imageText?: string) => Promise<{ model: string; holdings: RecognizedHolding[] }>;
 
 export function SettingsPanel({
   importError,
@@ -241,25 +259,37 @@ export function SettingsPanel({
     setAlipayUploadNotice(undefined);
     if (isImageFile(file)) {
       setRecognizePending(true);
-      setAlipayUploadNotice(`正在读取截图文字 ${file.name}……`);
+      setAlipayUploadNotice(`正在用云端 OCR 识别截图 ${file.name}……`);
       try {
         const imageDataUrl = await readFileAsDataUrl(file);
-        const imageText = (await ocrReader(file, (status, progress) => {
-          setAlipayUploadNotice(`正在读取截图文字 ${file.name}：${status} ${Math.round(progress * 100)}%`);
-        })).trim();
-        setRecognizedText(imageText);
-        if (!imageText) {
-          setAlipayUploadNotice('未从截图中读取到文字，请换更清晰的持仓截图。');
-          return;
+        let result: Awaited<ReturnType<ImageHoldingsRecognizer>>;
+        try {
+          result = await recognizeImage(imageDataUrl);
+        } catch (cloudError) {
+          setAlipayUploadNotice(`云端 OCR 暂不可用，正在启用本地 OCR 兜底：${cloudError instanceof Error ? cloudError.message : '识别失败'}`);
+          const imageText = (await ocrReader(file, (status, progress) => {
+            setAlipayUploadNotice(`正在本地读取截图文字 ${file.name}：${status} ${Math.round(progress * 100)}%`);
+          })).trim();
+          setRecognizedText(imageText);
+          if (!imageText) {
+            setAlipayUploadNotice('未从截图中读取到文字，请换更清晰的持仓截图。');
+            return;
+          }
+          setAlipayUploadNotice(`正在用 DeepSeek 结构化识别 ${file.name}……`);
+          result = await recognizeImage(imageDataUrl, imageText);
         }
-        setAlipayUploadNotice(`正在用 DeepSeek 结构化识别 ${file.name}……`);
-        const { model, holdings } = await recognizeImage(imageText, imageDataUrl);
+        const { model, holdings } = result;
         if (holdings.length === 0) {
           setAlipayUploadNotice('未从截图中识别到持仓，请换更清晰的持仓截图。');
           return;
         }
+        const resolvedHoldings = await Promise.all(holdings.map(async (holding) => {
+          if (holding.fundCode && /^\d{6}$/.test(holding.fundCode)) return holding;
+          const match = await resolveFundCodeByName(holding.fundName).catch(() => undefined);
+          return match ? { ...holding, fundCode: match.fundCode, fundName: match.fundName } : holding;
+        }));
         setConfirmModel(model);
-        setConfirmHoldings(holdings);
+        setConfirmHoldings(resolvedHoldings);
         setConfirmKey((current) => current + 1);
         setAlipayUploadNotice(`已识别截图 ${file.name}，请在弹窗中核对并确认导入。`);
       } catch (error) {
@@ -288,11 +318,16 @@ export function SettingsPanel({
     setAlipayUploadNotice('已取消本次导入。');
   }
 
+  async function resolveFundCodeByName(fundName: string) {
+    const match = pickBestFundCodeMatch(fundName, await api.searchFunds(fundName));
+    return match ? { fundCode: match.code, fundName: match.name } : undefined;
+  }
+
   return (
     <Card id="settings" className="lg:col-span-2">
       <div className="settings-data-card settings-import-assistant">
         <h3><ScanText className="h-5 w-5" />多平台导入助手</h3>
-        <p>支持把支付宝、理财通、天天基金、雪球的持仓文字粘贴进来识别；也可以上传支付宝导出的文本、CSV、JSON，或直接上传持仓截图图片，由 DeepSeek 智能整理成结构化持仓，确认后导入。</p>
+        <p>支持把支付宝、理财通、天天基金、雪球的持仓文字粘贴进来识别；也可以上传支付宝导出的文本、CSV、JSON，或直接上传持仓截图图片，由云端 OCR + DeepSeek 智能整理成结构化持仓，确认后导入。</p>
         <div className="settings-upload-strip">
           <label>
             <span>{recognizePending ? '截图识别中…' : '上传支付宝持仓文件或图片'}</span>
@@ -309,7 +344,7 @@ export function SettingsPanel({
               }}
             />
           </label>
-          <small>支持文本、CSV、JSON 与图片（PNG/JPG/JPEG/WebP/BMP）；图片先读取文字，再由 DeepSeek 结构化识别，识别后会弹出可编辑的确认弹窗，确认无误再导入。</small>
+          <small>支持文本、CSV、JSON 与图片（PNG/JPG/JPEG/WebP/BMP）；图片优先用云端 OCR 读取文字，再由 DeepSeek 结构化识别，识别后会弹出可编辑的确认弹窗，确认无误再导入。</small>
         </div>
         <textarea
           className="settings-export-area"
@@ -335,6 +370,7 @@ export function SettingsPanel({
         open={Boolean(confirmHoldings)}
         model={confirmModel}
         holdings={confirmHoldings ?? []}
+        resolveFundCode={resolveFundCodeByName}
         onConfirm={confirmImport}
         onCancel={cancelImport}
       />

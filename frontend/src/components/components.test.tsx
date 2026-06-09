@@ -24,6 +24,15 @@ const mockApi = vi.hoisted(() => ({
     { time: '15:00', price: 1.2, average: 1.21, source: '主要持仓加权近似（东方财富持仓 + 腾讯分钟线）', sourceType: 'estimated' },
   ]),
   getFund: vi.fn(async () => null),
+  searchFunds: vi.fn(async (query: string) => [
+    {
+      code: query.includes('电网') ? '012000' : '161725',
+      name: query.includes('电网') ? '华夏中证电网设备主题ETF联接C' : '招商中证白酒指数C',
+      netValue: 1.23,
+      quoteDate: '2026-06-09',
+      source: 'test',
+    },
+  ]),
   analyzeFund: vi.fn(async () => ({
     fund: { code: '000001', name: '华夏成长混合', netValue: 1.35, quoteDate: '2026-05-29', quoteType: 'estimate' as const, source: 'test' },
     agent: {
@@ -500,7 +509,7 @@ describe('dashboard components', () => {
       <SettingsPanel
         onImport={(text) => { imported = text; }}
         ocrReader={async () => '招商中证白酒指数 5,000.00 +420.00\n华夏中证电网设备主题ETF联接C 30,289.47 +2,289.47 -2.14'}
-        recognizeImage={async (_imageText) => ({
+        recognizeImage={async (_imageDataUrl) => ({
           model: 'deepseek-v4-flash',
           holdings: [
             { fundName: '招商中证白酒指数', marketValue: 5000, profit: 420 },
@@ -524,9 +533,9 @@ describe('dashboard components', () => {
 
     expect(settings.container.textContent).toContain('核对识别到的持仓');
     expect(settings.container.textContent).toContain('deepseek-v4-flash');
-    expect(settings.container.querySelector<HTMLTextAreaElement>('textarea[aria-label="多平台持仓文本"]')?.value).toContain('招商中证白酒指数');
     const nameInput = settings.container.querySelector<HTMLInputElement>('input[aria-label="第 1 行基金名称"]');
-    expect(nameInput?.value).toBe('招商中证白酒指数');
+    expect(nameInput?.value).toBe('招商中证白酒指数C');
+    expect(settings.container.querySelector<HTMLInputElement>('input[aria-label="第 1 行基金代码"]')?.value).toBe('161725');
 
     // 用户二次修改第一行名称后再确认。
     const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
@@ -541,7 +550,7 @@ describe('dashboard components', () => {
 
     const parsed = JSON.parse(imported) as { holdings: Array<{ fundCode: string; fundName: string; recordedMarketValue: number; recordedDailyProfit?: number; costAmount: number; platform: string }> };
     expect(parsed.holdings).toHaveLength(2);
-    expect(parsed.holdings[0]).toMatchObject({ fundCode: 'ALIPAY001', fundName: '招商中证白酒指数C', recordedMarketValue: 5000, platform: 'alipay' });
+    expect(parsed.holdings[0]).toMatchObject({ fundCode: '161725', fundName: '招商中证白酒指数C', recordedMarketValue: 5000, platform: 'alipay' });
     expect(parsed.holdings[0].costAmount).toBeCloseTo(5000 - 420, 2);
     expect(parsed.holdings[1]).toMatchObject({ fundCode: '012000', recordedDailyProfit: -2.14 });
     expect(settings.container.textContent).toContain('已确认导入 2 条持仓');

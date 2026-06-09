@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  extractTextFromImage,
   normalizeRecognizeHoldingsRequest,
   normalizeRecognizedHoldings,
   recognizeHoldingsFromImage,
@@ -17,7 +18,7 @@ describe('recognize holdings service', () => {
       imageText: '招商中证白酒指数 5,000.00 +420.00',
     });
     expect(() => normalizeRecognizeHoldingsRequest({ imageText: '招商中证白酒指数', imageDataUrl: 'not-an-image' })).toThrow('图片数据格式不正确');
-    expect(() => normalizeRecognizeHoldingsRequest({ imageDataUrl: sampleDataUrl })).toThrow('未从截图中读取到文字');
+    expect(normalizeRecognizeHoldingsRequest({ imageDataUrl: sampleDataUrl })).toEqual({ imageText: '', imageDataUrl: sampleDataUrl });
   });
 
   it('normalizes structured holdings while ignoring fabricated codes and empty names', () => {
@@ -68,6 +69,48 @@ describe('recognize holdings service', () => {
     expect(typeof userMessage?.content).toBe('string');
     expect(userMessage?.content).toContain('OCR 原文');
     expect(capturedBody.response_format).toEqual({ type: 'json_object' });
+  });
+
+  it('extracts text from images through OCR.space when only image data is provided', async () => {
+    let capturedFormData: FormData | undefined;
+    const ocrFetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+      capturedFormData = init?.body as FormData;
+      return new Response(JSON.stringify({
+        IsErroredOnProcessing: false,
+        ParsedResults: [{ ParsedText: '招商中证白酒指数 5,000.00 +420.00' }],
+      }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const text = await extractTextFromImage(sampleDataUrl, { ocrSpaceApiKey: 'ocr-key', ocrFetch });
+
+    expect(text).toBe('招商中证白酒指数 5,000.00 +420.00');
+    expect(capturedFormData?.get('apikey')).toBe('ocr-key');
+    expect(capturedFormData?.get('language')).toBe('chs');
+    expect(capturedFormData?.get('base64Image')).toBe(sampleDataUrl);
+  });
+
+  it('runs OCR.space first and then asks DeepSeek to structure the text', async () => {
+    const ocrFetch = (async () =>
+      new Response(JSON.stringify({
+        IsErroredOnProcessing: false,
+        ParsedResults: [{ ParsedText: '招商中证白酒指数 5,000.00 +420.00' }],
+      }), { status: 200 })) as unknown as typeof fetch;
+    let deepSeekPrompt = '';
+    const deepSeekFetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? '{}')) as { messages: Array<{ role: string; content: string }> };
+      deepSeekPrompt = body.messages.find((message) => message.role === 'user')?.content ?? '';
+      return new Response(JSON.stringify({
+        choices: [{ message: { content: JSON.stringify({ holdings: [{ fundName: '招商中证白酒指数', marketValue: 5000, profit: 420 }] }) } }],
+      }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const response = await recognizeHoldingsFromImage(
+      { imageText: '', imageDataUrl: sampleDataUrl },
+      { deepSeekApiKey: 'test-key', deepSeekFetch, ocrFetch },
+    );
+
+    expect(deepSeekPrompt).toContain('招商中证白酒指数 5,000.00 +420.00');
+    expect(response.holdings[0]).toMatchObject({ fundName: '招商中证白酒指数', marketValue: 5000 });
   });
 
   it('throws a friendly error when no holdings are recognized', async () => {

@@ -12,12 +12,23 @@ async function readDeepSeekApiKey() {
   }
 }
 
+async function readOcrSpaceApiKey() {
+  try {
+    const context = await getCloudflareContext({ async: true });
+    const cloudflareEnv = (context.env ?? {}) as { OCR_SPACE_API_KEY?: string };
+    return cloudflareEnv.OCR_SPACE_API_KEY ?? process.env.OCR_SPACE_API_KEY;
+  } catch {
+    return process.env.OCR_SPACE_API_KEY;
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = normalizeRecognizeHoldingsRequest(await readJson(request));
     return Response.json(
       await recognizeHoldingsFromImage(body, {
         deepSeekApiKey: await readDeepSeekApiKey(),
+        ocrSpaceApiKey: await readOcrSpaceApiKey(),
       }),
     );
   } catch (error) {
