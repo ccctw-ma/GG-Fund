@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { calculatePortfolioSummary } from '../portfolio';
 import { decisionSteps } from '../decisionSteps';
-import type { FundAnalysisResponse } from '../types';
+import type { FundAnalysisResponse, FundQuote } from '../types';
 import { BeginnerGuide } from './BeginnerGuide';
 import { FundAnalysisPanel } from './FundAnalysisPanel';
 import { FundSearch } from './FundSearch';
@@ -863,7 +863,7 @@ describe('dashboard components', () => {
       await Promise.resolve();
     });
     expect(portfolio.container.textContent).toContain('000001（手动确认）');
-    expect(portfolio.container.textContent).toContain('9 天');
+    expect(portfolio.container.textContent).toMatch(/持有天数\d+ 天/);
     expect(portfolio.container.textContent).toContain('暂无该基金的持仓组成数据');
   });
 
@@ -1022,6 +1022,93 @@ describe('dashboard components', () => {
     const deleteButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('删除'));
     act(() => deleteButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(removals).toEqual(['holding-2']);
+  });
+
+  it('manually looks up a holding and confirms it into portfolio', async () => {
+    const getFundMock = mockApi.getFund as unknown as { mockResolvedValueOnce(value: FundQuote): void };
+    getFundMock.mockResolvedValueOnce(fund);
+    const manualAdds: Array<{ fund: FundQuote; patch: { recordedMarketValue: number; costAmount: number } }> = [];
+    const portfolio = render(
+      <PortfolioPanel
+        summary={emptySummary}
+        watchlist={[]}
+        onRemoveHolding={() => undefined}
+        onUpdateHolding={() => undefined}
+        onAddManualHolding={(nextFund, patch) => manualAdds.push({ fund: nextFund, patch })}
+      />,
+    );
+    roots.push(portfolio.root);
+
+    const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    const queryInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="手动新增持仓代码或名称"]');
+    const valueInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="手动新增持仓持有金额"]');
+    const costInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="手动新增持仓成本金额"]');
+    expect(queryInput).not.toBeNull();
+
+    act(() => {
+      if (!queryInput || !valueInput || !costInput || !nativeSetter) return;
+      nativeSetter.call(queryInput, '000001');
+      queryInput.dispatchEvent(new Event('input', { bubbles: true }));
+      nativeSetter.call(valueInput, '1234.567');
+      valueInput.dispatchEvent(new Event('input', { bubbles: true }));
+      nativeSetter.call(costInput, '1000.111');
+      costInput.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    const lookupButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('拉取信息'));
+    await act(async () => {
+      lookupButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(mockApi.getFund).toHaveBeenCalledWith('000001');
+    expect(portfolio.container.textContent).toContain('华夏成长混合');
+
+    const confirmButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('更新持仓'));
+    act(() => confirmButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(manualAdds).toEqual([{ fund, patch: { recordedMarketValue: 1234.57, costAmount: 1000.11 } }]);
+  });
+
+  it('manually searches holding by name and reports invalid inputs', async () => {
+    const manualAdds: Array<{ fund: FundQuote; patch: { recordedMarketValue: number; costAmount: number } }> = [];
+    const portfolio = render(
+      <PortfolioPanel
+        summary={emptySummary}
+        watchlist={[]}
+        onRemoveHolding={() => undefined}
+        onUpdateHolding={() => undefined}
+        onAddManualHolding={(nextFund, patch) => manualAdds.push({ fund: nextFund, patch })}
+      />,
+    );
+    roots.push(portfolio.root);
+
+    const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    const queryInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="手动新增持仓代码或名称"]');
+    const valueInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="手动新增持仓持有金额"]');
+    const lookupButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('拉取信息'));
+
+    await act(async () => {
+      lookupButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(portfolio.container.textContent).toContain('请先填写基金代码或名称');
+
+    act(() => {
+      if (!queryInput || !valueInput || !nativeSetter) return;
+      nativeSetter.call(queryInput, '白酒');
+      queryInput.dispatchEvent(new Event('input', { bubbles: true }));
+      nativeSetter.call(valueInput, '-10');
+      valueInput.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => {
+      lookupButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(mockApi.searchFunds).toHaveBeenCalledWith('白酒');
+
+    const confirmButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('更新持仓'));
+    act(() => confirmButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(portfolio.container.textContent).toContain('请填写有效的持有金额和成本金额');
+    expect(manualAdds).toHaveLength(0);
   });
 
   it('expands disclosed fund holdings and loads stock quote details', async () => {

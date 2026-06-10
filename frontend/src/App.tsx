@@ -279,6 +279,30 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
     ]);
   }
 
+  function addManualHolding(fund: FundQuote, patch: { recordedMarketValue: number; costAmount: number }) {
+    const createdAt = nowIso();
+    const shares = fund.netValue > 0 ? Number((patch.recordedMarketValue / fund.netValue).toFixed(4)) : undefined;
+    setQuotes((current) => ({ ...current, [fund.code]: fund }));
+    setHoldings((current) => [
+      ...current,
+      {
+        id: crypto.randomUUID(),
+        fundCode: fund.code,
+        fundName: fund.name,
+        codeSource: 'manual',
+        shares,
+        costAmount: patch.costAmount,
+        recordedMarketValue: patch.recordedMarketValue,
+        accountName: '默认账本',
+        platform: 'manual',
+        targetWeight: 25,
+        alertPercent: 12,
+        createdAt,
+        updatedAt: createdAt,
+      },
+    ]);
+  }
+
   function updateHolding(id: string, patch: { recordedMarketValue: number; costAmount: number }) {
     setHoldings((current) =>
       current.map((holding) =>
@@ -432,6 +456,7 @@ export default function App({ initialData }: { initialData?: AppInitialData }) {
                   onRemoveHolding={(id) => setHoldings((current) => current.filter((holding) => holding.id !== id))}
                   onUpdateHolding={updateHolding}
                   onEditIdentity={editHoldingIdentity}
+                  onAddManualHolding={addManualHolding}
                 />
                 <SettingsPanel importError={importError} onImport={importData} />
               </div>

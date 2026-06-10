@@ -165,6 +165,7 @@ export function PortfolioPanel({
   onRemoveHolding,
   onUpdateHolding,
   onEditIdentity,
+  onAddManualHolding,
 }: {
   summary: PortfolioSummary;
   watchlist: WatchItem[];
@@ -175,6 +176,7 @@ export function PortfolioPanel({
   onRemoveHolding: (id: string) => void;
   onUpdateHolding: (id: string, patch: { recordedMarketValue: number; costAmount: number }) => void;
   onEditIdentity?: (id: string, patch: { fundCode: string; fundName: string }) => void;
+  onAddManualHolding?: (fund: FundQuote, patch: { recordedMarketValue: number; costAmount: number }) => void;
 }) {
   const positive = summary.totalProfit >= 0;
   const [holdingSort, setHoldingSort] = useState<SortState<SortKey>>({ key: 'marketValue', direction: 'desc' });
@@ -201,6 +203,12 @@ export function PortfolioPanel({
   const [analysisMap, setAnalysisMap] = useState<Record<string, FundAnalysisResponse>>({});
   const [analysisStatusMap, setAnalysisStatusMap] = useState<Record<string, string>>({});
   const [analysisDraftMap, setAnalysisDraftMap] = useState<Record<string, string>>({});
+  const [manualQuery, setManualQuery] = useState('');
+  const [manualMarketValue, setManualMarketValue] = useState('');
+  const [manualCost, setManualCost] = useState('');
+  const [manualFund, setManualFund] = useState<FundQuote>();
+  const [manualLoading, setManualLoading] = useState(false);
+  const [manualError, setManualError] = useState('');
   const historyLoadingRef = useRef<Set<string>>(new Set());
   const sortedItems = useMemo(() => sortItems(summary.items, holdingSort), [holdingSort, summary.items]);
   const dailyProfitItems = useMemo(
@@ -400,6 +408,54 @@ export function PortfolioPanel({
     cancelEdit();
   }
 
+  async function lookupManualHolding() {
+    const normalizedQuery = manualQuery.trim();
+    setManualError('');
+    setManualFund(undefined);
+    if (!normalizedQuery) {
+      setManualError('请先填写基金代码或名称');
+      return;
+    }
+    setManualLoading(true);
+    try {
+      const fund = /^\d{6}$/.test(normalizedQuery)
+        ? await api.getFund(normalizedQuery)
+        : (await api.searchFunds(normalizedQuery))[0];
+      if (!fund) {
+        setManualError('没有找到匹配的基金，请换代码或名称重试');
+        return;
+      }
+      setManualFund(fund);
+      if (!manualCost.trim() && manualMarketValue.trim()) setManualCost(manualMarketValue.trim());
+    } catch (caught) {
+      setManualError(caught instanceof Error ? caught.message : '基金信息拉取失败');
+    } finally {
+      setManualLoading(false);
+    }
+  }
+
+  function confirmManualHolding() {
+    if (!manualFund) {
+      setManualError('请先拉取基金信息');
+      return;
+    }
+    const recordedMarketValue = Number(manualMarketValue);
+    const costAmount = Number(manualCost || manualMarketValue);
+    if (!Number.isFinite(recordedMarketValue) || recordedMarketValue <= 0 || !Number.isFinite(costAmount) || costAmount < 0) {
+      setManualError('请填写有效的持有金额和成本金额');
+      return;
+    }
+    onAddManualHolding?.(manualFund, {
+      recordedMarketValue: Number(recordedMarketValue.toFixed(2)),
+      costAmount: Number(costAmount.toFixed(2)),
+    });
+    setManualQuery('');
+    setManualMarketValue('');
+    setManualCost('');
+    setManualFund(undefined);
+    setManualError('');
+  }
+
   return (
     <Card id="portfolio" className="lg:col-span-2">
       <CardHeader>
@@ -450,6 +506,67 @@ export function PortfolioPanel({
           <small>{summary.totalReturnRate.toFixed(2)}% · 投入 {money.format(summary.totalCost)}</small>
         </button>
       </div>
+      {onAddManualHolding && (
+        <section className="yb-manual-holding-panel" aria-label="手动新增持仓">
+          <div>
+            <strong>手动新增持仓</strong>
+            <span>输入 6 位代码或基金名称，先拉取最新净值，再写入账户持仓。</span>
+          </div>
+          <div className="yb-manual-holding-form">
+            <label>
+              <span>代码或名称</span>
+              <input
+                type="text"
+                value={manualQuery}
+                onChange={(event) => setManualQuery(event.target.value)}
+                placeholder="例如 000001 或 华夏成长"
+                aria-label="手动新增持仓代码或名称"
+              />
+            </label>
+            <label>
+              <span>持有金额</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={manualMarketValue}
+                onChange={(event) => setManualMarketValue(event.target.value)}
+                placeholder="当前持有市值"
+                aria-label="手动新增持仓持有金额"
+              />
+            </label>
+            <label>
+              <span>成本金额</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={manualCost}
+                onChange={(event) => setManualCost(event.target.value)}
+                placeholder="不填默认等于持有金额"
+                aria-label="手动新增持仓成本金额"
+              />
+            </label>
+            <Button variant="secondary" size="sm" onClick={() => void lookupManualHolding()} disabled={manualLoading}>
+              {manualLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              拉取信息
+            </Button>
+            <Button variant="default" size="sm" onClick={confirmManualHolding} disabled={!manualFund}>
+              <Check className="h-4 w-4" />更新持仓
+            </Button>
+          </div>
+          {manualFund && (
+            <div className="yb-manual-holding-preview" data-testid="manual-holding-preview">
+              <span>{assetTypeLabel(manualFund)} · {manualFund.code}</span>
+              <strong>{manualFund.name}</strong>
+              <em>最新净值 {manualFund.netValue.toFixed(4)} · {manualFund.quoteDate}</em>
+            </div>
+          )}
+          {manualError && <p className="yb-empty-copy yb-manual-holding-error">{manualError}</p>}
+        </section>
+      )}
       {activeInsight !== 'holdings' && (
       <section className="yb-daily-profit-detail" id="portfolio-insight-detail" data-testid="portfolio-insight-detail">
         {activeInsight === 'daily' && (

@@ -92,6 +92,7 @@ const portfolioPropsLog = vi.hoisted(() => ({
     onRemoveHolding: (id: string) => void;
     onUpdateHolding: (id: string, patch: { recordedMarketValue: number; costAmount: number }) => void;
     onEditIdentity?: (id: string, patch: { fundCode: string; fundName: string }) => void;
+    onAddManualHolding?: (fund: FundQuote, patch: { recordedMarketValue: number; costAmount: number }) => void;
   },
 }));
 
@@ -108,6 +109,7 @@ vi.mock('./components/PortfolioPanel', () => ({
         <button type="button" onClick={() => props.onUpdateHolding(props.summary.items[0]?.id ?? 'missing', { recordedMarketValue: 1234, costAmount: 1000 })}>mock-update</button>
         <button type="button" onClick={() => props.onEditIdentity?.(props.summary.items[0]?.id ?? 'missing', { fundCode: '110022', fundName: '易方达消费行业股票' })}>mock-edit-identity</button>
         <button type="button" onClick={() => props.onEditIdentity?.(props.summary.items[0]?.id ?? 'missing', { fundCode: '', fundName: '自动补全基金' })}>mock-auto-identity</button>
+        <button type="button" onClick={() => props.onAddManualHolding?.({ code: '000001', name: '手动新增基金', netValue: 1.5, quoteDate: '2026-06-10', source: 'manual-test' }, { recordedMarketValue: 1500, costAmount: 1200 })}>mock-manual-add</button>
       </section>
     );
   },
@@ -303,6 +305,14 @@ describe('App state callbacks', () => {
     expect(mockApi.syncPortfolio).toHaveBeenCalled();
 
     await act(async () => {
+      Array.from(view.querySelectorAll('button')).find((button) => button.textContent === 'mock-manual-add')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(portfolioPropsLog.latest?.summary.items).toHaveLength(2);
+    expect(portfolioPropsLog.latest?.summary.items.some((item) => item.fundCode === '000001')).toBe(true);
+
+    await act(async () => {
       portfolioPropsLog.latest?.onEditIdentity?.('import-1', { fundCode: '', fundName: '自动补全基金' });
       await Promise.resolve();
       await Promise.resolve();
@@ -313,7 +323,8 @@ describe('App state callbacks', () => {
       portfolioPropsLog.latest?.onRemoveHolding('import-1');
       await Promise.resolve();
     });
-    expect(portfolioPropsLog.latest?.summary.items).toHaveLength(0);
+    expect(portfolioPropsLog.latest?.summary.items).toHaveLength(1);
+    expect(portfolioPropsLog.latest?.summary.items.some((item) => item.id === 'import-1')).toBe(false);
 
     const logoutButton = Array.from(view.querySelectorAll('button')).find((button) => button.textContent === 'mock-logout');
     await act(async () => {
