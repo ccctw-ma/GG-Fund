@@ -1040,6 +1040,9 @@ describe('dashboard components', () => {
     roots.push(portfolio.root);
 
     const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    expect(portfolio.container.querySelector('input[aria-label="手动新增持仓代码或名称"]')).toBeNull();
+    const addButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('增加'));
+    act(() => addButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     const queryInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="手动新增持仓代码或名称"]');
     const valueInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="手动新增持仓持有金额"]');
     const costInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="手动新增持仓成本金额"]');
@@ -1066,6 +1069,7 @@ describe('dashboard components', () => {
     const confirmButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('更新持仓'));
     act(() => confirmButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(manualAdds).toEqual([{ fund, patch: { recordedMarketValue: 1234.57, costAmount: 1000.11 } }]);
+    expect(portfolio.container.querySelector('input[aria-label="手动新增持仓代码或名称"]')).toBeNull();
   });
 
   it('manually searches holding by name and reports invalid inputs', async () => {
@@ -1082,6 +1086,8 @@ describe('dashboard components', () => {
     roots.push(portfolio.root);
 
     const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    const addButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('增加'));
+    act(() => addButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     const queryInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="手动新增持仓代码或名称"]');
     const valueInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="手动新增持仓持有金额"]');
     const lookupButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('拉取信息'));

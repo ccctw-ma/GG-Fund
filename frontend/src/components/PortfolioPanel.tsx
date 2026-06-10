@@ -1,6 +1,6 @@
 'use client';
 
-import { BellRing, Bot, Check, ChevronDown, ClipboardList, Info, LineChart, LoaderCircle, Pencil, PieChart, Radar, RefreshCw, Repeat2, Trash2, X } from 'lucide-react';
+import { BellRing, Bot, Check, ChevronDown, ClipboardList, Info, LineChart, LoaderCircle, Pencil, PieChart, Plus, Radar, RefreshCw, Repeat2, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import type { FundAnalysisResponse, FundHistoryPoint, FundHoldings, FundIntradayPoint, FundQuote, PortfolioItem, PortfolioSignal, PortfolioSummary, WatchItem } from '../types';
@@ -209,6 +209,7 @@ export function PortfolioPanel({
   const [manualFund, setManualFund] = useState<FundQuote>();
   const [manualLoading, setManualLoading] = useState(false);
   const [manualError, setManualError] = useState('');
+  const [manualFormOpen, setManualFormOpen] = useState(false);
   const historyLoadingRef = useRef<Set<string>>(new Set());
   const sortedItems = useMemo(() => sortItems(summary.items, holdingSort), [holdingSort, summary.items]);
   const dailyProfitItems = useMemo(
@@ -454,7 +455,86 @@ export function PortfolioPanel({
     setManualCost('');
     setManualFund(undefined);
     setManualError('');
+    setManualFormOpen(false);
   }
+
+  const manualToggle = onAddManualHolding && (
+    <Button
+      variant={manualFormOpen ? 'outline' : 'secondary'}
+      size="sm"
+      aria-expanded={manualFormOpen}
+      aria-controls="manual-holding-panel"
+      onClick={() => {
+        setManualFormOpen((current) => !current);
+        setManualError('');
+      }}
+    >
+      {manualFormOpen ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+      {manualFormOpen ? '收起' : '增加'}
+    </Button>
+  );
+
+  const manualHoldingPanel = onAddManualHolding && manualFormOpen && (
+    <section className="yb-manual-holding-panel" id="manual-holding-panel" aria-label="手动新增持仓">
+      <div>
+        <strong>手动新增持仓</strong>
+        <span>输入 6 位代码或基金名称，先拉取最新净值，再写入账户持仓。</span>
+      </div>
+      <div className="yb-manual-holding-form">
+        <label>
+          <span>代码或名称</span>
+          <input
+            type="text"
+            value={manualQuery}
+            onChange={(event) => setManualQuery(event.target.value)}
+            placeholder="例如 000001 或 华夏成长"
+            aria-label="手动新增持仓代码或名称"
+          />
+        </label>
+        <label>
+          <span>持有金额</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            value={manualMarketValue}
+            onChange={(event) => setManualMarketValue(event.target.value)}
+            placeholder="当前持有市值"
+            aria-label="手动新增持仓持有金额"
+          />
+        </label>
+        <label>
+          <span>成本金额</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            value={manualCost}
+            onChange={(event) => setManualCost(event.target.value)}
+            placeholder="不填默认等于持有金额"
+            aria-label="手动新增持仓成本金额"
+          />
+        </label>
+        <Button variant="secondary" size="sm" onClick={() => void lookupManualHolding()} disabled={manualLoading}>
+          {manualLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          拉取信息
+        </Button>
+        <Button variant="default" size="sm" onClick={confirmManualHolding} disabled={!manualFund}>
+          <Check className="h-4 w-4" />更新持仓
+        </Button>
+      </div>
+      {manualFund && (
+        <div className="yb-manual-holding-preview" data-testid="manual-holding-preview">
+          <span>{assetTypeLabel(manualFund)} · {manualFund.code}</span>
+          <strong>{manualFund.name}</strong>
+          <em>最新净值 {manualFund.netValue.toFixed(4)} · {manualFund.quoteDate}</em>
+        </div>
+      )}
+      {manualError && <p className="yb-empty-copy yb-manual-holding-error">{manualError}</p>}
+    </section>
+  );
 
   return (
     <Card id="portfolio" className="lg:col-span-2">
@@ -506,67 +586,6 @@ export function PortfolioPanel({
           <small>{summary.totalReturnRate.toFixed(2)}% · 投入 {money.format(summary.totalCost)}</small>
         </button>
       </div>
-      {onAddManualHolding && (
-        <section className="yb-manual-holding-panel" aria-label="手动新增持仓">
-          <div>
-            <strong>手动新增持仓</strong>
-            <span>输入 6 位代码或基金名称，先拉取最新净值，再写入账户持仓。</span>
-          </div>
-          <div className="yb-manual-holding-form">
-            <label>
-              <span>代码或名称</span>
-              <input
-                type="text"
-                value={manualQuery}
-                onChange={(event) => setManualQuery(event.target.value)}
-                placeholder="例如 000001 或 华夏成长"
-                aria-label="手动新增持仓代码或名称"
-              />
-            </label>
-            <label>
-              <span>持有金额</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="0.01"
-                value={manualMarketValue}
-                onChange={(event) => setManualMarketValue(event.target.value)}
-                placeholder="当前持有市值"
-                aria-label="手动新增持仓持有金额"
-              />
-            </label>
-            <label>
-              <span>成本金额</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="0.01"
-                value={manualCost}
-                onChange={(event) => setManualCost(event.target.value)}
-                placeholder="不填默认等于持有金额"
-                aria-label="手动新增持仓成本金额"
-              />
-            </label>
-            <Button variant="secondary" size="sm" onClick={() => void lookupManualHolding()} disabled={manualLoading}>
-              {manualLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              拉取信息
-            </Button>
-            <Button variant="default" size="sm" onClick={confirmManualHolding} disabled={!manualFund}>
-              <Check className="h-4 w-4" />更新持仓
-            </Button>
-          </div>
-          {manualFund && (
-            <div className="yb-manual-holding-preview" data-testid="manual-holding-preview">
-              <span>{assetTypeLabel(manualFund)} · {manualFund.code}</span>
-              <strong>{manualFund.name}</strong>
-              <em>最新净值 {manualFund.netValue.toFixed(4)} · {manualFund.quoteDate}</em>
-            </div>
-          )}
-          {manualError && <p className="yb-empty-copy yb-manual-holding-error">{manualError}</p>}
-        </section>
-      )}
       {activeInsight !== 'holdings' && (
       <section className="yb-daily-profit-detail" id="portfolio-insight-detail" data-testid="portfolio-insight-detail">
         {activeInsight === 'daily' && (
@@ -700,26 +719,34 @@ export function PortfolioPanel({
       )}
       {activeInsight === 'holdings' && (summary.items.length === 0 ? (
         <section className="yb-daily-profit-detail yb-holdings-panel" data-testid="portfolio-holdings-detail">
-          <div className="rounded-[1.7rem] border border-dashed border-white/15 p-8 text-center font-semibold text-white/55">还没有持仓。搜索基金后点击“加入持仓”即可开始分析。</div>
+          <div className="yb-holding-toolbar">
+            <span>持仓明细</span>
+            {manualToggle}
+          </div>
+          <div className="mt-3 rounded-[1.7rem] border border-dashed border-white/15 p-8 text-center font-semibold text-white/55">还没有持仓。搜索基金后点击“加入持仓”即可开始分析。也可以点击“增加”手动录入。</div>
+          {manualHoldingPanel}
         </section>
       ) : (
         <section className="yb-daily-profit-detail yb-holdings-panel" data-testid="portfolio-holdings-detail">
           <div className="yb-holding-toolbar">
             <span>持仓明细</span>
-            <div className="yb-sort-group" role="group" aria-label="持仓排序">
-              {sortOptions.map((option) => (
-                <button
-                  key={option.key}
-                  type="button"
-                  className={option.key === holdingSort.key ? 'yb-sort-chip is-active' : 'yb-sort-chip'}
-                  aria-label={sortButtonLabel(option.label, option.key === holdingSort.key, holdingSort.direction, option.defaultDirection)}
-                  aria-pressed={option.key === holdingSort.key}
-                  onClick={() => setHoldingSort((current) => nextSortState(current, option.key, option.defaultDirection))}
-                >
-                  <span>{option.label}</span>
-                  {sortArrows(option.key === holdingSort.key, holdingSort.direction)}
-                </button>
-              ))}
+            <div className="yb-holding-toolbar-actions">
+              <div className="yb-sort-group" role="group" aria-label="持仓排序">
+                {sortOptions.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    className={option.key === holdingSort.key ? 'yb-sort-chip is-active' : 'yb-sort-chip'}
+                    aria-label={sortButtonLabel(option.label, option.key === holdingSort.key, holdingSort.direction, option.defaultDirection)}
+                    aria-pressed={option.key === holdingSort.key}
+                    onClick={() => setHoldingSort((current) => nextSortState(current, option.key, option.defaultDirection))}
+                  >
+                    <span>{option.label}</span>
+                    {sortArrows(option.key === holdingSort.key, holdingSort.direction)}
+                  </button>
+                ))}
+              </div>
+              {manualToggle}
             </div>
           </div>
           <div className="mt-3 grid gap-3">
@@ -929,6 +956,7 @@ export function PortfolioPanel({
               );
             })}
           </div>
+          {manualHoldingPanel}
         </section>
       ))}
       <div className="mt-6 flex flex-wrap gap-2">

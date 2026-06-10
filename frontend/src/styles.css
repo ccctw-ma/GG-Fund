@@ -912,6 +912,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .yb-holdings-panel .yb-holding-toolbar { margin-top: 0; }
 .yb-holding-toolbar > span { color: var(--text-strong); font-size: 1rem; font-weight: 950; }
+.yb-holding-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
 .yb-insight-toolbar { margin-top: 0; }
 .yb-insight-toolbar > div:first-child { min-width: min(100%, 320px); }
 .yb-insight-toolbar > div:first-child strong {
