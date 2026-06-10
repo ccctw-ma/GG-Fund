@@ -1030,7 +1030,15 @@ describe('dashboard components', () => {
     const manualAdds: Array<{ fund: FundQuote; patch: { recordedMarketValue: number; costAmount: number } }> = [];
     const portfolio = render(
       <PortfolioPanel
-        summary={emptySummary}
+        summary={calculatePortfolioSummary([{
+          id: 'manual-anchor',
+          fundCode: '000001',
+          fundName: '华夏成长混合',
+          shares: 100,
+          costAmount: 100,
+          createdAt: '2026-06-01T00:00:00.000Z',
+          updatedAt: '2026-06-01T00:00:00.000Z',
+        }], { '000001': fund })}
         watchlist={[]}
         onRemoveHolding={() => undefined}
         onUpdateHolding={() => undefined}
@@ -1047,6 +1055,9 @@ describe('dashboard components', () => {
     const valueInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="手动新增持仓持有金额"]');
     const costInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="手动新增持仓成本金额"]');
     expect(queryInput).not.toBeNull();
+    const manualPanel = portfolio.container.querySelector('#manual-holding-panel');
+    const firstHolding = portfolio.container.querySelector('.yb-holding-wrap');
+    expect(Boolean(manualPanel && firstHolding && (manualPanel.compareDocumentPosition(firstHolding) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
 
     act(() => {
       if (!queryInput || !valueInput || !costInput || !nativeSetter) return;

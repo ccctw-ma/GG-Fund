@@ -723,8 +723,8 @@ export function PortfolioPanel({
             <span>持仓明细</span>
             {manualToggle}
           </div>
-          <div className="mt-3 rounded-[1.7rem] border border-dashed border-white/15 p-8 text-center font-semibold text-white/55">还没有持仓。搜索基金后点击“加入持仓”即可开始分析。也可以点击“增加”手动录入。</div>
           {manualHoldingPanel}
+          <div className="mt-3 rounded-[1.7rem] border border-dashed border-white/15 p-8 text-center font-semibold text-white/55">还没有持仓。搜索基金后点击“加入持仓”即可开始分析。也可以点击“增加”手动录入。</div>
         </section>
       ) : (
         <section className="yb-daily-profit-detail yb-holdings-panel" data-testid="portfolio-holdings-detail">
@@ -749,6 +749,7 @@ export function PortfolioPanel({
               {manualToggle}
             </div>
           </div>
+          {manualHoldingPanel}
           <div className="mt-3 grid gap-3">
             {sortedItems.map((item) => {
               const hasCode = /^\d{6}$/.test(item.fundCode);
@@ -956,7 +957,6 @@ export function PortfolioPanel({
               );
             })}
           </div>
-          {manualHoldingPanel}
         </section>
       ))}
       <div className="mt-6 flex flex-wrap gap-2">
