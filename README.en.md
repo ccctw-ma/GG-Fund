@@ -74,7 +74,7 @@ bun run build
 bun run test:e2e
 ```
 
-`bun run test:e2e` runs both the Next core smoke spec and the fund workspace flow in `tests/fund-flow.spec.ts`.
+`bun run test:e2e` runs the Next core smoke spec, the email-login screenshot E2E in `tests/e2e/email-login.spec.ts`, and the fund workspace flow in `tests/fund-flow.spec.ts`.
 
 `bun run coverage` is a hard gate: Statements, Branches, Functions, and Lines must all be above 90% within the configured unit-coverage scope. Large UI orchestration, Route glue, and external market adapters are excluded from the unit gate, but their critical behavior must remain covered by focused tests and E2E.
 
