@@ -19,6 +19,12 @@ type MetricKey = 'kline' | 'close' | 'return' | 'drawdown' | 'annualized' | 'sha
 
 const defaultMetricKeys: MetricKey[] = ['kline', 'close'];
 const optionalMetricKeys: MetricKey[] = ['return', 'drawdown', 'annualized', 'sharpe', 'volatility', 'benchmark', 'excess'];
+const candleStyle = {
+  up: '#ef5350',
+  upFill: 'rgba(239, 83, 80, 0.9)',
+  down: '#26a69a',
+  downFill: 'rgba(38, 166, 154, 0.9)',
+};
 const metricLabels: Record<MetricKey, string> = {
   kline: 'K线',
   close: '收盘价',
@@ -147,23 +153,37 @@ export function FundTrendChart({
       type: 'candlestick',
       data: klineData,
       itemStyle: {
-        color: 'rgba(255, 93, 82, 0.48)',
-        color0: 'rgba(63, 214, 160, 0.42)',
-        borderColor: 'rgba(255, 120, 108, 0.96)',
-        borderColor0: 'rgba(83, 232, 184, 0.92)',
-        borderWidth: 1.6,
+        color: candleStyle.upFill,
+        color0: candleStyle.downFill,
+        borderColor: candleStyle.up,
+        borderColor0: candleStyle.down,
+        borderColorDoji: '#f4b740',
+        borderWidth: 1,
       },
-      barWidth: '46%',
-      z: 2,
+      emphasis: {
+        itemStyle: {
+          color: candleStyle.up,
+          color0: candleStyle.down,
+          borderColor: candleStyle.up,
+          borderColor0: candleStyle.down,
+          borderWidth: 1.6,
+        },
+      },
+      barWidth: '58%',
+      barMinWidth: 4,
+      barMaxWidth: 14,
+      large: true,
+      largeThreshold: 600,
+      z: 4,
     },
     activeMetricSet.has('close') && {
       name: primaryLabel,
       type: 'line',
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 5,
+      smooth: false,
+      symbol: 'none',
+      symbolSize: 0,
       showSymbol: false,
-      lineStyle: { width: 1.7, shadowBlur: 6, shadowColor: 'rgba(244,183,64,.22)' },
+      lineStyle: { width: 1.05, opacity: 0.62, shadowBlur: 0 },
       areaStyle: {
         color: {
           type: 'linear',
@@ -177,7 +197,7 @@ export function FundTrendChart({
           ],
         },
       },
-      z: 4,
+      z: 2,
       data: metrics.points.map((point) => point.netValue),
     },
     activeMetricSet.has('return') && {
@@ -291,6 +311,7 @@ export function FundTrendChart({
       axisLabel: { color: 'rgba(158,177,199,.76)', fontWeight: 700 },
       axisLine: { lineStyle: { color: 'rgba(255,255,255,.12)' } },
       axisTick: { show: false },
+      boundaryGap: true,
     },
     yAxis: [
       {
@@ -298,14 +319,16 @@ export function FundTrendChart({
         name: valueAxisName,
         scale: true,
         nameTextStyle: { color: '#9eb1c7', fontWeight: 800 },
-        axisLabel: { color: 'rgba(158,177,199,.76)', fontWeight: 700 },
+        axisLabel: { color: 'rgba(158,177,199,.76)', formatter: (value: number) => formatChartNumber(value, valueDigits), fontWeight: 700 },
+        axisPointer: { label: { formatter: ({ value }: { value: number }) => formatChartNumber(value, valueDigits) } },
         splitLine: { lineStyle: { color: 'rgba(255,255,255,.055)' } },
       },
       {
         type: 'value',
         name: '%',
         nameTextStyle: { color: '#9eb1c7', fontWeight: 800 },
-        axisLabel: { color: '#6f8095', formatter: '{value}%', fontWeight: 700 },
+        axisLabel: { color: '#6f8095', formatter: (value: number) => `${formatChartNumber(value, 2)}%`, fontWeight: 700 },
+        axisPointer: { label: { formatter: ({ value }: { value: number }) => `${formatChartNumber(value, 2)}%` } },
         splitLine: { show: false },
       },
     ],
