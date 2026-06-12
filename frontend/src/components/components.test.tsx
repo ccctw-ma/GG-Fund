@@ -178,9 +178,8 @@ describe('dashboard components', () => {
     expect(search.container.textContent).toContain('收盘价/净值');
     expect(search.container.textContent).toContain('最大回撤');
     expect(search.container.textContent).toContain('可选指标');
-    expect(search.container.textContent).toContain('年化收益');
-    expect(search.container.textContent).toContain('夏普');
     expect(search.container.textContent).toContain('相对基准');
+    expect(search.container.textContent).toContain('超额收益');
     expect(search.container.textContent).toContain('已披露股票持仓');
     expect(search.container.textContent).toContain('已披露股票合计 24.45%');
     expect(search.container.textContent).toContain('前十大以外已披露 6.12%');
@@ -201,9 +200,9 @@ describe('dashboard components', () => {
     expect(localStorage.getItem('gg-fund:analysis-panel-rect')).toContain('"x"');
     const holdingButton = search.container.querySelector<HTMLButtonElement>('[data-testid="fund-holdings"] button');
     expect(holdingButton).not.toBeNull();
-    const annualizedButton = Array.from(search.container.querySelectorAll('button')).find((button) => button.textContent?.includes('年化收益'));
-    act(() => annualizedButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-    expect(search.container.textContent).toContain('按当前时间范围起止净值折算为年化收益');
+    const returnButton = Array.from(search.container.querySelectorAll('button')).find((button) => button.textContent?.includes('区间收益'));
+    act(() => returnButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(search.container.textContent).toContain('区间收益');
     act(() => holdingButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(onSelectCodes).toContain('600519');
   });

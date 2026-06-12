@@ -1702,28 +1702,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   padding: 0 10px;
   box-shadow: none;
 }
-.radar-metrics {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  gap: 8px;
-  margin-top: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-}
-.radar-metrics div {
-  border: 1px solid rgba(255,255,255,.09);
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.025));
-  padding: 10px 12px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.045);
-}
-.radar-metrics span { display: block; color: var(--text-muted); font-size: .72rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
-.radar-metrics strong { display: block; margin-top: 5px; color: var(--text-strong); font-size: 1.08rem; font-weight: 950; }
-.radar-metrics small { display: block; margin-top: 5px; color: var(--text-muted); font-size: .72rem; font-weight: 720; line-height: 1.45; }
 .radar-chart-frame {
   position: relative;
   z-index: 1;
-  margin-top: 14px;
+  margin-top: 10px;
   border: 1px solid rgba(146, 183, 210, .14);
   border-radius: 24px;
   background:

@@ -15,24 +15,19 @@ const signalFragments = [
   { text: 'position.trace', className: 'radar-fragment radar-fragment-e' },
 ];
 
-type MetricKey = 'kline' | 'close' | 'return' | 'drawdown' | 'annualized' | 'sharpe' | 'volatility' | 'benchmark' | 'excess';
+type MetricKey = 'kline' | 'close' | 'return' | 'drawdown' | 'benchmark' | 'excess';
 
 const defaultMetricKeys: MetricKey[] = ['kline', 'close'];
-const optionalMetricKeys: MetricKey[] = ['return', 'drawdown', 'annualized', 'sharpe', 'volatility', 'benchmark', 'excess'];
+const optionalMetricKeys: MetricKey[] = ['return', 'drawdown', 'benchmark', 'excess'];
 const metricLabels: Record<MetricKey, string> = {
   kline: 'K线',
   close: '收盘价',
   return: '区间收益',
   drawdown: '最大回撤',
-  annualized: '年化收益',
-  sharpe: '夏普',
-  volatility: '波动率',
   benchmark: '相对基准',
   excess: '超额收益',
 };
 
-const formatPercent = (value?: number) => (value === undefined ? '--' : `${value.toFixed(2)}%`);
-const formatNumber = (value?: number) => (value === undefined ? '--' : value.toFixed(2));
 const buildKlineData = (points: FundHistoryPoint[]) => points.map((point, index) => {
   const fallbackOpen = points[index - 1]?.netValue ?? point.netValue;
   const close = point.close ?? point.netValue;
@@ -95,14 +90,14 @@ export function FundTrendChart({
       type: 'candlestick',
       data: klineData,
       itemStyle: {
-        color: 'rgba(255, 93, 82, 0.22)',
-        color0: 'rgba(63, 214, 160, 0.2)',
-        borderColor: 'rgba(255, 130, 118, 0.78)',
-        borderColor0: 'rgba(110, 231, 189, 0.72)',
-        borderWidth: 1.2,
+        color: 'rgba(255, 93, 82, 0.48)',
+        color0: 'rgba(63, 214, 160, 0.42)',
+        borderColor: 'rgba(255, 120, 108, 0.96)',
+        borderColor0: 'rgba(83, 232, 184, 0.92)',
+        borderWidth: 1.6,
       },
-      barWidth: '30%',
-      z: 1,
+      barWidth: '46%',
+      z: 2,
     },
     activeMetricSet.has('close') && {
       name: primaryLabel,
@@ -111,7 +106,7 @@ export function FundTrendChart({
       symbol: 'circle',
       symbolSize: 5,
       showSymbol: false,
-      lineStyle: { width: 3, shadowBlur: 14, shadowColor: 'rgba(244,183,64,.38)' },
+      lineStyle: { width: 1.7, shadowBlur: 6, shadowColor: 'rgba(244,183,64,.22)' },
       areaStyle: {
         color: {
           type: 'linear',
@@ -120,7 +115,7 @@ export function FundTrendChart({
           x2: 0,
           y2: 1,
           colorStops: [
-            { offset: 0, color: 'rgba(244,183,64,.16)' },
+            { offset: 0, color: 'rgba(244,183,64,.08)' },
             { offset: 1, color: 'rgba(244,183,64,0)' },
           ],
         },
@@ -164,49 +159,6 @@ export function FundTrendChart({
       yAxisIndex: 1,
       lineStyle: { width: 2, type: 'dashed', shadowBlur: 10, shadowColor: 'rgba(181,126,255,.32)' },
       data: metrics.points.map((point) => point.excessReturn ?? null),
-    },
-  ].filter(Boolean);
-
-  const optionalDetails = [
-    activeMetricSet.has('return') && {
-      label: '区间收益',
-      value: formatPercent(metrics.summary.totalReturn),
-      tone: metrics.summary.totalReturn >= 0 ? 'profit-up' : 'profit-down',
-      detail: '当前选择时间范围内累计涨跌幅。',
-    },
-    activeMetricSet.has('drawdown') && {
-      label: '最大回撤',
-      value: formatPercent(metrics.summary.maxDrawdown),
-      tone: 'profit-down',
-      detail: '从阶段高点回落的最大幅度。',
-    },
-    activeMetricSet.has('annualized') && {
-      label: '年化收益',
-      value: formatPercent(metrics.summary.annualizedReturn),
-      tone: metrics.summary.annualizedReturn >= 0 ? 'profit-up' : 'profit-down',
-      detail: '按当前时间范围起止净值折算为年化收益，短周期会被放大。',
-    },
-    activeMetricSet.has('sharpe') && {
-      label: '夏普',
-      value: formatNumber(metrics.summary.sharpeRatio),
-      detail: '以 2% 年化无风险利率近似估算，衡量单位波动承担的超额回报。',
-    },
-    activeMetricSet.has('volatility') && {
-      label: '波动率',
-      value: formatPercent(metrics.summary.volatility),
-      detail: '由日收益标准差按 252 个交易日年化，越高代表价格波动越大。',
-    },
-    activeMetricSet.has('benchmark') && benchmarkAvailable && {
-      label: `相对基准`,
-      value: formatPercent(metrics.summary.benchmarkReturn),
-      tone: (metrics.summary.benchmarkReturn ?? 0) >= 0 ? 'profit-up' : 'profit-down',
-      detail: `${benchmarkName} 在当前区间内的累计收益，用于和基金走势对照。`,
-    },
-    activeMetricSet.has('excess') && benchmarkAvailable && {
-      label: '超额收益',
-      value: formatPercent(metrics.summary.excessReturn),
-      tone: (metrics.summary.excessReturn ?? 0) >= 0 ? 'profit-up' : 'profit-down',
-      detail: `基金区间收益减去 ${benchmarkName} 区间收益，正值表示跑赢基准。`,
     },
   ].filter(Boolean);
 
@@ -283,7 +235,7 @@ export function FundTrendChart({
         <div>
           <span className="section-kicker">{kicker}</span>
           <h4>{title}</h4>
-          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · 默认展示 K 线与收盘价，可按需打开收益、回撤、风险与基准指标</p>
+          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · 默认展示 K 线与收盘价，可按需打开收益、回撤与基准指标</p>
         </div>
         <div className="radar-range-tabs" aria-label="走势图时间范围">
           {ranges.map((item) => <Button key={item} size="sm" variant={item === range ? 'default' : 'secondary'} onClick={() => setRange(item)}>{item}</Button>)}
@@ -306,20 +258,6 @@ export function FundTrendChart({
             </Button>
           ))}
         </div>
-      </div>
-      <div className="radar-metrics">
-        <div>
-          <span>{primaryLabel}</span>
-          <strong>{metrics.summary.latestNetValue.toFixed(valueName === '收盘价' ? 2 : 4)}</strong>
-          <small>{valueAxisName}区间 {metrics.summary.lowNetValue.toFixed(4)} / {metrics.summary.highNetValue.toFixed(4)}</small>
-        </div>
-        {optionalDetails.map((item) => item && (
-          <div key={item.label}>
-            <span>{item.label}</span>
-            <strong className={'tone' in item && item.tone ? item.tone : undefined}>{item.value}</strong>
-            <small>{item.detail}</small>
-          </div>
-        ))}
       </div>
       <div className="radar-chart-frame">
         <ReactECharts option={option} style={{ height, width: '100%' }} notMerge lazyUpdate />
