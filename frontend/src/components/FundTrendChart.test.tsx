@@ -64,8 +64,15 @@ describe('FundTrendChart', () => {
     expect(chart.container.textContent).toContain('风险收缩');
     expect(chart.container.textContent).toContain('K线');
     expect(chart.container.textContent).toContain('收盘价');
+    expect(chart.container.querySelector('[data-testid="mock-echarts"]')?.textContent).toContain('K线:candlestick');
+    expect(chart.container.querySelector('[data-testid="mock-echarts"]')?.textContent).not.toContain('区间收益%');
+    expect(chart.container.querySelector('[data-testid="mock-echarts"]')?.textContent).not.toContain('回撤%');
     expect(chart.container.textContent).not.toContain('相对基准');
     expect(chart.container.textContent).not.toContain('超额收益');
+
+    const drawdownButton = Array.from(chart.container.querySelectorAll('button')).find((item) => item.textContent === '最大回撤');
+    act(() => drawdownButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(chart.container.textContent).toContain('从阶段高点回落的最大幅度');
 
     const annualizedButton = Array.from(chart.container.querySelectorAll('button')).find((item) => item.textContent === '年化收益');
     act(() => annualizedButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
@@ -90,7 +97,7 @@ describe('FundTrendChart', () => {
     );
     roots.push(chart.root);
 
-    for (const label of ['年化收益', '夏普', '波动率', '相对基准', '超额收益']) {
+    for (const label of ['区间收益', '最大回撤', '年化收益', '夏普', '波动率', '相对基准', '超额收益']) {
       const button = Array.from(chart.container.querySelectorAll('button')).find((item) => item.textContent === label);
       act(() => button?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     }
@@ -103,6 +110,8 @@ describe('FundTrendChart', () => {
     expect(chart.container.textContent).toContain('以 2% 年化无风险利率近似估算');
     expect(chart.container.textContent).toContain('测试基准 在当前区间内的累计收益');
     expect(chart.container.querySelector('[data-testid="mock-echarts"]')?.textContent).toContain('K线:candlestick');
+    expect(chart.container.querySelector('[data-testid="mock-echarts"]')?.textContent).toContain('区间收益%:line');
+    expect(chart.container.querySelector('[data-testid="mock-echarts"]')?.textContent).toContain('回撤%:line');
     expect(chart.container.querySelector('[data-testid="mock-echarts"]')?.textContent).toContain('测试基准收益%:line');
     expect(chart.container.querySelector('[data-testid="mock-echarts"]')?.textContent).toContain('超额收益%:line');
     expect(chart.container.querySelector('[data-testid="mock-echarts"]')?.textContent).not.toContain('收盘价/净值');

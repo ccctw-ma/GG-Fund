@@ -1587,21 +1587,22 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border: 1px solid rgba(244,183,64,.18);
+  border: 1px solid rgba(146, 183, 210, .16);
   border-radius: 28px;
   background:
-    radial-gradient(circle at 22% 18%, rgba(244,183,64,.14), transparent 15rem),
-    radial-gradient(circle at 82% 10%, rgba(125,226,184,.12), transparent 17rem),
-    linear-gradient(145deg, rgba(3,10,17,.98), rgba(6,19,31,.94) 52%, rgba(4,17,31,.98));
+    radial-gradient(circle at 18% 14%, rgba(244,183,64,.1), transparent 14rem),
+    radial-gradient(circle at 84% 8%, rgba(78,164,255,.1), transparent 16rem),
+    radial-gradient(circle at 76% 70%, rgba(125,226,184,.08), transparent 18rem),
+    linear-gradient(145deg, rgba(4,12,20,.98), rgba(7,21,33,.95) 52%, rgba(3,12,20,.98));
   padding: clamp(16px, 2.4vw, 24px);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 28px 90px rgba(0,0,0,.32);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 24px 72px rgba(0,0,0,.28);
 }
 .fund-analysis-radar::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: -2;
-  opacity: .28;
+  opacity: .2;
   background-image:
     linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
@@ -1620,7 +1621,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .radar-grid {
   position: absolute;
   inset: 0;
-  opacity: .34;
+  opacity: .22;
   background:
     linear-gradient(90deg, transparent 0 9%, rgba(255,255,255,.05) 9.4% 9.7%, transparent 10% 100%),
     linear-gradient(0deg, transparent 0 13%, rgba(255,255,255,.045) 13.3% 13.6%, transparent 14% 100%);
@@ -1633,7 +1634,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   top: 0;
   height: 100%;
   width: 18%;
-  background: linear-gradient(90deg, transparent, rgba(244,183,64,.12), transparent);
+  background: linear-gradient(90deg, transparent, rgba(140,200,255,.08), transparent);
   transform: skewX(-16deg);
   animation: radarScan 8s ease-in-out infinite;
   pointer-events: none;
@@ -1675,33 +1676,46 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .radar-indicator-toolbar {
   position: relative;
   z-index: 1;
-  display: grid;
-  gap: 8px;
-  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 14px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 999px;
+  background: rgba(1, 12, 22, .34);
+  padding: 8px 10px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.055);
 }
 .radar-indicator-toolbar > div { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .radar-indicator-toolbar span {
   margin-right: 4px;
-  color: var(--text-muted);
-  font-size: .72rem;
+  color: rgba(158,177,199,.82);
+  font-size: .68rem;
   font-weight: 900;
   letter-spacing: .12em;
   text-transform: uppercase;
 }
-.radar-indicator-toolbar button { min-height: 30px; border-radius: 999px; padding: 0 10px; }
+.radar-indicator-toolbar button {
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 0 10px;
+  box-shadow: none;
+}
 .radar-metrics {
   position: relative;
   z-index: 1;
   display: grid;
-  gap: 10px;
-  margin-top: 18px;
-  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 .radar-metrics div {
-  border: 1px solid rgba(255,255,255,.11);
-  border-radius: 18px;
-  background: rgba(255,255,255,.055);
-  padding: 12px 14px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.025));
+  padding: 10px 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.045);
 }
 .radar-metrics span { display: block; color: var(--text-muted); font-size: .72rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
 .radar-metrics strong { display: block; margin-top: 5px; color: var(--text-strong); font-size: 1.08rem; font-weight: 950; }
@@ -1710,10 +1724,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   position: relative;
   z-index: 1;
   margin-top: 14px;
-  border: 1px solid rgba(255,255,255,.09);
+  border: 1px solid rgba(146, 183, 210, .14);
   border-radius: 24px;
-  background: rgba(0,0,0,.18);
-  padding: 6px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018)),
+    rgba(0,0,0,.16);
+  padding: 8px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.045);
 }
 .radar-fragment {
   position: absolute;

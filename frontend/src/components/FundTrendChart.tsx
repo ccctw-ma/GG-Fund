@@ -17,8 +17,8 @@ const signalFragments = [
 
 type MetricKey = 'kline' | 'close' | 'return' | 'drawdown' | 'annualized' | 'sharpe' | 'volatility' | 'benchmark' | 'excess';
 
-const defaultMetricKeys: MetricKey[] = ['kline', 'close', 'return', 'drawdown'];
-const optionalMetricKeys: MetricKey[] = ['annualized', 'sharpe', 'volatility', 'benchmark', 'excess'];
+const defaultMetricKeys: MetricKey[] = ['kline', 'close'];
+const optionalMetricKeys: MetricKey[] = ['return', 'drawdown', 'annualized', 'sharpe', 'volatility', 'benchmark', 'excess'];
 const metricLabels: Record<MetricKey, string> = {
   kline: 'K线',
   close: '收盘价',
@@ -95,13 +95,14 @@ export function FundTrendChart({
       type: 'candlestick',
       data: klineData,
       itemStyle: {
-        color: '#ff5d52',
-        color0: '#3fd6a0',
-        borderColor: '#ff8a7f',
-        borderColor0: '#6ee7bd',
+        color: 'rgba(255, 93, 82, 0.22)',
+        color0: 'rgba(63, 214, 160, 0.2)',
+        borderColor: 'rgba(255, 130, 118, 0.78)',
+        borderColor0: 'rgba(110, 231, 189, 0.72)',
+        borderWidth: 1.2,
       },
-      barWidth: '56%',
-      z: 2,
+      barWidth: '30%',
+      z: 1,
     },
     activeMetricSet.has('close') && {
       name: primaryLabel,
@@ -110,7 +111,7 @@ export function FundTrendChart({
       symbol: 'circle',
       symbolSize: 5,
       showSymbol: false,
-      lineStyle: { width: 4, shadowBlur: 18, shadowColor: 'rgba(244,183,64,.58)' },
+      lineStyle: { width: 3, shadowBlur: 14, shadowColor: 'rgba(244,183,64,.38)' },
       areaStyle: {
         color: {
           type: 'linear',
@@ -119,11 +120,12 @@ export function FundTrendChart({
           x2: 0,
           y2: 1,
           colorStops: [
-            { offset: 0, color: 'rgba(244,183,64,.28)' },
+            { offset: 0, color: 'rgba(244,183,64,.16)' },
             { offset: 1, color: 'rgba(244,183,64,0)' },
           ],
         },
       },
+      z: 4,
       data: metrics.points.map((point) => point.netValue),
     },
     activeMetricSet.has('return') && {
@@ -166,6 +168,18 @@ export function FundTrendChart({
   ].filter(Boolean);
 
   const optionalDetails = [
+    activeMetricSet.has('return') && {
+      label: '区间收益',
+      value: formatPercent(metrics.summary.totalReturn),
+      tone: metrics.summary.totalReturn >= 0 ? 'profit-up' : 'profit-down',
+      detail: '当前选择时间范围内累计涨跌幅。',
+    },
+    activeMetricSet.has('drawdown') && {
+      label: '最大回撤',
+      value: formatPercent(metrics.summary.maxDrawdown),
+      tone: 'profit-down',
+      detail: '从阶段高点回落的最大幅度。',
+    },
     activeMetricSet.has('annualized') && {
       label: '年化收益',
       value: formatPercent(metrics.summary.annualizedReturn),
@@ -212,14 +226,14 @@ export function FundTrendChart({
       },
     },
     legend: {
-      top: 10,
-      right: 18,
+      top: 8,
+      right: 14,
       data: chartSeries.map((series) => (series as { name: string }).name),
-      textStyle: { color: '#9eb1c7', fontWeight: 800 },
-      itemWidth: 18,
-      itemHeight: 8,
+      textStyle: { color: 'rgba(158,177,199,.86)', fontWeight: 800 },
+      itemWidth: 14,
+      itemHeight: 7,
     },
-    grid: { left: 46, right: 30, top: 62, bottom: 58 },
+    grid: { left: 46, right: 30, top: 54, bottom: 56 },
     dataZoom: [
       { type: 'inside' },
       {
@@ -227,8 +241,8 @@ export function FundTrendChart({
         height: 18,
         bottom: 18,
         borderColor: 'rgba(255,255,255,.1)',
-        fillerColor: 'rgba(244,183,64,.18)',
-        backgroundColor: 'rgba(255,255,255,.05)',
+        fillerColor: 'rgba(244,183,64,.12)',
+        backgroundColor: 'rgba(255,255,255,.035)',
         handleStyle: { color: '#f4b740' },
         textStyle: { color: '#9eb1c7' },
       },
@@ -236,7 +250,7 @@ export function FundTrendChart({
     xAxis: {
       type: 'category',
       data: metrics.points.map((point) => point.date),
-      axisLabel: { color: '#6f8095', fontWeight: 700 },
+      axisLabel: { color: 'rgba(158,177,199,.76)', fontWeight: 700 },
       axisLine: { lineStyle: { color: 'rgba(255,255,255,.12)' } },
       axisTick: { show: false },
     },
@@ -246,8 +260,8 @@ export function FundTrendChart({
         name: valueAxisName,
         scale: true,
         nameTextStyle: { color: '#9eb1c7', fontWeight: 800 },
-        axisLabel: { color: '#6f8095', fontWeight: 700 },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,.07)' } },
+        axisLabel: { color: 'rgba(158,177,199,.76)', fontWeight: 700 },
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,.055)' } },
       },
       {
         type: 'value',
@@ -269,14 +283,14 @@ export function FundTrendChart({
         <div>
           <span className="section-kicker">{kicker}</span>
           <h4>{title}</h4>
-          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · 默认展示K线、收盘价、区间收益、最大回撤，可按需打开风险与基准指标</p>
+          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · 默认展示 K 线与收盘价，可按需打开收益、回撤、风险与基准指标</p>
         </div>
         <div className="radar-range-tabs" aria-label="走势图时间范围">
           {ranges.map((item) => <Button key={item} size="sm" variant={item === range ? 'default' : 'secondary'} onClick={() => setRange(item)}>{item}</Button>)}
         </div>
       </div>
       <div className="radar-indicator-toolbar" aria-label="走势图指标开关">
-        <div>
+        <div className="radar-indicator-group">
           <span>默认指标</span>
           {defaultMetricKeys.map((key) => (
             <Button key={key} size="sm" variant={activeMetricSet.has(key) ? 'default' : 'secondary'} onClick={() => toggleMetric(key)} aria-pressed={activeMetricSet.has(key)}>
@@ -284,7 +298,7 @@ export function FundTrendChart({
             </Button>
           ))}
         </div>
-        <div>
+        <div className="radar-indicator-group">
           <span>可选指标</span>
           {availableOptionalMetricKeys.map((key) => (
             <Button key={key} size="sm" variant={activeMetricSet.has(key) ? 'default' : 'secondary'} onClick={() => toggleMetric(key)} aria-pressed={activeMetricSet.has(key)}>
@@ -298,16 +312,6 @@ export function FundTrendChart({
           <span>{primaryLabel}</span>
           <strong>{metrics.summary.latestNetValue.toFixed(valueName === '收盘价' ? 2 : 4)}</strong>
           <small>{valueAxisName}区间 {metrics.summary.lowNetValue.toFixed(4)} / {metrics.summary.highNetValue.toFixed(4)}</small>
-        </div>
-        <div>
-          <span>区间收益</span>
-          <strong className={metrics.summary.totalReturn >= 0 ? 'profit-up' : 'profit-down'}>{metrics.summary.totalReturn.toFixed(2)}%</strong>
-          <small>当前选择时间范围内累计涨跌幅</small>
-        </div>
-        <div>
-          <span>最大回撤</span>
-          <strong className="profit-down">{metrics.summary.maxDrawdown.toFixed(2)}%</strong>
-          <small>从阶段高点回落的最大幅度</small>
         </div>
         {optionalDetails.map((item) => item && (
           <div key={item.label}>
