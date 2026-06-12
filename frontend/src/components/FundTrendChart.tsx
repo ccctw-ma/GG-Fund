@@ -31,6 +31,21 @@ const metricLabels: Record<MetricKey, string> = {
   excess: '超额收益',
 };
 
+type ChartTooltipParam = {
+  axisValue?: string | number;
+  axisValueLabel?: string;
+  seriesName?: string;
+  marker?: string;
+  value?: unknown;
+};
+
+const toFiniteNumber = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : undefined);
+const formatChartNumber = (value: unknown, digits: number) => {
+  const number = toFiniteNumber(value);
+  if (number === undefined) return '--';
+  return new Intl.NumberFormat('zh-CN', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(number);
+};
+
 const buildKlineData = (points: FundHistoryPoint[]) => points.map((point, index) => {
   const close = point.close ?? point.netValue;
   if (point.open !== undefined || point.high !== undefined || point.low !== undefined || point.close !== undefined) {
@@ -95,11 +110,31 @@ export function FundTrendChart({
   const firstPoint = metrics.points[0];
   const trendTone = metrics.summary.totalReturn >= 0 ? '趋势增强' : '风险收缩';
   const primaryLabel = valueName === '单位净值' ? '收盘价/净值' : valueName;
+  const valueDigits = valueName === '单位净值' ? 4 : 2;
   const benchmarkAvailable = metrics.summary.benchmarkReturn !== undefined;
   const availableOptionalMetricKeys = optionalMetricKeys.filter((key) => (key === 'benchmark' || key === 'excess' ? benchmarkAvailable : true));
 
   function toggleMetric(key: MetricKey) {
     setActiveMetrics((current) => (current.includes(key) ? current.filter((item) => item !== key) : [...current, key]));
+  }
+
+  function formatTooltip(params: ChartTooltipParam | ChartTooltipParam[]) {
+    const items = Array.isArray(params) ? params : [params];
+    const titleText = items[0]?.axisValueLabel ?? String(items[0]?.axisValue ?? '');
+    const rows = items.flatMap((item) => {
+      const value = item.value;
+      if (item.seriesName === 'K线' && Array.isArray(value)) {
+        const values = value.length >= 5 ? value.slice(1, 5) : value.slice(0, 4);
+        const labels = ['开盘', '收盘', '最低', '最高'];
+        return [
+          `<div class="chart-tooltip-series">${item.marker ?? ''}<strong>K线</strong></div>`,
+          ...labels.map((label, index) => `<div class="chart-tooltip-row"><span>${label}</span><b>${formatChartNumber(values[index], valueDigits)}</b></div>`),
+        ];
+      }
+      const digits = item.seriesName?.includes('%') ? 2 : item.seriesName === '夏普' ? 2 : valueDigits;
+      return [`<div class="chart-tooltip-row"><span>${item.marker ?? ''}${item.seriesName ?? ''}</span><b>${formatChartNumber(value, digits)}</b></div>`];
+    });
+    return `<div class="chart-tooltip"><div class="chart-tooltip-title">${titleText}</div>${rows.join('')}</div>`;
   }
 
   if (history.length === 0) {
@@ -220,6 +255,8 @@ export function FundTrendChart({
       backgroundColor: 'rgba(4, 17, 31, 0.92)',
       borderColor: 'rgba(244, 183, 64, 0.36)',
       textStyle: { color: '#f8fbff', fontWeight: 700 },
+      extraCssText: 'border-radius: 10px; box-shadow: 0 18px 48px rgba(0,0,0,.35);',
+      formatter: formatTooltip,
       axisPointer: {
         type: 'cross',
         crossStyle: { color: '#f4b740', opacity: 0.72 },
