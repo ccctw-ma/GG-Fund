@@ -147,6 +147,7 @@ export function FundTrendChart({
     return <div className="mt-5 rounded-[1.4rem] bg-[#fffaf0]/70 p-6 text-sm font-semibold text-ink/55">{loading ? '正在加载历史数据…' : emptyHint}</div>;
   }
 
+  const candleBarWidth = metrics.points.length <= 12 ? 8 : metrics.points.length <= 32 ? 10 : '42%';
   const chartSeries = [
     activeMetricSet.has('kline') && {
       name: 'K线',
@@ -169,9 +170,9 @@ export function FundTrendChart({
           borderWidth: 1.6,
         },
       },
-      barWidth: '58%',
-      barMinWidth: 4,
-      barMaxWidth: 14,
+      barWidth: candleBarWidth,
+      barMinWidth: 2,
+      barMaxWidth: 10,
       large: true,
       largeThreshold: 600,
       z: 4,
