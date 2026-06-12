@@ -15,27 +15,44 @@ const signalFragments = [
   { text: 'position.trace', className: 'radar-fragment radar-fragment-e' },
 ];
 
-type MetricKey = 'kline' | 'close' | 'return' | 'drawdown' | 'benchmark' | 'excess';
+type MetricKey = 'kline' | 'close' | 'return' | 'drawdown' | 'annualized' | 'sharpe' | 'volatility' | 'benchmark' | 'excess';
 
 const defaultMetricKeys: MetricKey[] = ['kline', 'close'];
-const optionalMetricKeys: MetricKey[] = ['return', 'drawdown', 'benchmark', 'excess'];
+const optionalMetricKeys: MetricKey[] = ['return', 'drawdown', 'annualized', 'sharpe', 'volatility', 'benchmark', 'excess'];
 const metricLabels: Record<MetricKey, string> = {
   kline: 'K线',
   close: '收盘价',
   return: '区间收益',
   drawdown: '最大回撤',
+  annualized: '年化收益',
+  sharpe: '夏普',
+  volatility: '波动率',
   benchmark: '相对基准',
   excess: '超额收益',
 };
 
 const buildKlineData = (points: FundHistoryPoint[]) => points.map((point, index) => {
-  const fallbackOpen = points[index - 1]?.netValue ?? point.netValue;
   const close = point.close ?? point.netValue;
-  const open = point.open ?? fallbackOpen;
-  const low = point.low ?? Math.min(open, close);
-  const high = point.high ?? Math.max(open, close);
+  if (point.open !== undefined || point.high !== undefined || point.low !== undefined || point.close !== undefined) {
+    const open = point.open ?? close;
+    const low = point.low ?? Math.min(open, close);
+    const high = point.high ?? Math.max(open, close);
+    return [open, close, low, high];
+  }
+  const previousClose = points[index - 1]?.netValue ?? close;
+  const direction = close >= previousClose ? 1 : -1;
+  const moveRatio = previousClose > 0 ? Math.abs(close / previousClose - 1) : 0;
+  const bodyRatio = Math.min(Math.max(moveRatio * 0.32, 0.0018), 0.012);
+  const wickRatio = Math.max(bodyRatio * 0.45, 0.001);
+  const open = close * (1 - direction * bodyRatio);
+  const high = Math.max(open, close) * (1 + wickRatio);
+  const low = Math.min(open, close) * (1 - wickRatio);
   return [open, close, low, high];
 });
+
+const buildRollingMetricSeries = (points: FundHistoryPoint[], key: 'annualizedReturn' | 'sharpeRatio' | 'volatility') => (
+  points.map((_, index) => (index === 0 ? null : calculateFundMetrics(points.slice(0, index + 1)).summary[key]))
+);
 
 export function FundTrendChart({
   history,
@@ -68,6 +85,11 @@ export function FundTrendChart({
   const visibleBenchmark = useMemo(() => selectHistoryRange(benchmarkHistory, range), [benchmarkHistory, range]);
   const metrics = useMemo(() => calculateFundMetrics(visible, visibleBenchmark), [visible, visibleBenchmark]);
   const klineData = useMemo(() => buildKlineData(metrics.points), [metrics.points]);
+  const rollingMetrics = useMemo(() => ({
+    annualized: buildRollingMetricSeries(metrics.points, 'annualizedReturn'),
+    sharpe: buildRollingMetricSeries(metrics.points, 'sharpeRatio'),
+    volatility: buildRollingMetricSeries(metrics.points, 'volatility'),
+  }), [metrics.points]);
   const activeMetricSet = useMemo(() => new Set(activeMetrics), [activeMetrics]);
   const lastPoint = metrics.points.at(-1);
   const firstPoint = metrics.points[0];
@@ -141,6 +163,33 @@ export function FundTrendChart({
       lineStyle: { width: 2, shadowBlur: 12, shadowColor: 'rgba(63,214,160,.38)' },
       areaStyle: { opacity: 0.12 },
       data: metrics.points.map((point) => point.drawdown),
+    },
+    activeMetricSet.has('annualized') && {
+      name: '年化收益%',
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      yAxisIndex: 1,
+      lineStyle: { width: 2, type: 'dashed', shadowBlur: 10, shadowColor: 'rgba(244,183,64,.28)' },
+      data: rollingMetrics.annualized,
+    },
+    activeMetricSet.has('sharpe') && {
+      name: '夏普',
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      yAxisIndex: 1,
+      lineStyle: { width: 2, type: 'dotted', shadowBlur: 10, shadowColor: 'rgba(125,226,184,.26)' },
+      data: rollingMetrics.sharpe,
+    },
+    activeMetricSet.has('volatility') && {
+      name: '波动率%',
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      yAxisIndex: 1,
+      lineStyle: { width: 2, type: 'dashed', shadowBlur: 10, shadowColor: 'rgba(140,200,255,.28)' },
+      data: rollingMetrics.volatility,
     },
     activeMetricSet.has('benchmark') && benchmarkAvailable && {
       name: `${benchmarkName}收益%`,
@@ -235,7 +284,7 @@ export function FundTrendChart({
         <div>
           <span className="section-kicker">{kicker}</span>
           <h4>{title}</h4>
-          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · 默认展示 K 线与收盘价，可按需打开收益、回撤与基准指标</p>
+          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · 默认展示 K 线与收盘价，可按需打开收益、回撤、风险与基准指标</p>
         </div>
         <div className="radar-range-tabs" aria-label="走势图时间范围">
           {ranges.map((item) => <Button key={item} size="sm" variant={item === range ? 'default' : 'secondary'} onClick={() => setRange(item)}>{item}</Button>)}

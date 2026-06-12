@@ -178,6 +178,9 @@ describe('dashboard components', () => {
     expect(search.container.textContent).toContain('收盘价/净值');
     expect(search.container.textContent).toContain('最大回撤');
     expect(search.container.textContent).toContain('可选指标');
+    expect(search.container.textContent).toContain('年化收益');
+    expect(search.container.textContent).toContain('夏普');
+    expect(search.container.textContent).toContain('波动率');
     expect(search.container.textContent).toContain('相对基准');
     expect(search.container.textContent).toContain('超额收益');
     expect(search.container.textContent).toContain('已披露股票持仓');
