@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FundTrendChart } from './FundTrendChart';
 
 vi.mock('echarts-for-react', () => ({
-  default: ({ option }: { option: { series?: Array<{ name: string }> } }) => (
-    <div data-testid="mock-echarts">{option.series?.map((series) => series.name).join('|')}</div>
+  default: ({ option }: { option: { series?: Array<{ name: string; type?: string }> } }) => (
+    <div data-testid="mock-echarts">{option.series?.map((series) => `${series.name}:${series.type}`).join('|')}</div>
   ),
 }));
 
@@ -62,6 +62,7 @@ describe('FundTrendChart', () => {
 
     expect(chart.container.textContent).toContain('贵州茅台价格走势');
     expect(chart.container.textContent).toContain('风险收缩');
+    expect(chart.container.textContent).toContain('K线');
     expect(chart.container.textContent).toContain('收盘价');
     expect(chart.container.textContent).not.toContain('相对基准');
     expect(chart.container.textContent).not.toContain('超额收益');
@@ -101,8 +102,9 @@ describe('FundTrendChart', () => {
     expect(chart.container.textContent).toContain('按当前时间范围起止净值折算为年化收益');
     expect(chart.container.textContent).toContain('以 2% 年化无风险利率近似估算');
     expect(chart.container.textContent).toContain('测试基准 在当前区间内的累计收益');
-    expect(chart.container.querySelector('[data-testid="mock-echarts"]')?.textContent).toContain('测试基准收益%');
-    expect(chart.container.querySelector('[data-testid="mock-echarts"]')?.textContent).toContain('超额收益%');
+    expect(chart.container.querySelector('[data-testid="mock-echarts"]')?.textContent).toContain('K线:candlestick');
+    expect(chart.container.querySelector('[data-testid="mock-echarts"]')?.textContent).toContain('测试基准收益%:line');
+    expect(chart.container.querySelector('[data-testid="mock-echarts"]')?.textContent).toContain('超额收益%:line');
     expect(chart.container.querySelector('[data-testid="mock-echarts"]')?.textContent).not.toContain('收盘价/净值');
   });
 });

@@ -57,12 +57,20 @@ export type IndexQuote = {
 export type FundHistoryPoint = {
   date: string;
   netValue: number;
+  open?: number;
+  close?: number;
+  high?: number;
+  low?: number;
 };
 
 export type FundIntradayPoint = {
   time: string;
   price: number;
   average?: number;
+  open?: number;
+  close?: number;
+  high?: number;
+  low?: number;
   volume?: number;
   source?: string;
   sourceType?: 'direct' | 'estimated';

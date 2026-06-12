@@ -15,11 +15,12 @@ const signalFragments = [
   { text: 'position.trace', className: 'radar-fragment radar-fragment-e' },
 ];
 
-type MetricKey = 'close' | 'return' | 'drawdown' | 'annualized' | 'sharpe' | 'volatility' | 'benchmark' | 'excess';
+type MetricKey = 'kline' | 'close' | 'return' | 'drawdown' | 'annualized' | 'sharpe' | 'volatility' | 'benchmark' | 'excess';
 
-const defaultMetricKeys: MetricKey[] = ['close', 'return', 'drawdown'];
+const defaultMetricKeys: MetricKey[] = ['kline', 'close', 'return', 'drawdown'];
 const optionalMetricKeys: MetricKey[] = ['annualized', 'sharpe', 'volatility', 'benchmark', 'excess'];
 const metricLabels: Record<MetricKey, string> = {
+  kline: 'K线',
   close: '收盘价',
   return: '区间收益',
   drawdown: '最大回撤',
@@ -32,6 +33,14 @@ const metricLabels: Record<MetricKey, string> = {
 
 const formatPercent = (value?: number) => (value === undefined ? '--' : `${value.toFixed(2)}%`);
 const formatNumber = (value?: number) => (value === undefined ? '--' : value.toFixed(2));
+const buildKlineData = (points: FundHistoryPoint[]) => points.map((point, index) => {
+  const fallbackOpen = points[index - 1]?.netValue ?? point.netValue;
+  const close = point.close ?? point.netValue;
+  const open = point.open ?? fallbackOpen;
+  const low = point.low ?? Math.min(open, close);
+  const high = point.high ?? Math.max(open, close);
+  return [open, close, low, high];
+});
 
 export function FundTrendChart({
   history,
@@ -63,6 +72,7 @@ export function FundTrendChart({
   const visible = useMemo(() => selectHistoryRange(history, range), [history, range]);
   const visibleBenchmark = useMemo(() => selectHistoryRange(benchmarkHistory, range), [benchmarkHistory, range]);
   const metrics = useMemo(() => calculateFundMetrics(visible, visibleBenchmark), [visible, visibleBenchmark]);
+  const klineData = useMemo(() => buildKlineData(metrics.points), [metrics.points]);
   const activeMetricSet = useMemo(() => new Set(activeMetrics), [activeMetrics]);
   const lastPoint = metrics.points.at(-1);
   const firstPoint = metrics.points[0];
@@ -80,6 +90,19 @@ export function FundTrendChart({
   }
 
   const chartSeries = [
+    activeMetricSet.has('kline') && {
+      name: 'K线',
+      type: 'candlestick',
+      data: klineData,
+      itemStyle: {
+        color: '#ff5d52',
+        color0: '#3fd6a0',
+        borderColor: '#ff8a7f',
+        borderColor0: '#6ee7bd',
+      },
+      barWidth: '56%',
+      z: 2,
+    },
     activeMetricSet.has('close') && {
       name: primaryLabel,
       type: 'line',
@@ -176,7 +199,7 @@ export function FundTrendChart({
   const option = {
     backgroundColor: 'transparent',
     // 中国习惯：涨/收益用红，跌/回撤用绿。净值线保持金色。
-    color: ['#f7c96b', '#ff5d52', '#3fd6a0', '#8cc8ff', '#b57eff'],
+    color: ['#ff5d52', '#f7c96b', '#3fd6a0', '#8cc8ff', '#b57eff'],
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(4, 17, 31, 0.92)',
@@ -246,7 +269,7 @@ export function FundTrendChart({
         <div>
           <span className="section-kicker">{kicker}</span>
           <h4>{title}</h4>
-          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · 默认展示收盘价、区间收益、最大回撤，可按需打开风险与基准指标</p>
+          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · 默认展示K线、收盘价、区间收益、最大回撤，可按需打开风险与基准指标</p>
         </div>
         <div className="radar-range-tabs" aria-label="走势图时间范围">
           {ranges.map((item) => <Button key={item} size="sm" variant={item === range ? 'default' : 'secondary'} onClick={() => setRange(item)}>{item}</Button>)}

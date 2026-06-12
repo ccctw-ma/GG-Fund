@@ -928,6 +928,7 @@ describe('dashboard components', () => {
     );
     roots.push(direct.root);
     expect(direct.container.textContent).toContain('真实分时');
+    expect(direct.container.textContent).toContain('已叠加分时K线');
     expect(direct.container.textContent).toContain('-0.0200');
     expect(direct.container.textContent).toContain('数据来源：公开行情接口');
 
@@ -945,7 +946,7 @@ describe('dashboard components', () => {
     );
     roots.push(estimated.root);
     expect(estimated.container.textContent).toContain('近似走势');
-    expect(estimated.container.textContent).toContain('09:30 - 09:31 · 2 个分时点');
+    expect(estimated.container.textContent).toContain('09:30 - 09:31 · 2 个分时点 · 已叠加分时K线');
     expect(estimated.container.textContent).toContain('收益口径：按日涨跌 +1.23%');
     expect(estimated.container.textContent).not.toContain('09:32');
   });

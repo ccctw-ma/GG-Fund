@@ -1,12 +1,22 @@
 'use client';
 
 import ReactECharts from 'echarts-for-react';
+import { useMemo } from 'react';
 import type { FundIntradayPoint } from '../types';
 
 function cutoffTimeFromEstimate(estimateTime?: string) {
   const match = estimateTime?.match(/(?:^|\s)(\d{2}):(\d{2})(?::\d{2})?/);
   return match ? `${match[1]}:${match[2]}` : undefined;
 }
+
+const buildIntradayKlineData = (points: FundIntradayPoint[]) => points.map((point, index) => {
+  const fallbackOpen = points[index - 1]?.price ?? point.price;
+  const close = point.close ?? point.price;
+  const open = point.open ?? fallbackOpen;
+  const low = point.low ?? Math.min(open, close);
+  const high = point.high ?? Math.max(open, close);
+  return [open, close, low, high];
+});
 
 export function IntradayTrendChart({
   points,
@@ -22,7 +32,11 @@ export function IntradayTrendChart({
   loading?: boolean;
 }) {
   const cutoffTime = cutoffTimeFromEstimate(estimateTime);
-  const visiblePoints = cutoffTime ? points.filter((point) => point.time <= cutoffTime) : points;
+  const visiblePoints = useMemo(
+    () => (cutoffTime ? points.filter((point) => point.time <= cutoffTime) : points),
+    [cutoffTime, points],
+  );
+  const klineData = useMemo(() => buildIntradayKlineData(visiblePoints), [visiblePoints]);
 
   if (visiblePoints.length === 0) {
     return (
@@ -40,7 +54,7 @@ export function IntradayTrendChart({
   const sourceType = latest?.sourceType ?? first?.sourceType ?? 'direct';
   const option = {
     backgroundColor: 'transparent',
-    color: ['#ff5d52', '#f7c96b'],
+    color: ['#ff5d52', '#f7c96b', '#3fd6a0'],
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(4, 17, 31, 0.92)',
@@ -50,7 +64,7 @@ export function IntradayTrendChart({
     legend: {
       top: 4,
       right: 12,
-      data: ['分时价格', '均价'],
+      data: ['分时K线', '分时价格', '均价'],
       textStyle: { color: '#9eb1c7', fontWeight: 800 },
     },
     grid: { left: 38, right: 18, top: 42, bottom: 30 },
@@ -68,6 +82,19 @@ export function IntradayTrendChart({
       splitLine: { lineStyle: { color: 'rgba(255,255,255,.07)' } },
     },
     series: [
+      {
+        name: '分时K线',
+        type: 'candlestick',
+        data: klineData,
+        itemStyle: {
+          color: '#ff5d52',
+          color0: '#3fd6a0',
+          borderColor: '#ff8a7f',
+          borderColor0: '#6ee7bd',
+        },
+        barWidth: '52%',
+        z: 2,
+      },
       {
         name: '分时价格',
         type: 'line',
@@ -96,7 +123,7 @@ export function IntradayTrendChart({
             <strong>{title}</strong>
             <small className={sourceType === 'estimated' ? 'intraday-source-badge is-estimated' : 'intraday-source-badge'}>{sourceType === 'estimated' ? '近似走势' : '真实分时'}</small>
           </div>
-          <span>{visiblePoints[0]?.time} - {latest?.time} · {visiblePoints.length} 个分时点</span>
+          <span>{visiblePoints[0]?.time} - {latest?.time} · {visiblePoints.length} 个分时点 · 已叠加分时K线</span>
           {dailyChangePercent !== undefined && (
             <span className="intraday-basis-line">收益口径：按日涨跌 {dailyChangePercent >= 0 ? '+' : ''}{dailyChangePercent.toFixed(2)}%</span>
           )}
