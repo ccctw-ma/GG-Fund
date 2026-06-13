@@ -10,8 +10,8 @@ const ranges: FundRange[] = ['1W', '1M', '3M', '6M', '1Y', 'ALL'];
 
 type MetricKey = 'kline' | 'close' | 'return' | 'drawdown' | 'annualized' | 'sharpe' | 'volatility' | 'benchmark' | 'excess';
 
-const defaultMetricKeys: MetricKey[] = ['kline'];
-const optionalMetricKeys: MetricKey[] = ['close', 'return', 'drawdown', 'annualized', 'sharpe', 'volatility', 'benchmark', 'excess'];
+const defaultMetricKeys: MetricKey[] = ['close', 'kline'];
+const optionalMetricKeys: MetricKey[] = ['return', 'drawdown', 'annualized', 'sharpe', 'volatility', 'benchmark', 'excess'];
 const candleStyle = {
   up: '#f05a56',
   upFill: 'rgba(240, 90, 86, 0.78)',
@@ -20,7 +20,7 @@ const candleStyle = {
 };
 const metricLabels: Record<MetricKey, string> = {
   kline: 'K线',
-  close: '收盘价',
+  close: '点位',
   return: '区间收益',
   drawdown: '最大回撤',
   annualized: '年化收益',
@@ -108,7 +108,7 @@ export function FundTrendChart({
   const lastPoint = metrics.points.at(-1);
   const firstPoint = metrics.points[0];
   const trendTone = metrics.summary.totalReturn >= 0 ? '趋势增强' : '风险收缩';
-  const primaryLabel = valueName === '单位净值' ? '收盘价/净值' : valueName;
+  const primaryLabel = valueName === '单位净值' ? '点位' : valueName;
   const valueDigits = valueName === '单位净值' ? 4 : 2;
   const benchmarkAvailable = metrics.summary.benchmarkReturn !== undefined;
   const availableOptionalMetricKeys = optionalMetricKeys.filter((key) => (key === 'benchmark' || key === 'excess' ? benchmarkAvailable : true));
@@ -345,7 +345,7 @@ export function FundTrendChart({
         <div>
           <span className="section-kicker">{kicker}</span>
           <h4>{title}</h4>
-          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · 默认展示 K 线，可按需打开收盘价、收益、回撤、风险与基准指标</p>
+          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · 默认展示点位与 K 线，可按需打开收益、回撤、风险与基准指标</p>
         </div>
         <div className="radar-range-tabs" aria-label="走势图时间范围">
           {ranges.map((item) => <Button key={item} size="sm" variant={item === range ? 'default' : 'secondary'} onClick={() => setRange(item)}>{item}</Button>)}

@@ -175,7 +175,7 @@ describe('dashboard components', () => {
     expect(search.container.textContent).toContain('基金分析走势图');
     expect(search.container.textContent).toContain('Fund Signal Matrix');
     expect(search.container.textContent).toContain('默认指标');
-    expect(search.container.textContent).toContain('收盘价/净值');
+    expect(search.container.textContent).toContain('点位');
     expect(search.container.textContent).toContain('最大回撤');
     expect(search.container.textContent).toContain('可选指标');
     expect(search.container.textContent).toContain('年化收益');
