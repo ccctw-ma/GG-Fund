@@ -7,23 +7,16 @@ import type { FundHistoryPoint } from '../types';
 import { Button } from './ui/button';
 
 const ranges: FundRange[] = ['1W', '1M', '3M', '6M', '1Y', 'ALL'];
-const signalFragments = [
-  { text: 'NAV.core()', className: 'radar-fragment radar-fragment-a' },
-  { text: 'drawdown.guard', className: 'radar-fragment radar-fragment-b' },
-  { text: 'momentum.flow', className: 'radar-fragment radar-fragment-c' },
-  { text: 'risk.signal', className: 'radar-fragment radar-fragment-d' },
-  { text: 'position.trace', className: 'radar-fragment radar-fragment-e' },
-];
 
 type MetricKey = 'kline' | 'close' | 'return' | 'drawdown' | 'annualized' | 'sharpe' | 'volatility' | 'benchmark' | 'excess';
 
-const defaultMetricKeys: MetricKey[] = ['kline', 'close'];
-const optionalMetricKeys: MetricKey[] = ['return', 'drawdown', 'annualized', 'sharpe', 'volatility', 'benchmark', 'excess'];
+const defaultMetricKeys: MetricKey[] = ['kline'];
+const optionalMetricKeys: MetricKey[] = ['close', 'return', 'drawdown', 'annualized', 'sharpe', 'volatility', 'benchmark', 'excess'];
 const candleStyle = {
-  up: '#ef5350',
-  upFill: 'rgba(239, 83, 80, 0.9)',
-  down: '#26a69a',
-  downFill: 'rgba(38, 166, 154, 0.9)',
+  up: '#f05a56',
+  upFill: 'rgba(240, 90, 86, 0.78)',
+  down: '#19a99a',
+  downFill: 'rgba(25, 169, 154, 0.78)',
 };
 const metricLabels: Record<MetricKey, string> = {
   kline: 'K线',
@@ -63,8 +56,8 @@ const buildKlineData = (points: FundHistoryPoint[]) => points.map((point, index)
   const previousClose = points[index - 1]?.netValue ?? close;
   const direction = close >= previousClose ? 1 : -1;
   const moveRatio = previousClose > 0 ? Math.abs(close / previousClose - 1) : 0;
-  const bodyRatio = Math.min(Math.max(moveRatio * 0.32, 0.0018), 0.012);
-  const wickRatio = Math.max(bodyRatio * 0.45, 0.001);
+  const bodyRatio = Math.min(Math.max(moveRatio * 0.18, 0.00065), 0.0048);
+  const wickRatio = Math.max(bodyRatio * 0.28, 0.00028);
   const open = close * (1 - direction * bodyRatio);
   const high = Math.max(open, close) * (1 + wickRatio);
   const low = Math.min(open, close) * (1 - wickRatio);
@@ -180,11 +173,11 @@ export function FundTrendChart({
     activeMetricSet.has('close') && {
       name: primaryLabel,
       type: 'line',
-      smooth: false,
+      smooth: true,
       symbol: 'none',
       symbolSize: 0,
       showSymbol: false,
-      lineStyle: { width: 1.05, opacity: 0.62, shadowBlur: 0 },
+      lineStyle: { color: 'rgba(247, 201, 107, .58)', width: 0.9, opacity: 0.5, shadowBlur: 0 },
       areaStyle: {
         color: {
           type: 'linear',
@@ -198,7 +191,7 @@ export function FundTrendChart({
           ],
         },
       },
-      z: 2,
+      z: 1,
       data: metrics.points.map((point) => point.netValue),
     },
     activeMetricSet.has('return') && {
@@ -280,29 +273,37 @@ export function FundTrendChart({
       formatter: formatTooltip,
       axisPointer: {
         type: 'cross',
-        crossStyle: { color: '#f4b740', opacity: 0.72 },
-        lineStyle: { color: '#f4b740', opacity: 0.52 },
+      crossStyle: { color: 'rgba(244, 183, 64, .66)', opacity: 0.72, type: 'dashed' },
+      lineStyle: { color: 'rgba(244, 183, 64, .46)', opacity: 0.52, type: 'dashed' },
       },
     },
     legend: {
-      top: 8,
+      top: 6,
       right: 14,
       data: chartSeries.map((series) => (series as { name: string }).name),
       textStyle: { color: 'rgba(158,177,199,.86)', fontWeight: 800 },
-      itemWidth: 14,
-      itemHeight: 7,
+      itemWidth: 12,
+      itemHeight: 6,
     },
-    grid: { left: 46, right: 30, top: 54, bottom: 56 },
+    grid: { left: 50, right: 28, top: 50, bottom: 52 },
     dataZoom: [
       { type: 'inside' },
       {
         type: 'slider',
-        height: 18,
+        height: 14,
         bottom: 18,
-        borderColor: 'rgba(255,255,255,.1)',
-        fillerColor: 'rgba(244,183,64,.12)',
-        backgroundColor: 'rgba(255,255,255,.035)',
-        handleStyle: { color: '#f4b740' },
+        borderColor: 'rgba(255,255,255,.06)',
+        fillerColor: 'rgba(244,183,64,.16)',
+        backgroundColor: 'rgba(255,255,255,.026)',
+        dataBackground: {
+          lineStyle: { color: 'rgba(158,177,199,.2)' },
+          areaStyle: { color: 'rgba(158,177,199,.08)' },
+        },
+        selectedDataBackground: {
+          lineStyle: { color: 'rgba(244,183,64,.46)' },
+          areaStyle: { color: 'rgba(244,183,64,.16)' },
+        },
+        handleStyle: { color: '#f4b740', borderColor: 'rgba(255,255,255,.3)' },
         textStyle: { color: '#9eb1c7' },
       },
     ],
@@ -340,12 +341,11 @@ export function FundTrendChart({
     <div className="fund-analysis-radar mt-5" data-testid={testId} aria-label="历史净值研究图">
       <div className="radar-grid" aria-hidden="true" />
       <div className="radar-scanline" aria-hidden="true" />
-      {signalFragments.map((item) => <span key={item.text} className={item.className} aria-hidden="true">{item.text}</span>)}
       <div className="radar-header">
         <div>
           <span className="section-kicker">{kicker}</span>
           <h4>{title}</h4>
-          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · 默认展示 K 线与收盘价，可按需打开收益、回撤、风险与基准指标</p>
+          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · 默认展示 K 线，可按需打开收盘价、收益、回撤、风险与基准指标</p>
         </div>
         <div className="radar-range-tabs" aria-label="走势图时间范围">
           {ranges.map((item) => <Button key={item} size="sm" variant={item === range ? 'default' : 'secondary'} onClick={() => setRange(item)}>{item}</Button>)}
@@ -364,7 +364,7 @@ export function FundTrendChart({
           <span>可选指标</span>
           {availableOptionalMetricKeys.map((key) => (
             <Button key={key} size="sm" variant={activeMetricSet.has(key) ? 'default' : 'secondary'} onClick={() => toggleMetric(key)} aria-pressed={activeMetricSet.has(key)}>
-              {metricLabels[key]}
+              {key === 'close' ? primaryLabel : metricLabels[key]}
             </Button>
           ))}
         </div>

@@ -133,12 +133,12 @@ describe('FundTrendChart', () => {
     );
     roots.push(chart.root);
 
-    for (const label of ['区间收益', '最大回撤', '年化收益', '夏普', '波动率', '相对基准', '超额收益']) {
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('收盘价/净值');
+
+    for (const label of ['收盘价/净值', '区间收益', '最大回撤', '年化收益', '夏普', '波动率', '相对基准', '超额收益']) {
       const button = Array.from(chart.container.querySelectorAll('button')).find((item) => item.textContent === label);
       act(() => button?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     }
-    const closeButton = Array.from(chart.container.querySelectorAll('button')).find((item) => item.textContent === '收盘价/净值');
-    act(() => closeButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     const allRange = Array.from(chart.container.querySelectorAll('button')).find((item) => item.textContent === 'ALL');
     act(() => allRange?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
@@ -150,6 +150,6 @@ describe('FundTrendChart', () => {
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('波动率%:line');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('测试基准收益%:line');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('超额收益%:line');
-    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('收盘价/净值');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('收盘价/净值:line');
   });
 });
