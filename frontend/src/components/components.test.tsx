@@ -223,6 +223,7 @@ describe('dashboard components', () => {
     roots.push(anonymous.root);
 
     expect(anonymous.container.textContent).toContain('未登录');
+    expect(anonymous.container.textContent).toContain('架构');
     const brandButton = anonymous.container.querySelector<HTMLButtonElement>('button[aria-label="GG Fund 行情"]');
     act(() => brandButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     const portfolioButton = Array.from(anonymous.container.querySelectorAll('button')).find((button) => button.textContent?.includes('账户'));

@@ -81,6 +81,7 @@ describe('App', () => {
     const view = await renderApp();
 
     expect(view.textContent).toContain('行情');
+    expect(view.textContent).toContain('架构');
     expect(view.textContent).toContain('全球指数行情');
     expect(view.textContent).toContain('金融资产搜索');
     expect(view.textContent).not.toContain('基金研究操作系统');

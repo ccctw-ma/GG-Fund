@@ -19,3 +19,13 @@ test('health api responds from the Next app', async ({ request }) => {
   expect(response.ok()).toBeTruthy();
   await expect(response.json()).resolves.toMatchObject({ service: 'gg-fund-next-api' });
 });
+
+test('architecture page explains the technical system map', async ({ page }) => {
+  await page.goto('/architecture');
+
+  await expect(page.getByRole('heading', { name: 'GG Fund 技术架构地图' })).toBeVisible();
+  await expect(page.getByText('Cloudflare Worker')).toBeVisible();
+  await expect(page.getByText('四条核心链路')).toBeVisible();
+  await expect(page.getByText('coverage >= 90%')).toBeVisible();
+  await expect(page.getByRole('link', { name: '进入工作台' })).toHaveAttribute('href', '/app');
+});
