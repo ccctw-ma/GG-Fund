@@ -6,7 +6,7 @@ GG Fund 现已以 Cloudflare-first 的 Next.js App Router 架构为主：`app/` 
 
 ## 功能
 
-- Next.js App Router 页面：根路径 `/` 会直接跳转到 `/app` 工作台，`/login` 提供独立邮箱验证码登录页，`/architecture` 以可视化子页面展示项目技术架构，`/settings` 目前提供基础说明入口，`/app/portfolio` 当前作为组合落地页；本地持仓与自选能力继续在工作台内使用。
+- Next.js App Router 页面：根路径 `/` 会直接跳转到 `/app` 工作台，`/login` 提供独立邮箱验证码登录页，`/architecture` 以可视化子页面展示项目技术架构，支持跟随系统的 dark / light 模式，并用系统架构图、行情请求时序图和接口流程图解释浏览器、Route Handler、Cloudflare Worker、市场数据源、AI/OCR 和 D1 存储之间的关系；`/settings` 目前提供基础说明入口，`/app/portfolio` 当前作为组合落地页；本地持仓与自选能力继续在工作台内使用。
 - 顶部导航工作台：`/app` 内通过固定顶部导航在“行情、账户”之间切换，并提供“架构”入口跳转到 `/architecture`；右上角展示紧凑账户状态卡片；未登录时点击右上角“登录”进入 `/login`。原“总览”落地页和功能卡片区已移除，进入 `/app` 默认展示行情页。
 - 养基宝式账本能力：账户页已接入今日估算收益、多平台账本、盈亏周报/月报摘要、贡献拆解、集中度风险、净值缺失、7 天赎回提醒、目标权重偏离、教育型定投计划和目标止盈提醒。
 - 多平台导入助手：账户页仅保留导入助手作为本地录入入口，支持粘贴支付宝、理财通、天天基金、雪球等持仓文字，支持上传支付宝 `.txt` / `.csv` / `.json` 文本类持仓文件，也支持直接上传支付宝持仓截图图片（PNG/JPG/JPEG/WebP/BMP）。图片优先经 `POST /api/ai/recognize-holdings` 在服务端调用 OCR.space（可配置 `OCR_SPACE_API_KEY`，未配置时使用公共 demo key）识别文字，再用 DeepSeek（`deepseek-v4-flash`）对 OCR 文本做结构化持仓识别与纠错；云端 OCR 不可用时前端会回退浏览器本地 OCR。识别成功后会按基金名称自动查询并回填 6 位基金代码，再弹出可二次编辑的确认弹窗，用户可逐行修改基金名称、代码、持有金额、收益，也可点击「查代码 / 重新确认」按名称再次确认基金代码，最后点击「确认导入」写入本地账本。服务端从 Cloudflare runtime context 读取 `DEEPSEEK_API_KEY` 与可选 `OCR_SPACE_API_KEY`，缺少 DeepSeek key 时图片识别会返回明确错误而不伪造结果。平台授权同步、真实交易下单和全网用户加减仓榜仍标注为路线图，不伪造生产能力。

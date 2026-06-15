@@ -39,6 +39,43 @@ const dataPipelines = [
 
 const qualityGates = ['lint', 'unit/API test', 'coverage >= 90%', 'build', 'E2E', 'Cloudflare deploy watch'];
 
+const systemNodes = [
+  { title: 'Browser', meta: 'React + ECharts', detail: '行情工作台、账户页、截图/文件导入、本地缓存', zone: 'client' },
+  { title: 'Next.js App Router', meta: 'Pages + Route Handlers', detail: '静态页面、SSR 首屏预取、API 统一入口', zone: 'app' },
+  { title: 'Cloudflare Worker', meta: 'OpenNext Runtime', detail: '边缘执行、超时控制、多源兜底、响应缓存', zone: 'edge' },
+  { title: 'D1 / Local State', meta: 'Portfolio Storage', detail: '登录组合、watchlist、本地账本同步', zone: 'state' },
+  { title: 'Market Adapters', meta: 'Eastmoney / Tencent / Naver', detail: '基金净值、指数行情、A 股日 K、持仓明细', zone: 'data' },
+  { title: 'AI Providers', meta: 'OCR.space + DeepSeek', detail: '截图 OCR、持仓结构化、流式投研报告', zone: 'ai' },
+];
+
+const sequenceRows = [
+  ['用户', 'Browser', '输入代码或点击持仓股票', '同步操作'],
+  ['Browser', 'Route Handler', 'GET /api/funds/:code/history?range=1m&v=...', '带缓存版本'],
+  ['Route Handler', 'Market Service', 'getFundHistory(code, range)', '统一 DTO'],
+  ['Market Service', 'Eastmoney', '优先读取基金历史净值 / 指数 push2his', '主数据源'],
+  ['Market Service', 'Tencent', 'A 股个股前复权日 K，保留 OHLC', '兜底数据源'],
+  ['Route Handler', 'Browser', 'FundHistoryPoint[]', 'date/netValue/open/high/low/close'],
+  ['Browser', 'ECharts', 'K 线 + 点位线渲染', '真实 OHLC 优先'],
+];
+
+const apiGroups = [
+  {
+    name: '行情接口',
+    endpoints: ['GET /api/market/indices', 'GET /api/market/indices/:code/history', 'GET /api/funds/search', 'GET /api/funds/:code/history'],
+    output: 'IndexQuote / FundQuote / FundHistoryPoint',
+  },
+  {
+    name: 'AI 接口',
+    endpoints: ['POST /api/ai/recognize-holdings', 'POST /api/ai/analyze-fund', 'POST /api/ai/analyze-fund/stream'],
+    output: 'RecognizedHolding / streamed research report',
+  },
+  {
+    name: '账户接口',
+    endpoints: ['POST /api/auth/challenge', 'POST /api/auth/verify', 'GET /api/portfolio/default', 'PUT /api/portfolio/default'],
+    output: 'Email OTP session / D1 portfolio snapshot',
+  },
+];
+
 export default function ArchitecturePage() {
   return (
     <main className="fund-shell architecture-page text-ink" style={{ minHeight: '100vh' }}>
@@ -50,6 +87,11 @@ export default function ArchitecturePage() {
             <p className="hero-subtitle">
               这个页面把工作台背后的请求链路、边缘运行时、数据源适配、AI 识别和质量门禁串成一张可读的架构图，方便快速理解系统如何从浏览器一路闭环到 Cloudflare。
             </p>
+            <div className="architecture-theme-strip" aria-label="明暗模式支持">
+              <span>Light mode</span>
+              <strong>跟随系统主题</strong>
+              <span>Dark mode</span>
+            </div>
             <div className="hero-actions">
               <Link className="gold-cta" href="/app">进入工作台</Link>
               <Link className="ghost-cta" href="/app#portfolio">查看账户页</Link>
@@ -72,6 +114,28 @@ export default function ArchitecturePage() {
               <p>{step.detail}</p>
             </article>
           ))}
+        </section>
+
+        <section className="architecture-diagram-panel" aria-labelledby="system-diagram-title">
+          <div className="architecture-section-copy">
+            <span className="section-kicker">System Diagram</span>
+            <h2 id="system-diagram-title">系统架构图</h2>
+            <p>从浏览器到边缘 Worker，再到市场数据、AI 服务和 D1 组合存储，所有外部不稳定性都收敛在服务端适配层。</p>
+          </div>
+          <div className="architecture-system-map" aria-label="GG Fund 系统架构图">
+            {systemNodes.map((node) => (
+              <article key={node.title} className={`system-node system-node-${node.zone}`}>
+                <span>{node.meta}</span>
+                <strong>{node.title}</strong>
+                <p>{node.detail}</p>
+              </article>
+            ))}
+            <i className="system-link link-browser-app" />
+            <i className="system-link link-app-edge" />
+            <i className="system-link link-edge-state" />
+            <i className="system-link link-edge-data" />
+            <i className="system-link link-edge-ai" />
+          </div>
         </section>
 
         <section className="architecture-layers" aria-label="系统分层">
@@ -97,6 +161,48 @@ export default function ArchitecturePage() {
               <ol key={pipeline[0]} className="architecture-pipeline">
                 {pipeline.map((item) => <li key={item}>{item}</li>)}
               </ol>
+            ))}
+          </div>
+        </section>
+
+        <section className="architecture-sequence" aria-labelledby="sequence-title">
+          <div className="architecture-section-copy">
+            <span className="section-kicker">Sequence Diagram</span>
+            <h2 id="sequence-title">行情请求时序图</h2>
+            <p>这条时序展示一次股票/基金历史走势请求如何拿到真实 OHLC，并最终交给 K 线图渲染。</p>
+          </div>
+          <div className="sequence-lanes" aria-label="行情请求时序图">
+            {['用户', 'Browser', 'Route Handler', 'Market Service', 'Eastmoney', 'Tencent', 'ECharts'].map((lane) => (
+              <span key={lane}>{lane}</span>
+            ))}
+          </div>
+          <ol className="sequence-rows">
+            {sequenceRows.map(([from, to, message, note]) => (
+              <li key={`${from}-${to}-${message}`}>
+                <span>{from}</span>
+                <strong>{message}</strong>
+                <span>{to}</span>
+                <em>{note}</em>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className="architecture-api-flow" aria-labelledby="api-flow-title">
+          <div className="architecture-section-copy">
+            <span className="section-kicker">API Flow Diagram</span>
+            <h2 id="api-flow-title">接口流程图</h2>
+            <p>前端只看到稳定接口，Route Handler 负责认证、缓存、多源聚合、错误归一和 DTO 输出。</p>
+          </div>
+          <div className="api-flow-grid">
+            {apiGroups.map((group) => (
+              <article key={group.name} className="api-flow-card">
+                <h3>{group.name}</h3>
+                <ul>
+                  {group.endpoints.map((endpoint) => <li key={endpoint}>{endpoint}</li>)}
+                </ul>
+                <strong>{group.output}</strong>
+              </article>
             ))}
           </div>
         </section>

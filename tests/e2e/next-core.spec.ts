@@ -24,7 +24,12 @@ test('architecture page explains the technical system map', async ({ page }) => 
   await page.goto('/architecture');
 
   await expect(page.getByRole('heading', { name: 'GG Fund 技术架构地图' })).toBeVisible();
-  await expect(page.getByText('Cloudflare Worker')).toBeVisible();
+  await expect(page.getByText('Light mode')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '系统架构图' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '行情请求时序图' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '接口流程图' })).toBeVisible();
+  await expect(page.getByLabel('GG Fund 系统架构图').getByText('Cloudflare Worker')).toBeVisible();
+  await expect(page.getByText('GET /api/funds/:code/history').first()).toBeVisible();
   await expect(page.getByText('四条核心链路')).toBeVisible();
   await expect(page.getByText('coverage >= 90%')).toBeVisible();
   await expect(page.getByRole('link', { name: '进入工作台' })).toHaveAttribute('href', '/app');
