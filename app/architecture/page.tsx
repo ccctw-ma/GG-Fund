@@ -58,6 +58,13 @@ const sequenceRows = [
   ['Browser', 'ECharts', 'K 线 + 点位线渲染', '真实 OHLC 优先'],
 ];
 
+const heroStats = [
+  { value: '6', label: '系统节点', hint: 'Browser → Worker → 数据源' },
+  { value: '4', label: '核心链路', hint: '行情 / 导入 / AI / 部署' },
+  { value: '90%+', label: '覆盖率门禁', hint: 'Statements·Branches·Funcs·Lines' },
+  { value: '1', label: '边缘运行时', hint: 'Cloudflare OpenNext Worker' },
+];
+
 const apiGroups = [
   {
     name: '行情接口',
@@ -87,10 +94,14 @@ export default function ArchitecturePage() {
             <p className="hero-subtitle">
               这个页面把工作台背后的请求链路、边缘运行时、数据源适配、AI 识别和质量门禁串成一张可读的架构图，方便快速理解系统如何从浏览器一路闭环到 Cloudflare。
             </p>
-            <div className="architecture-theme-strip" aria-label="深色架构模式">
-              <span>Dark architecture console</span>
-              <strong>固定深色模式</strong>
-              <span>Edge topology</span>
+            <div className="architecture-stat-row" aria-label="架构关键指标">
+              {heroStats.map((stat) => (
+                <article key={stat.label} className="architecture-stat">
+                  <strong>{stat.value}</strong>
+                  <span>{stat.label}</span>
+                  <em>{stat.hint}</em>
+                </article>
+              ))}
             </div>
             <div className="hero-actions">
               <Link className="gold-cta" href="/app">进入工作台</Link>
