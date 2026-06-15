@@ -408,8 +408,8 @@ describe('market data service', () => {
 
     expect(capturedUrl).toContain('sh600522');
     expect(history).toEqual([
-      { date: '2026-05-29', netValue: 44.5 },
-      { date: '2026-05-30', netValue: 44.98 },
+      { date: '2026-05-29', netValue: 44.5, open: 44, close: 44.5, high: 45.1, low: 43.8 },
+      { date: '2026-05-30', netValue: 44.98, open: 44.6, close: 44.98, high: 46.98, low: 43.4 },
     ]);
   });
 
@@ -677,8 +677,8 @@ describe('market data service', () => {
 
     expect(capturedUrl).toContain('secid=1.000001');
     expect(history).toEqual([
-      { date: '2026-05-27', netValue: 3100.1 },
-      { date: '2026-05-28', netValue: 3128.42 },
+      { date: '2026-05-27', netValue: 3100.1, open: 3090, close: 3100.1, high: undefined, low: undefined },
+      { date: '2026-05-28', netValue: 3128.42, open: 3110, close: 3128.42, high: undefined, low: undefined },
     ]);
   });
 
@@ -736,7 +736,7 @@ describe('market data service', () => {
     const history = await service.getIndexHistory('000001.SH', 'all');
 
     expect(tencentUrl).toContain('param=sh000001,day');
-    expect(history).toEqual([{ date: '2026-05-27', netValue: 3100.1 }]);
+    expect(history).toEqual([{ date: '2026-05-27', netValue: 3100.1, open: 3090, close: 3100.1, high: 3110, low: 3080 }]);
   });
 
   it('falls back to Sohu history for BSE 50 before Tencent single-day data', async () => {

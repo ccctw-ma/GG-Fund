@@ -3,7 +3,7 @@ import type { ExportedLocalData, FundAnalysisResponse, FundHistoryPoint, FundHol
 const SESSION_TOKEN_KEY = 'gg_fund_session_token';
 const CACHE_PREFIX = 'gg_fund_api_cache:';
 const CACHE_VERSION = 3;
-const MARKET_DATA_VERSION = '20260607';
+const MARKET_DATA_VERSION = '20260613';
 const CACHE_MAX_STALE_MS = 30 * 24 * 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
@@ -222,7 +222,7 @@ export const api = {
   getCachedIndexHistory: (code: string, range = '1y') => readCache<FundHistoryPoint[]>(`index-history:${code}:${range}`),
   getCachedSearchFunds: (query: string) => readCache<FundQuote[]>(`fund-search:${query.trim().toLowerCase()}`),
   getCachedFund: (code: string) => readCache<FundQuote>(`fund:${code}`),
-  getCachedFundHistory: (code: string, range = '1y') => readCache<FundHistoryPoint[]>(`fund-history:${code}:${range}`),
+  getCachedFundHistory: (code: string, range = '1y') => readCache<FundHistoryPoint[]>(`fund-history:${code}:${range}:${MARKET_DATA_VERSION}`),
   getCachedFundIntraday: (code: string) => readCache<FundIntradayPoint[]>(`fund-intraday:${code}`),
   getCachedFundHoldings: (code: string) => readCache<FundHoldings>(`fund-holdings:${code}`),
   getCachedTrendingFunds: () => readCache<FundQuote[]>('funds-trending'),
@@ -230,7 +230,7 @@ export const api = {
   getIndexHistory: (code: string, range = '1y') => getCachedJson<FundHistoryPoint[]>(`/api/market/indices/${encodeURIComponent(code)}/history?range=${encodeURIComponent(range)}&v=${MARKET_DATA_VERSION}`, `index-history:${code}:${range}`, cacheTtl.indexHistory),
   searchFunds: (query: string) => getCachedJson<FundQuote[]>(`/api/funds/search?q=${encodeURIComponent(query)}`, `fund-search:${query.trim().toLowerCase()}`, cacheTtl.search),
   getFund: (code: string) => getCachedJson<FundQuote>(`/api/funds/${code}`, `fund:${code}`, cacheTtl.fund),
-  getFundHistory: (code: string, range = '1y') => getCachedJson<FundHistoryPoint[]>(`/api/funds/${code}/history?range=${encodeURIComponent(range)}`, `fund-history:${code}:${range}`, cacheTtl.fundHistory),
+  getFundHistory: (code: string, range = '1y') => getCachedJson<FundHistoryPoint[]>(`/api/funds/${code}/history?range=${encodeURIComponent(range)}&v=${MARKET_DATA_VERSION}`, `fund-history:${code}:${range}:${MARKET_DATA_VERSION}`, cacheTtl.fundHistory),
   getFundIntraday: (code: string) => getCachedJson<FundIntradayPoint[]>(`/api/funds/${code}/intraday`, `fund-intraday:${code}`, cacheTtl.fundIntraday),
   getFundHoldings: (code: string) => getCachedJson<FundHoldings>(`/api/funds/${code}/holdings`, `fund-holdings:${code}`, cacheTtl.holdings),
   getTrendingFunds: () => getCachedJson<FundQuote[]>('/api/funds/trending', 'funds-trending', cacheTtl.trending),

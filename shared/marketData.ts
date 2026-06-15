@@ -676,13 +676,17 @@ function historyFromEastmoneyKline(data: unknown): FundHistoryPoint[] {
   const klines = (root.data as { klines?: unknown }).klines;
   if (!Array.isArray(klines)) return [];
   return klines
-    .map((line) => {
+    .map((line): FundHistoryPoint | undefined => {
       if (typeof line !== 'string') return undefined;
       const parts = line.split(',');
       const date = parts[0];
-      const netValue = toNumber(parts[2] ?? parts[1]);
+      const open = toNumber(parts[1]);
+      const close = toNumber(parts[2] ?? parts[1]);
+      const high = toNumber(parts[3]);
+      const low = toNumber(parts[4]);
+      const netValue = close ?? open;
       if (!date || netValue === undefined) return undefined;
-      return { date, netValue };
+      return { date, netValue, open, close: close ?? netValue, high, low };
     })
     .filter((item): item is FundHistoryPoint => Boolean(item));
 }
@@ -721,7 +725,7 @@ function historyFromSohuIndex(text: string, limit: number): FundHistoryPoint[] {
     return Array.isArray(hq) ? hq : [];
   });
   return rows
-    .map((row) => {
+    .map((row): FundHistoryPoint | undefined => {
       if (!Array.isArray(row)) return undefined;
       const date = row[0];
       const netValue = toNumber(row[2]);
@@ -806,12 +810,16 @@ function historyFromTencentKline(text: string): FundHistoryPoint[] {
   const klines = entry.day ?? entry.qfqday ?? entry.hisfqday;
   if (!Array.isArray(klines)) return [];
   return klines
-    .map((row) => {
+    .map((row): FundHistoryPoint | undefined => {
       if (!Array.isArray(row)) return undefined;
       const date = row[0];
-      const netValue = toNumber(row[2]);
+      const open = toNumber(row[1]);
+      const close = toNumber(row[2] ?? row[1]);
+      const high = toNumber(row[3]);
+      const low = toNumber(row[4]);
+      const netValue = close ?? open;
       if (typeof date !== 'string' || netValue === undefined) return undefined;
-      return { date, netValue };
+      return { date, netValue, open, close: close ?? netValue, high, low };
     })
     .filter((item): item is FundHistoryPoint => Boolean(item));
 }

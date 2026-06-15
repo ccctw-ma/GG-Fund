@@ -272,7 +272,7 @@ describe('frontend api client', () => {
     await api.getFundHoldings('016452');
     await api.getTrendingFunds();
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/market/indices/NDX.US/history?range=all&v=20260607');
+    expect(fetchMock).toHaveBeenCalledWith('/api/market/indices/NDX.US/history?range=all&v=20260613');
     expect(fetchMock).toHaveBeenCalledWith('/api/funds/016452');
     expect(fetchMock).toHaveBeenCalledWith('/api/funds/016452/holdings');
     expect(fetchMock).toHaveBeenCalledWith('/api/funds/trending');
