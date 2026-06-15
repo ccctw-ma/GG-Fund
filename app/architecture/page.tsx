@@ -87,10 +87,10 @@ export default function ArchitecturePage() {
             <p className="hero-subtitle">
               这个页面把工作台背后的请求链路、边缘运行时、数据源适配、AI 识别和质量门禁串成一张可读的架构图，方便快速理解系统如何从浏览器一路闭环到 Cloudflare。
             </p>
-            <div className="architecture-theme-strip" aria-label="明暗模式支持">
-              <span>Light mode</span>
-              <strong>跟随系统主题</strong>
-              <span>Dark mode</span>
+            <div className="architecture-theme-strip" aria-label="深色架构模式">
+              <span>Dark architecture console</span>
+              <strong>固定深色模式</strong>
+              <span>Edge topology</span>
             </div>
             <div className="hero-actions">
               <Link className="gold-cta" href="/app">进入工作台</Link>

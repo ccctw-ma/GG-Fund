@@ -24,7 +24,7 @@ test('architecture page explains the technical system map', async ({ page }) => 
   await page.goto('/architecture');
 
   await expect(page.getByRole('heading', { name: 'GG Fund 技术架构地图' })).toBeVisible();
-  await expect(page.getByText('Light mode')).toBeVisible();
+  await expect(page.getByText('固定深色模式')).toBeVisible();
   await expect(page.getByRole('heading', { name: '系统架构图' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '行情请求时序图' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '接口流程图' })).toBeVisible();

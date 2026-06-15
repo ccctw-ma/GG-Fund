@@ -188,35 +188,23 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .header-action:hover, .gold-cta:hover, .ghost-cta:hover { transform: translateY(-1px); }
 
 .architecture-page {
-  --arch-bg: #f5f7fb;
-  --arch-panel: rgba(255,255,255,.84);
-  --arch-panel-strong: rgba(255,255,255,.94);
-  --arch-border: rgba(15,35,50,.12);
-  --arch-text: #112033;
-  --arch-muted: rgba(17,32,51,.68);
-  --arch-line: rgba(42,82,114,.28);
-  --arch-shadow: 0 24px 70px rgba(31,56,88,.14);
+  --arch-panel: rgba(5,17,30,.74);
+  --arch-panel-strong: rgba(9,27,44,.86);
+  --arch-border: rgba(137,190,228,.18);
+  --arch-text: #f8fbff;
+  --arch-muted: rgba(192,210,229,.7);
+  --arch-line: rgba(244,183,64,.34);
+  --arch-blue: #8cc8ff;
+  --arch-mint: #7de2b8;
+  --arch-violet: #d5b4ff;
+  --arch-shadow: 0 34px 110px rgba(0,0,0,.38);
   background:
-    radial-gradient(circle at 12% 10%, rgba(83,177,255,.22), transparent 24rem),
-    radial-gradient(circle at 88% 0%, rgba(244,183,64,.24), transparent 22rem),
-    linear-gradient(145deg, #f8fbff, var(--arch-bg) 48%, #e8f1f8);
+    radial-gradient(circle at 12% 10%, rgba(125,226,184,.16), transparent 24rem),
+    radial-gradient(circle at 88% 0%, rgba(244,183,64,.18), transparent 22rem),
+    radial-gradient(circle at 70% 68%, rgba(140,200,255,.12), transparent 30rem),
+    linear-gradient(145deg, #02070d, var(--navy-950) 42%, #061826 100%);
   color: var(--arch-text);
-}
-@media (prefers-color-scheme: dark) {
-  .architecture-page {
-    --arch-bg: #07131e;
-    --arch-panel: rgba(255,255,255,.065);
-    --arch-panel-strong: rgba(255,255,255,.09);
-    --arch-border: rgba(255,255,255,.12);
-    --arch-text: var(--text-strong);
-    --arch-muted: var(--text-muted);
-    --arch-line: rgba(244,183,64,.32);
-    --arch-shadow: 0 34px 110px rgba(0,0,0,.32);
-    background:
-      radial-gradient(circle at 12% 10%, rgba(125,226,184,.18), transparent 24rem),
-      radial-gradient(circle at 88% 0%, rgba(244,183,64,.2), transparent 22rem),
-      linear-gradient(145deg, var(--navy-950), var(--navy-900) 48%, #07131e);
-  }
+  color-scheme: dark;
 }
 .architecture-page-inner {
   max-width: 1180px;
@@ -231,10 +219,27 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border: 1px solid var(--arch-border);
   border-radius: 42px;
   background:
-    linear-gradient(135deg, var(--arch-panel-strong), var(--arch-panel)),
-    radial-gradient(circle at 78% 18%, rgba(140,200,255,.16), transparent 20rem);
+    linear-gradient(135deg, rgba(255,255,255,.105), rgba(255,255,255,.032)),
+    radial-gradient(circle at 78% 18%, rgba(140,200,255,.18), transparent 20rem),
+    rgba(1,10,18,.66);
   padding: clamp(24px, 4vw, 58px);
-  box-shadow: var(--arch-shadow), inset 0 1px 0 rgba(255,255,255,.08);
+  box-shadow: var(--arch-shadow), inset 0 1px 0 rgba(255,255,255,.1);
+}
+.architecture-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: .22;
+  background-image:
+    linear-gradient(rgba(140,200,255,.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140,200,255,.1) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: linear-gradient(120deg, transparent 0 8%, black 28% 74%, transparent 100%);
+  pointer-events: none;
+}
+.architecture-hero > * {
+  position: relative;
+  z-index: 1;
 }
 @media (min-width: 920px) { .architecture-hero { grid-template-columns: minmax(0, 1fr) 420px; align-items: center; } }
 .architecture-orbit {
@@ -243,9 +248,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border: 1px solid rgba(255,255,255,.11);
   border-radius: 38px;
   background:
-    radial-gradient(circle at 50% 50%, rgba(244,183,64,.18), transparent 7rem),
-    radial-gradient(circle at 50% 50%, rgba(125,226,184,.1), transparent 13rem),
-    color-mix(in srgb, var(--arch-panel) 70%, transparent);
+    radial-gradient(circle at 50% 50%, rgba(244,183,64,.2), transparent 7rem),
+    radial-gradient(circle at 50% 50%, rgba(125,226,184,.11), transparent 13rem),
+    linear-gradient(145deg, rgba(4,17,31,.78), rgba(6,23,38,.58));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 0 80px rgba(0,0,0,.28);
 }
 .architecture-orbit::before,
 .architecture-orbit::after {
@@ -284,12 +290,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   justify-content: center;
   border: 1px solid rgba(255,255,255,.14);
   border-radius: 999px;
-  background: rgba(255,255,255,.08);
+  background: rgba(7,24,38,.82);
   color: var(--text-strong);
   padding: 10px 14px;
   font-size: .82rem;
   font-weight: 950;
   backdrop-filter: blur(14px);
+  box-shadow: 0 12px 30px rgba(0,0,0,.22);
 }
 .architecture-theme-strip {
   display: inline-flex;
@@ -299,7 +306,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   margin-top: 18px;
   border: 1px solid var(--arch-border);
   border-radius: 999px;
-  background: var(--arch-panel);
+  background: rgba(2,10,18,.74);
   padding: 8px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
 }
@@ -310,7 +317,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   font-size: .76rem;
   font-weight: 950;
 }
-.architecture-theme-strip span { color: var(--arch-muted); }
+.architecture-theme-strip span { color: rgba(192,210,229,.78); }
 .architecture-theme-strip strong { background: var(--gold); color: #111827; }
 .node-browser { left: 8%; top: 18%; color: var(--mint); }
 .node-edge { right: 8%; top: 22%; color: var(--gold-soft); }
@@ -326,7 +333,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   position: relative;
   border: 1px solid rgba(255,255,255,.11);
   border-radius: 26px;
-  background: rgba(255,255,255,.06);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.075), rgba(255,255,255,.025)),
+    rgba(3,14,24,.66);
   padding: 18px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.055);
 }
@@ -362,8 +371,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .architecture-api-flow {
   border: 1px solid var(--arch-border);
   border-radius: 30px;
-  background: var(--arch-panel);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), var(--arch-shadow);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.08), rgba(255,255,255,.025)),
+    rgba(3,14,24,.72);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), var(--arch-shadow);
   backdrop-filter: blur(18px);
 }
 .architecture-layer-card { padding: 20px; }
@@ -467,10 +478,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border: 1px solid var(--arch-border);
   border-radius: 28px;
   background:
+    radial-gradient(circle at 50% 50%, rgba(244,183,64,.08), transparent 17rem),
     linear-gradient(var(--arch-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--arch-line) 1px, transparent 1px),
-    color-mix(in srgb, var(--arch-panel) 72%, transparent);
-  background-size: 42px 42px;
+    linear-gradient(90deg, rgba(140,200,255,.16) 1px, transparent 1px),
+    rgba(1,9,16,.58);
+  background-size: auto, 42px 42px, 42px 42px, auto;
   padding: 18px;
 }
 @media (min-width: 880px) {
@@ -484,9 +496,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   gap: 8px;
   border: 1px solid var(--arch-border);
   border-radius: 22px;
-  background: var(--arch-panel-strong);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.09), rgba(255,255,255,.035)),
+    rgba(5,21,35,.9);
   padding: 18px;
-  box-shadow: 0 18px 44px rgba(0,0,0,.08);
+  box-shadow: 0 18px 44px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.08);
+  transition: transform .18s ease, border-color .18s ease;
+}
+.system-node:hover {
+  border-color: rgba(244,183,64,.36);
+  transform: translateY(-2px);
 }
 .system-node span {
   color: var(--gold-soft);
@@ -530,7 +549,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .sequence-lanes span {
   border: 1px solid var(--arch-border);
   border-radius: 999px;
-  background: var(--arch-panel-strong);
+  background: rgba(5,21,35,.9);
   color: var(--arch-text);
   padding: 10px 8px;
   text-align: center;
@@ -550,7 +569,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   align-items: center;
   border: 1px solid var(--arch-border);
   border-radius: 20px;
-  background: color-mix(in srgb, var(--arch-panel-strong) 86%, transparent);
+  background:
+    linear-gradient(90deg, rgba(125,226,184,.055), rgba(244,183,64,.04)),
+    rgba(5,21,35,.82);
   padding: 12px;
 }
 @media (min-width: 760px) { .sequence-rows li { grid-template-columns: 120px minmax(0, 1fr) 140px 130px; } }
@@ -580,7 +601,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .api-flow-card {
   border: 1px solid var(--arch-border);
   border-radius: 24px;
-  background: var(--arch-panel-strong);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.085), rgba(255,255,255,.03)),
+    rgba(5,21,35,.86);
   padding: 18px;
 }
 .api-flow-card h3 {
@@ -598,7 +621,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .api-flow-card li {
   border-radius: 12px;
-  background: rgba(125,226,184,.08);
+  background: rgba(125,226,184,.09);
   color: var(--arch-text);
   padding: 9px 10px;
   font-family: "SFMono-Regular", ui-monospace, Menlo, monospace;
