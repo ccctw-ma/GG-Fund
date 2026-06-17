@@ -823,26 +823,26 @@ export function PortfolioPanel({
                 )}
                 {isEditing ? (
                   <div className="yb-holding-actions">
-                    <Button variant="ghost" size="sm" className="yb-icon-btn" title="保存" aria-label={`${item.fundName} 保存`} onClick={() => commitEdit(item.id)}><Check className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="sm" className="yb-icon-btn" title="取消" aria-label={`${item.fundName} 取消`} onClick={cancelEdit}><X className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="sm" className="yb-icon-btn" data-tooltip="保存" aria-label={`${item.fundName} 保存`} onClick={() => commitEdit(item.id)}><Check className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="sm" className="yb-icon-btn" data-tooltip="取消" aria-label={`${item.fundName} 取消`} onClick={cancelEdit}><X className="h-4 w-4" /></Button>
                   </div>
                 ) : (
                   <div className="yb-holding-actions">
-                    <Button variant="ghost" size="sm" className="yb-icon-btn" aria-expanded={isDetail} title="详情" aria-label={`${item.fundName} 持仓详情`} onClick={() => toggleDetail(item.id)}>
+                    <Button variant="ghost" size="sm" className="yb-icon-btn" aria-expanded={isDetail} data-tooltip="详情" aria-label={`${item.fundName} 持仓详情`} onClick={() => toggleDetail(item.id)}>
                       <Info className="h-4 w-4" />
                     </Button>
                     {hasCode && (
-                      <Button variant="ghost" size="sm" className="yb-icon-btn" title="智能分析" aria-label={`${item.fundName} 智能分析`} onClick={() => void openHoldingAnalysis(item)}>
+                      <Button variant="ghost" size="sm" className="yb-icon-btn" data-tooltip="智能分析" aria-label={`${item.fundName} 智能分析`} onClick={() => void openHoldingAnalysis(item)}>
                         {analysisLoadingCode === item.fundCode ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
                       </Button>
                     )}
                     {hasCode && (
-                      <Button variant="ghost" size="sm" className="yb-icon-btn" aria-expanded={isExpanded} title="走势" aria-label={`${item.fundName} 走势`} onClick={() => toggleExpand(item.id)}>
+                      <Button variant="ghost" size="sm" className="yb-icon-btn" aria-expanded={isExpanded} data-tooltip="走势" aria-label={`${item.fundName} 走势`} onClick={() => toggleExpand(item.id)}>
                         <LineChart className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="sm" className="yb-icon-btn" title="编辑" aria-label={`${item.fundName} 编辑`} onClick={() => startEdit(item)}><Pencil className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="sm" className="yb-icon-btn" title="删除" aria-label={`${item.fundName} 删除`} onClick={() => onRemoveHolding(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="sm" className="yb-icon-btn" data-tooltip="编辑" aria-label={`${item.fundName} 编辑`} onClick={() => startEdit(item)}><Pencil className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="sm" className="yb-icon-btn" data-tooltip="删除" aria-label={`${item.fundName} 删除`} onClick={() => onRemoveHolding(item.id)}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 )}
               </article>
