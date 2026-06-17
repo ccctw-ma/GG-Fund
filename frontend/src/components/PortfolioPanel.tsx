@@ -27,12 +27,12 @@ type ProfitSortKey = 'profit' | 'returnRate' | 'marketValue' | 'name';
 type SortDirection = 'asc' | 'desc';
 type SortState<Key extends string> = { key: Key; direction: SortDirection };
 
-const holdingColumns: Array<{ key: SortKey; label: string; defaultDirection: SortDirection; align: 'start' | 'end' }> = [
-  { key: 'name', label: '基金', defaultDirection: 'asc', align: 'start' },
-  { key: 'marketValue', label: '持仓金额', defaultDirection: 'desc', align: 'end' },
-  { key: 'weight', label: '持仓占比', defaultDirection: 'desc', align: 'end' },
-  { key: 'profit', label: '总收益', defaultDirection: 'desc', align: 'end' },
-  { key: 'dailyProfit', label: '今日收益', defaultDirection: 'desc', align: 'end' },
+const holdingSortOptions: Array<{ key: SortKey; label: string; defaultDirection: SortDirection }> = [
+  { key: 'name', label: '按基金', defaultDirection: 'asc' },
+  { key: 'marketValue', label: '按金额', defaultDirection: 'desc' },
+  { key: 'weight', label: '按占比', defaultDirection: 'desc' },
+  { key: 'profit', label: '按总收益', defaultDirection: 'desc' },
+  { key: 'dailyProfit', label: '按今日', defaultDirection: 'desc' },
 ];
 
 const dailySortOptions: Array<{ key: DailySortKey; label: string; defaultDirection: SortDirection }> = [
@@ -734,26 +734,27 @@ export function PortfolioPanel({
         <section className="yb-daily-profit-detail yb-holdings-panel" data-testid="portfolio-holdings-detail">
           <div className="yb-holding-toolbar">
             <span>持仓明细</span>
-            {manualToggle}
+            <div className="yb-holding-toolbar-actions">
+              <div className="yb-sort-group yb-holding-sort-group" role="group" aria-label="持仓排序">
+                {holdingSortOptions.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    className={option.key === holdingSort.key ? 'yb-sort-chip is-active' : 'yb-sort-chip'}
+                    aria-label={sortButtonLabel(option.label, option.key === holdingSort.key, holdingSort.direction, option.defaultDirection)}
+                    aria-pressed={option.key === holdingSort.key}
+                    onClick={() => setHoldingSort((current) => nextSortState(current, option.key, option.defaultDirection))}
+                  >
+                    <span>{option.label}</span>
+                    {sortArrows(option.key === holdingSort.key, holdingSort.direction)}
+                  </button>
+                ))}
+              </div>
+              {manualToggle}
+            </div>
           </div>
           {manualHoldingPanel}
           <div className="yb-holding-table mt-3">
-            <div className="yb-holding-head" role="row" aria-label="持仓排序">
-              {holdingColumns.map((column) => (
-                <button
-                  key={column.key}
-                  type="button"
-                  className={`yb-sort-chip yb-holding-head-cell is-${column.align}${column.key === holdingSort.key ? ' is-active' : ''}`}
-                  aria-label={sortButtonLabel(column.label, column.key === holdingSort.key, holdingSort.direction, column.defaultDirection)}
-                  aria-pressed={column.key === holdingSort.key}
-                  onClick={() => setHoldingSort((current) => nextSortState(current, column.key, column.defaultDirection))}
-                >
-                  <span>{column.label}</span>
-                  {sortArrows(column.key === holdingSort.key, holdingSort.direction)}
-                </button>
-              ))}
-              <span className="yb-holding-head-actions">操作</span>
-            </div>
           <div className="grid gap-3">
             {sortedItems.map((item) => {
               const hasCode = /^\d{6}$/.test(item.fundCode);

@@ -1411,42 +1411,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .yb-holding-table {
   display: grid;
-  gap: 8px;
+  gap: 0;
   --yb-holding-cols: minmax(0, 1.7fr) minmax(86px, 1fr) minmax(72px, .8fr) minmax(96px, 1fr) minmax(96px, 1fr) auto;
-}
-.yb-holding-head {
-  display: none;
-  align-items: stretch;
-  gap: 14px;
-  padding: 2px 16px 0;
-}
-.yb-holding-head-cell {
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: flex-start !important;
-  min-width: 0 !important;
-  min-height: 26px !important;
-  padding: 0 !important;
-  gap: 4px !important;
-  background: transparent !important;
-  color: var(--text-muted) !important;
-  font-size: .74rem !important;
-  font-weight: 850 !important;
-  letter-spacing: .01em;
-}
-.yb-holding-head-cell.is-end { justify-content: flex-end !important; }
-.yb-holding-head-cell.is-active { color: var(--text-strong) !important; }
-.yb-holding-head-cell:hover { color: var(--text-strong) !important; }
-.yb-holding-head-cell .yb-sort-arrows { width: .7rem; height: .8rem; }
-.yb-holding-head-cell.is-active .yb-sort-arrow { color: currentColor; opacity: .5; }
-.yb-holding-head-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  color: var(--text-muted);
-  font-size: .74rem;
-  font-weight: 850;
-  letter-spacing: .01em;
 }
 .yb-holding-row {
   display: grid;
@@ -1459,7 +1425,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .yb-holding-cell.is-end { align-items: flex-end; text-align: right; }
 .yb-holding-amount { font-size: .96rem; font-weight: 900; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 @media (min-width: 860px) {
-  .yb-holding-head { display: grid; grid-template-columns: var(--yb-holding-cols); }
   .yb-holding-row { grid-template-columns: var(--yb-holding-cols); gap: 14px; align-items: center; }
   .yb-holding-row.is-editing { grid-template-columns: minmax(0, 1.7fr) 1fr auto; align-items: start; }
 }
@@ -1488,6 +1453,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+}
+.yb-holding-sort-group .yb-sort-chip {
+  min-width: 76px;
+  min-height: 34px;
+  padding-inline: 11px;
+  font-size: .76rem;
 }
 .yb-insight-toolbar { margin-top: 0; }
 .yb-insight-toolbar > div:first-child { min-width: min(100%, 320px); }
