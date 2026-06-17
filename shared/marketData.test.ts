@@ -757,6 +757,25 @@ describe('market data service', () => {
     ]);
   });
 
+  it('falls back to Sohu history for STAR 50 when Eastmoney and Tencent are empty', async () => {
+    const service = createMarketDataService({
+      now: () => Date.parse('2026-06-17T12:00:00Z'),
+      fetchJson: async () => ({ data: { klines: [] } }),
+      fetchText: async (url) => {
+        if (url.includes('q.stock.sohu.com/hisHq')) {
+          expect(url).toContain('code=zs_000688');
+          return 'historySearchHandler([{"status":0,"hq":[["2026-06-16","1751.71","1758.42"],["2026-06-15","1687.67","1748.33"]]}])';
+        }
+        return JSON.stringify({ data: { sh000688: { day: [] } } });
+      },
+    });
+
+    await expect(service.getIndexHistory('000688.SH', '1m')).resolves.toEqual([
+      { date: '2026-06-15', netValue: 1748.33 },
+      { date: '2026-06-16', netValue: 1758.42 },
+    ]);
+  });
+
   it('fills required index quotes from history when realtime quote sources miss them', async () => {
     const service = createMarketDataService({
       completeIndexUniverse: true,

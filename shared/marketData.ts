@@ -139,6 +139,11 @@ const REQUIRED_INDEX_CODES = [
   'FCHI.FR',
 ];
 
+const SOHU_INDEX_CODES: Record<string, string> = {
+  '000688.SH': 'zs_000688',
+  '899050.BJ': 'zs_899050',
+};
+
 const historyByCode: Record<string, FundHistoryPoint[]> = Object.fromEntries(
   fallbackFunds.filter((fund) => fund.assetType !== 'stock').map((fund, fundIndex) => [
     fund.code,
@@ -1169,7 +1174,8 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
   }
 
   async function getSohuIndexHistory(code: string, limit = 120): Promise<FundHistoryPoint[]> {
-    if (code !== '899050.BJ') return [];
+    const sohuCode = SOHU_INDEX_CODES[code.toUpperCase()];
+    if (!sohuCode) return [];
     const end = new Date(now());
     const start = new Date(end);
     start.setDate(start.getDate() - Math.max(limit * 2, 90));
@@ -1179,7 +1185,7 @@ export function createMarketDataService(options: MarketDataOptions = {}) {
       const day = `${date.getUTCDate()}`.padStart(2, '0');
       return `${year}${month}${day}`;
     };
-    const url = `https://q.stock.sohu.com/hisHq?code=zs_899050&start=${format(start)}&end=${format(end)}&stat=1&order=D&period=d&callback=historySearchHandler&rt=jsonp`;
+    const url = `https://q.stock.sohu.com/hisHq?code=${sohuCode}&start=${format(start)}&end=${format(end)}&stat=1&order=D&period=d&callback=historySearchHandler&rt=jsonp`;
     return historyFromSohuIndex(await fetchText(url), limit);
   }
 
