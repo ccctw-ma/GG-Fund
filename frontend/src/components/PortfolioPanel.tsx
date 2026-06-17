@@ -28,11 +28,11 @@ type SortDirection = 'asc' | 'desc';
 type SortState<Key extends string> = { key: Key; direction: SortDirection };
 
 const holdingSortOptions: Array<{ key: SortKey; label: string; defaultDirection: SortDirection }> = [
-  { key: 'name', label: '按基金', defaultDirection: 'asc' },
-  { key: 'marketValue', label: '按金额', defaultDirection: 'desc' },
-  { key: 'weight', label: '按占比', defaultDirection: 'desc' },
-  { key: 'profit', label: '按总收益', defaultDirection: 'desc' },
-  { key: 'dailyProfit', label: '按今日', defaultDirection: 'desc' },
+  { key: 'name', label: '基金名称', defaultDirection: 'asc' },
+  { key: 'marketValue', label: '持仓', defaultDirection: 'desc' },
+  { key: 'weight', label: '占比', defaultDirection: 'desc' },
+  { key: 'profit', label: '总收益', defaultDirection: 'desc' },
+  { key: 'dailyProfit', label: '今日收益', defaultDirection: 'desc' },
 ];
 
 const dailySortOptions: Array<{ key: DailySortKey; label: string; defaultDirection: SortDirection }> = [
@@ -116,6 +116,12 @@ function toneClass(value?: number) {
 
 function signedMoney(value: number) {
   return `${value >= 0 ? '+' : ''}${money.format(value)}`;
+}
+
+function displayDate(date?: string) {
+  const match = date?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return date ?? '';
+  return `${match[1]}年${match[2]}月${match[3]}日`;
 }
 
 function dailyProfitClass(value: number, available: boolean) {
@@ -466,6 +472,7 @@ export function PortfolioPanel({
     <Button
       variant={manualFormOpen ? 'outline' : 'secondary'}
       size="sm"
+      className="yb-holding-add-btn"
       aria-expanded={manualFormOpen}
       aria-controls="manual-holding-panel"
       onClick={() => {
@@ -766,7 +773,7 @@ export function PortfolioPanel({
               const topTenWeight = detailStocks.reduce((sum, stock, index) => sum + ((stock.isTopTen ?? (stock.rank ? stock.rank <= 10 : index < 10)) ? stock.weight : 0), 0);
               const disclosedBeyondTopTenWeight = Math.max(0, disclosedStockWeight - topTenWeight);
               const undisclosedWeight = Math.max(0, 100 - disclosedStockWeight);
-              const dailyProfitDateLabel = item.dailyProfitIsCurrent ? '今日' : item.dailyProfitDate;
+              const dailyProfitDateLabel = displayDate(item.dailyProfitDate);
               return (
               <div key={item.id} className="yb-holding-wrap">
               <article className={isEditing ? 'yb-holding-row is-editing' : 'yb-holding-row'}>
@@ -804,7 +811,7 @@ export function PortfolioPanel({
                     </div>
                     <div className="yb-holding-cell is-end" data-label="持仓占比">
                       <span className="yb-holding-weight"><PieChart className="mr-1 inline h-3.5 w-3.5" />{item.weight.toFixed(1)}%</span>
-                      {item.quote && <small className="yb-holding-meta">{item.quote.quoteDate}</small>}
+                      {item.quote && <small className="yb-holding-meta">{displayDate(item.quote.quoteDate)}</small>}
                     </div>
                     <div className="yb-holding-cell is-end" data-label="总收益">
                       <span className={`yb-holding-amount ${toneClass(item.profit)}`}>{signedMoney(item.profit)}</span>
@@ -814,7 +821,7 @@ export function PortfolioPanel({
                       {item.dailyProfitAvailable ? (
                         <>
                           <span className={`yb-holding-amount ${toneClass(item.estimatedDailyProfit)}`}>{signedMoney(item.estimatedDailyProfit)}</span>
-                          <small className="yb-holding-meta">{dailyProfitDateLabel}</small>
+                          {dailyProfitDateLabel && <small className="yb-holding-meta">{dailyProfitDateLabel}</small>}
                         </>
                       ) : (
                         <span className="yb-holding-amount yb-tone-muted">--</span>

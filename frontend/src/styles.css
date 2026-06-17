@@ -1460,6 +1460,23 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   padding-inline: 11px;
   font-size: .76rem;
 }
+.yb-holding-add-btn {
+  min-height: 38px !important;
+  border: 1px solid rgba(125,226,184,.28) !important;
+  background:
+    radial-gradient(circle at 28% 22%, rgba(125,226,184,.22), transparent 34px),
+    linear-gradient(135deg, rgba(13,54,57,.92), rgba(8,32,45,.88)) !important;
+  color: #9ff0d1 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 10px 24px rgba(0,0,0,.22) !important;
+}
+.yb-holding-add-btn:hover {
+  border-color: rgba(125,226,184,.52) !important;
+  background:
+    radial-gradient(circle at 28% 22%, rgba(125,226,184,.3), transparent 38px),
+    linear-gradient(135deg, rgba(15,69,67,.96), rgba(9,38,52,.9)) !important;
+  color: var(--text-strong) !important;
+  transform: translateY(-1px);
+}
 .yb-insight-toolbar { margin-top: 0; }
 .yb-insight-toolbar > div:first-child { min-width: min(100%, 320px); }
 .yb-insight-toolbar > div:first-child strong {
