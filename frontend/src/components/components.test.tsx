@@ -721,14 +721,14 @@ describe('dashboard components', () => {
     const toggledHoldingSortButton = portfolio.container.querySelector<HTMLButtonElement>('[aria-label="持仓排序"] .yb-sort-chip.is-active');
     expect(toggledHoldingSortButton?.getAttribute('aria-label')).toContain('当前正序');
     expect(toggledHoldingSortButton?.querySelector('.yb-sort-arrow.is-selected')?.textContent).toBe('↑');
-    const returnRateSortButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-label="持仓排序"] .yb-sort-chip')).find((button) => button.textContent?.includes('按收益率'));
+    const returnRateSortButton = Array.from(portfolio.container.querySelectorAll<HTMLButtonElement>('[aria-label="持仓排序"] .yb-sort-chip')).find((button) => button.textContent?.includes('总收益'));
     act(() => returnRateSortButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(returnRateSortButton?.getAttribute('aria-label')).toContain('当前倒序');
     const refreshButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('手动刷新'));
     act(() => refreshButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(refreshCount).toBe(1);
 
-    const detailButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('详情'));
+    const detailButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.getAttribute('aria-label')?.includes('持仓详情'));
     expect(detailButton).toBeDefined();
     act(() => detailButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     const detail = portfolio.container.querySelector('[data-testid="holding-detail"]');
@@ -984,7 +984,7 @@ describe('dashboard components', () => {
     );
     roots.push(portfolio.root);
 
-    const editButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('编辑'));
+    const editButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.getAttribute('aria-label')?.includes('编辑'));
     act(() => editButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
     const codeInput = portfolio.container.querySelector<HTMLInputElement>('input[aria-label="某只截图基金 基金代码"]');
@@ -1002,7 +1002,7 @@ describe('dashboard components', () => {
       costInput.dispatchEvent(new Event('input', { bubbles: true }));
     });
 
-    const saveButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('保存'));
+    const saveButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.getAttribute('aria-label')?.includes('保存'));
     act(() => saveButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
     expect(edits).toHaveLength(1);
@@ -1019,11 +1019,11 @@ describe('dashboard components', () => {
     act(() => saveButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(updates).toHaveLength(1);
 
-    const cancelButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('取消'));
+    const cancelButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.getAttribute('aria-label')?.includes('取消'));
     act(() => cancelButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(portfolio.container.querySelector('input[aria-label="某只截图基金 持有金额"]')).toBeNull();
 
-    const deleteButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('删除'));
+    const deleteButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.getAttribute('aria-label')?.includes('删除'));
     act(() => deleteButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(removals).toEqual(['holding-2']);
   });
@@ -1182,7 +1182,7 @@ describe('dashboard components', () => {
     );
     roots.push(portfolio.root);
 
-    const detailButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('详情'));
+    const detailButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.getAttribute('aria-label')?.includes('持仓详情'));
     act(() => detailButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     await act(async () => {
       await Promise.resolve();
@@ -1241,7 +1241,7 @@ describe('dashboard components', () => {
     );
     roots.push(portfolio.root);
 
-    const analysisButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('智能分析'));
+    const analysisButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.getAttribute('aria-label')?.includes('智能分析'));
     await act(async () => {
       analysisButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       await Promise.resolve();
@@ -1285,7 +1285,7 @@ describe('dashboard components', () => {
     );
     roots.push(portfolio.root);
 
-    const detailButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.textContent?.includes('详情'));
+    const detailButton = Array.from(portfolio.container.querySelectorAll('button')).find((button) => button.getAttribute('aria-label')?.includes('持仓详情'));
     act(() => detailButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     await act(async () => {
       await Promise.resolve();

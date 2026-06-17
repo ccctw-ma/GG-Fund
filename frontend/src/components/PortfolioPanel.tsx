@@ -20,17 +20,19 @@ function signalClass(signal: PortfolioSignal) {
   return `yb-signal yb-signal-${signal.tone}`;
 }
 
-type SortKey = 'marketValue' | 'returnRate' | 'name';
+type SortKey = 'name' | 'marketValue' | 'weight' | 'profit' | 'dailyProfit';
 type InsightKey = 'holdings' | 'daily' | 'profit';
 type DailySortKey = 'dailyProfit' | 'dailyChange' | 'marketValue' | 'name';
 type ProfitSortKey = 'profit' | 'returnRate' | 'marketValue' | 'name';
 type SortDirection = 'asc' | 'desc';
 type SortState<Key extends string> = { key: Key; direction: SortDirection };
 
-const sortOptions: Array<{ key: SortKey; label: string; defaultDirection: SortDirection }> = [
-  { key: 'marketValue', label: '按市值', defaultDirection: 'desc' },
-  { key: 'returnRate', label: '按收益率', defaultDirection: 'desc' },
-  { key: 'name', label: '按名称', defaultDirection: 'asc' },
+const holdingColumns: Array<{ key: SortKey; label: string; defaultDirection: SortDirection; align: 'start' | 'end' }> = [
+  { key: 'name', label: '基金', defaultDirection: 'asc', align: 'start' },
+  { key: 'marketValue', label: '持仓金额', defaultDirection: 'desc', align: 'end' },
+  { key: 'weight', label: '持仓占比', defaultDirection: 'desc', align: 'end' },
+  { key: 'profit', label: '总收益', defaultDirection: 'desc', align: 'end' },
+  { key: 'dailyProfit', label: '今日收益', defaultDirection: 'desc', align: 'end' },
 ];
 
 const dailySortOptions: Array<{ key: DailySortKey; label: string; defaultDirection: SortDirection }> = [
@@ -83,7 +85,9 @@ function sortItems(items: PortfolioItem[], sort: SortState<SortKey>) {
   const next = [...items];
   const { key, direction } = sort;
   if (key === 'marketValue') return next.sort((a, b) => applyDirection(a.marketValue - b.marketValue, direction));
-  if (key === 'returnRate') return next.sort((a, b) => applyDirection(a.returnRate - b.returnRate, direction));
+  if (key === 'weight') return next.sort((a, b) => applyDirection(a.weight - b.weight, direction));
+  if (key === 'profit') return next.sort((a, b) => applyDirection(a.profit - b.profit, direction));
+  if (key === 'dailyProfit') return next.sort((a, b) => applyDirection(a.estimatedDailyProfit - b.estimatedDailyProfit, direction));
   return next.sort((a, b) => applyDirection(a.fundName.localeCompare(b.fundName, 'zh-Hans-CN'), direction));
 }
 
@@ -730,40 +734,42 @@ export function PortfolioPanel({
         <section className="yb-daily-profit-detail yb-holdings-panel" data-testid="portfolio-holdings-detail">
           <div className="yb-holding-toolbar">
             <span>持仓明细</span>
-            <div className="yb-holding-toolbar-actions">
-              <div className="yb-sort-group" role="group" aria-label="持仓排序">
-                {sortOptions.map((option) => (
-                  <button
-                    key={option.key}
-                    type="button"
-                    className={option.key === holdingSort.key ? 'yb-sort-chip is-active' : 'yb-sort-chip'}
-                    aria-label={sortButtonLabel(option.label, option.key === holdingSort.key, holdingSort.direction, option.defaultDirection)}
-                    aria-pressed={option.key === holdingSort.key}
-                    onClick={() => setHoldingSort((current) => nextSortState(current, option.key, option.defaultDirection))}
-                  >
-                    <span>{option.label}</span>
-                    {sortArrows(option.key === holdingSort.key, holdingSort.direction)}
-                  </button>
-                ))}
-              </div>
-              {manualToggle}
-            </div>
+            {manualToggle}
           </div>
           {manualHoldingPanel}
-          <div className="mt-3 grid gap-3">
+          <div className="yb-holding-table mt-3">
+            <div className="yb-holding-head" role="row" aria-label="持仓排序">
+              {holdingColumns.map((column) => (
+                <button
+                  key={column.key}
+                  type="button"
+                  className={`yb-sort-chip yb-holding-head-cell is-${column.align}${column.key === holdingSort.key ? ' is-active' : ''}`}
+                  aria-label={sortButtonLabel(column.label, column.key === holdingSort.key, holdingSort.direction, column.defaultDirection)}
+                  aria-pressed={column.key === holdingSort.key}
+                  onClick={() => setHoldingSort((current) => nextSortState(current, column.key, column.defaultDirection))}
+                >
+                  <span>{column.label}</span>
+                  {sortArrows(column.key === holdingSort.key, holdingSort.direction)}
+                </button>
+              ))}
+              <span className="yb-holding-head-actions">操作</span>
+            </div>
+          <div className="grid gap-3">
             {sortedItems.map((item) => {
               const hasCode = /^\d{6}$/.test(item.fundCode);
               const isExpanded = expandedId === item.id;
               const isDetail = detailId === item.id;
+              const isEditing = editingId === item.id;
               const detailStocks = detailHoldings?.stocks ?? [];
               const disclosedStockWeight = detailStocks.reduce((sum, stock) => sum + stock.weight, 0);
               const topTenWeight = detailStocks.reduce((sum, stock, index) => sum + ((stock.isTopTen ?? (stock.rank ? stock.rank <= 10 : index < 10)) ? stock.weight : 0), 0);
               const disclosedBeyondTopTenWeight = Math.max(0, disclosedStockWeight - topTenWeight);
               const undisclosedWeight = Math.max(0, 100 - disclosedStockWeight);
+              const dailyProfitDateLabel = item.dailyProfitIsCurrent ? '今日' : item.dailyProfitDate;
               return (
               <div key={item.id} className="yb-holding-wrap">
-              <article className="yb-holding-row">
-                <div>
+              <article className={isEditing ? 'yb-holding-row is-editing' : 'yb-holding-row'}>
+                <div className="yb-holding-cell yb-holding-cell-name">
                   <strong className="yb-holding-name">{item.fundName}</strong>
                   <small className="yb-holding-meta">
                     {hasCode ? item.fundCode : '自填持仓'}{item.shares ? ` · 份额 ${item.shares}` : ''}
@@ -771,7 +777,7 @@ export function PortfolioPanel({
                     {!hasCode && <em className="yb-code-tag yb-code-tag-pending" title="未匹配到 6 位代码，编辑可手动补全">待完善</em>}
                   </small>
                 </div>
-                {editingId === item.id ? (
+                {isEditing ? (
                   <div className="yb-holding-edit">
                     <label>
                       <span>基金名称</span>
@@ -791,48 +797,52 @@ export function PortfolioPanel({
                     </label>
                   </div>
                 ) : (
-                  <div>
-                    <span className="yb-holding-value">{money.format(item.marketValue)}</span>
-                    <small className="yb-holding-performance">
-                      <span className={toneClass(item.profit)}>{signedMoney(item.profit)}</span>
-                      <span className={toneClass(item.returnRate)}>{item.returnRate.toFixed(2)}%</span>
-                    </small>
-                  </div>
+                  <>
+                    <div className="yb-holding-cell is-end" data-label="持仓金额">
+                      <span className="yb-holding-value">{money.format(item.marketValue)}</span>
+                    </div>
+                    <div className="yb-holding-cell is-end" data-label="持仓占比">
+                      <span className="yb-holding-weight"><PieChart className="mr-1 inline h-3.5 w-3.5" />{item.weight.toFixed(1)}%</span>
+                      {item.quote && <small className="yb-holding-meta">{item.quote.quoteDate}</small>}
+                    </div>
+                    <div className="yb-holding-cell is-end" data-label="总收益">
+                      <span className={`yb-holding-amount ${toneClass(item.profit)}`}>{signedMoney(item.profit)}</span>
+                      <small className={`yb-holding-meta ${toneClass(item.returnRate)}`}>{item.returnRate.toFixed(2)}%</small>
+                    </div>
+                    <div className="yb-holding-cell is-end" data-label="今日收益">
+                      {item.dailyProfitAvailable ? (
+                        <>
+                          <span className={`yb-holding-amount ${toneClass(item.estimatedDailyProfit)}`}>{signedMoney(item.estimatedDailyProfit)}</span>
+                          <small className="yb-holding-meta">{dailyProfitDateLabel}</small>
+                        </>
+                      ) : (
+                        <span className="yb-holding-amount yb-tone-muted">--</span>
+                      )}
+                    </div>
+                  </>
                 )}
-                <div>
-                  <span className="yb-holding-weight"><PieChart className="mr-1 inline h-4 w-4" />{item.weight.toFixed(1)}%</span>
-                  <small className="yb-holding-meta yb-value-line">
-                    {item.quote && (
-                      <>
-                        <em>{item.quote.quoteDate}</em>
-                        {item.dailyProfitAvailable && <em className={toneClass(item.estimatedDailyProfit)}>{item.dailyProfitIsCurrent ? '今日' : item.dailyProfitDate} {signedMoney(item.estimatedDailyProfit)}</em>}
-                      </>
-                    )}
-                  </small>
-                </div>
-                {editingId === item.id ? (
+                {isEditing ? (
                   <div className="yb-holding-actions">
-                    <Button variant="ghost" size="sm" onClick={() => commitEdit(item.id)}><Check className="h-4 w-4" />保存</Button>
-                    <Button variant="ghost" size="sm" onClick={cancelEdit}><X className="h-4 w-4" />取消</Button>
+                    <Button variant="ghost" size="sm" className="yb-icon-btn" title="保存" aria-label={`${item.fundName} 保存`} onClick={() => commitEdit(item.id)}><Check className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="sm" className="yb-icon-btn" title="取消" aria-label={`${item.fundName} 取消`} onClick={cancelEdit}><X className="h-4 w-4" /></Button>
                   </div>
                 ) : (
                   <div className="yb-holding-actions">
-                    <Button variant="ghost" size="sm" aria-expanded={isDetail} aria-label={`${item.fundName} 持仓详情`} onClick={() => toggleDetail(item.id)}>
-                      <Info className="h-4 w-4" />详情<ChevronDown className={`h-4 w-4 transition-transform ${isDetail ? 'rotate-180' : ''}`} />
+                    <Button variant="ghost" size="sm" className="yb-icon-btn" aria-expanded={isDetail} title="详情" aria-label={`${item.fundName} 持仓详情`} onClick={() => toggleDetail(item.id)}>
+                      <Info className="h-4 w-4" />
                     </Button>
                     {hasCode && (
-                      <Button variant="ghost" size="sm" aria-label={`${item.fundName} 智能分析`} onClick={() => void openHoldingAnalysis(item)}>
+                      <Button variant="ghost" size="sm" className="yb-icon-btn" title="智能分析" aria-label={`${item.fundName} 智能分析`} onClick={() => void openHoldingAnalysis(item)}>
                         {analysisLoadingCode === item.fundCode ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
-                        智能分析
                       </Button>
                     )}
                     {hasCode && (
-                      <Button variant="ghost" size="sm" aria-expanded={isExpanded} aria-label={`${item.fundName} 走势`} onClick={() => toggleExpand(item.id)}>
-                        <LineChart className="h-4 w-4" />走势<ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                      <Button variant="ghost" size="sm" className="yb-icon-btn" aria-expanded={isExpanded} title="走势" aria-label={`${item.fundName} 走势`} onClick={() => toggleExpand(item.id)}>
+                        <LineChart className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => startEdit(item)}><Pencil className="h-4 w-4" />编辑</Button>
-                    <Button variant="ghost" size="sm" onClick={() => onRemoveHolding(item.id)}><Trash2 className="h-4 w-4" />删除</Button>
+                    <Button variant="ghost" size="sm" className="yb-icon-btn" title="编辑" aria-label={`${item.fundName} 编辑`} onClick={() => startEdit(item)}><Pencil className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="sm" className="yb-icon-btn" title="删除" aria-label={`${item.fundName} 删除`} onClick={() => onRemoveHolding(item.id)}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 )}
               </article>
@@ -956,6 +966,7 @@ export function PortfolioPanel({
               </div>
               );
             })}
+          </div>
           </div>
         </section>
       ))}
