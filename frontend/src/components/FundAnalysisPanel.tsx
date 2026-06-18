@@ -1,6 +1,7 @@
 'use client';
 
 import { Bot, LoaderCircle, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import type { FundAnalysisResponse } from '../types';
 
 type AnalysisTarget = {
@@ -27,7 +28,7 @@ function probabilityLabel(probability: 'low' | 'medium' | 'high') {
 export function FundAnalysisPanel({ target, analysis, loadingCode, streamingStatus, streamingDraft, error, onClose }: Props) {
   if (!target) return null;
 
-  return (
+  const drawer = (
     <>
       <button className="fund-ai-drawer-scrim" type="button" aria-label="关闭智能分析抽屉" onClick={onClose} />
       <aside className="fund-ai-panel is-drawer" aria-label={`${target.name} 智能分析抽屉`}>
@@ -130,4 +131,6 @@ export function FundAnalysisPanel({ target, analysis, loadingCode, streamingStat
       </aside>
     </>
   );
+
+  return typeof document === 'undefined' ? null : createPortal(drawer, document.body);
 }

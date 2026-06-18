@@ -194,13 +194,13 @@ describe('dashboard components', () => {
     act(() => aiButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     await act(async () => { await Promise.resolve(); });
     expect(mockApi.analyzeFundStream).toHaveBeenCalledWith('000001', expect.any(Object));
-    expect(search.container.textContent).toContain('Deepseek Agent');
-    expect(search.container.textContent).toContain('核心判断');
-    expect(search.container.textContent).toContain('驱动');
-    expect(search.container.textContent).toContain('上涨原因来自持仓方向');
-    expect(search.container.textContent).toContain('东方财富基金概况');
-    expect(search.container.querySelector('.fund-ai-panel')?.className).toContain('is-drawer');
-    expect(search.container.querySelector('.fund-ai-resize-handle')).toBeNull();
+    expect(document.body.textContent).toContain('Deepseek Agent');
+    expect(document.body.textContent).toContain('核心判断');
+    expect(document.body.textContent).toContain('驱动');
+    expect(document.body.textContent).toContain('上涨原因来自持仓方向');
+    expect(document.body.textContent).toContain('东方财富基金概况');
+    expect(document.body.querySelector('.fund-ai-panel')?.className).toContain('is-drawer');
+    expect(document.body.querySelector('.fund-ai-resize-handle')).toBeNull();
     const holdingButton = search.container.querySelector<HTMLButtonElement>('[data-testid="fund-holdings"] button');
     expect(holdingButton).not.toBeNull();
     const returnButton = Array.from(search.container.querySelectorAll('button')).find((button) => button.textContent?.includes('区间收益'));
@@ -476,17 +476,17 @@ describe('dashboard components', () => {
     roots.push(panel.root);
     await act(async () => { await Promise.resolve(); });
 
-    expect(panel.container.textContent).toContain('正在生成');
-    expect(panel.container.textContent).toContain('分析失败');
-    expect(panel.container.textContent).toContain('流式草稿');
-    expect(panel.container.textContent).toContain('高概率');
-    expect(panel.container.textContent).toContain('低概率');
-    expect(panel.container.textContent).toContain('中性情景');
-    expect(panel.container.textContent).toContain('震荡');
-    expect(panel.container.textContent).toContain('本次未读取到可用公开网页材料');
-    act(() => panel.container.querySelector<HTMLButtonElement>('button[aria-label="关闭智能分析"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(document.body.textContent).toContain('正在生成');
+    expect(document.body.textContent).toContain('分析失败');
+    expect(document.body.textContent).toContain('流式草稿');
+    expect(document.body.textContent).toContain('高概率');
+    expect(document.body.textContent).toContain('低概率');
+    expect(document.body.textContent).toContain('中性情景');
+    expect(document.body.textContent).toContain('震荡');
+    expect(document.body.textContent).toContain('本次未读取到可用公开网页材料');
+    act(() => document.body.querySelector<HTMLButtonElement>('button[aria-label="关闭智能分析"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(closeEvents).toEqual(['closed']);
-    act(() => panel.container.querySelector<HTMLButtonElement>('button[aria-label="关闭智能分析抽屉"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    act(() => document.body.querySelector<HTMLButtonElement>('button[aria-label="关闭智能分析抽屉"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(closeEvents).toEqual(['closed', 'closed']);
 
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 640 });
@@ -502,8 +502,8 @@ describe('dashboard components', () => {
       window.dispatchEvent(new Event('resize'));
       await Promise.resolve();
     });
-    expect(mobile.container.querySelector('.fund-ai-panel')?.className).toContain('is-drawer');
-    expect(mobile.container.querySelector('.fund-ai-resize-handle')).toBeNull();
+    expect(document.body.querySelector('.fund-ai-panel')?.className).toContain('is-drawer');
+    expect(document.body.querySelector('.fund-ai-resize-handle')).toBeNull();
   });
 
   it('renders the fund analysis drawer without persisted floating geometry', async () => {
@@ -550,11 +550,11 @@ describe('dashboard components', () => {
     roots.push(panel.root);
     await act(async () => { await Promise.resolve(); });
 
-    const aside = panel.container.querySelector<HTMLElement>('.fund-ai-panel');
+    const aside = document.body.querySelector<HTMLElement>('.fund-ai-panel');
     expect(aside?.className).toContain('is-drawer');
     expect(aside?.getAttribute('style')).toBeNull();
-    expect(panel.container.textContent).toContain('来源 A');
-    expect(panel.container.querySelector('.fund-ai-resize-handle')).toBeNull();
+    expect(document.body.textContent).toContain('来源 A');
+    expect(document.body.querySelector('.fund-ai-resize-handle')).toBeNull();
   });
 
   it('renders portfolio and settings empty states', () => {
@@ -728,12 +728,12 @@ describe('dashboard components', () => {
     act(() => aiButtons[0]?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     await act(async () => { await Promise.resolve(); });
     expect(mockApi.analyzeFundStream).toHaveBeenCalledWith('000001', expect.any(Object));
-    expect(portfolio.container.textContent).toContain('Deepseek Agent');
-    expect(portfolio.container.textContent).toContain('核心判断');
-    expect(portfolio.container.textContent).toContain('驱动');
-    expect(portfolio.container.textContent).toContain('上涨原因来自持仓方向');
-    expect(portfolio.container.querySelector('.fund-ai-links a')?.textContent).toContain('东方财富基金概况');
-    expect(portfolio.container.querySelector('.fund-ai-panel')?.className).toContain('is-drawer');
+    expect(document.body.textContent).toContain('Deepseek Agent');
+    expect(document.body.textContent).toContain('核心判断');
+    expect(document.body.textContent).toContain('驱动');
+    expect(document.body.textContent).toContain('上涨原因来自持仓方向');
+    expect(document.body.querySelector('.fund-ai-links a')?.textContent).toContain('东方财富基金概况');
+    expect(document.body.querySelector('.fund-ai-panel')?.className).toContain('is-drawer');
     const bottomModules = portfolio.container.querySelector('[data-testid="portfolio-bottom-modules"]');
     expect(bottomModules).not.toBeNull();
     expect(portfolio.container.textContent).toContain('多平台账本');
@@ -1234,10 +1234,10 @@ describe('dashboard components', () => {
       await Promise.resolve();
     });
 
-    expect(portfolio.container.textContent).toContain('智能分析暂不可用');
-    const closeButton = portfolio.container.querySelector<HTMLButtonElement>('button[aria-label="关闭智能分析"]');
+    expect(document.body.textContent).toContain('智能分析暂不可用');
+    const closeButton = document.body.querySelector<HTMLButtonElement>('button[aria-label="关闭智能分析"]');
     act(() => closeButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-    expect(portfolio.container.textContent).not.toContain('智能分析暂不可用');
+    expect(document.body.textContent).not.toContain('智能分析暂不可用');
   });
 
   it('shows retry UI when stock quote lookup fails repeatedly', async () => {
