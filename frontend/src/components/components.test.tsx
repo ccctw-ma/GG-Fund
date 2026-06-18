@@ -199,8 +199,8 @@ describe('dashboard components', () => {
     expect(search.container.textContent).toContain('驱动');
     expect(search.container.textContent).toContain('上涨原因来自持仓方向');
     expect(search.container.textContent).toContain('东方财富基金概况');
-    expect(search.container.querySelector('.fund-ai-resize-handle.is-corner')).not.toBeNull();
-    expect(localStorage.getItem('gg-fund:analysis-panel-rect')).toContain('"x"');
+    expect(search.container.querySelector('.fund-ai-panel')?.className).toContain('is-drawer');
+    expect(search.container.querySelector('.fund-ai-resize-handle')).toBeNull();
     const holdingButton = search.container.querySelector<HTMLButtonElement>('[data-testid="fund-holdings"] button');
     expect(holdingButton).not.toBeNull();
     const returnButton = Array.from(search.container.querySelectorAll('button')).find((button) => button.textContent?.includes('区间收益'));
@@ -420,7 +420,7 @@ describe('dashboard components', () => {
     expect(sparseStock.container.textContent).toContain('成交量 / 成交额');
   });
 
-  it('renders FundAnalysisPanel branches for loading, errors, scenarios, and mobile layout', async () => {
+  it('renders FundAnalysisPanel branches for loading, errors, scenarios, and drawer layout', async () => {
     const hidden = render(<FundAnalysisPanel onClose={() => undefined} />);
     roots.push(hidden.root);
     expect(hidden.container.textContent).toBe('');
@@ -481,10 +481,13 @@ describe('dashboard components', () => {
     expect(panel.container.textContent).toContain('流式草稿');
     expect(panel.container.textContent).toContain('高概率');
     expect(panel.container.textContent).toContain('低概率');
-    expect(panel.container.textContent).not.toContain('中性情景震荡');
+    expect(panel.container.textContent).toContain('中性情景');
+    expect(panel.container.textContent).toContain('震荡');
     expect(panel.container.textContent).toContain('本次未读取到可用公开网页材料');
     act(() => panel.container.querySelector<HTMLButtonElement>('button[aria-label="关闭智能分析"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(closeEvents).toEqual(['closed']);
+    act(() => panel.container.querySelector<HTMLButtonElement>('button[aria-label="关闭智能分析抽屉"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(closeEvents).toEqual(['closed', 'closed']);
 
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 640 });
     const mobile = render(
@@ -499,11 +502,11 @@ describe('dashboard components', () => {
       window.dispatchEvent(new Event('resize'));
       await Promise.resolve();
     });
-    expect(mobile.container.querySelector('.fund-ai-panel')?.className).toContain('is-mobile');
+    expect(mobile.container.querySelector('.fund-ai-panel')?.className).toContain('is-drawer');
     expect(mobile.container.querySelector('.fund-ai-resize-handle')).toBeNull();
   });
 
-  it('restores, clamps, moves, and resizes the fund analysis panel', async () => {
+  it('renders the fund analysis drawer without persisted floating geometry', async () => {
     localStorage.setItem('gg-fund:analysis-panel-rect', JSON.stringify({ x: -100, y: -80, width: 9999, height: 9999 }));
     const analysis: FundAnalysisResponse = {
       fund,
@@ -548,27 +551,10 @@ describe('dashboard components', () => {
     await act(async () => { await Promise.resolve(); });
 
     const aside = panel.container.querySelector<HTMLElement>('.fund-ai-panel');
-    expect(aside?.className).toContain('is-floating');
-    expect(aside?.getAttribute('style')).toContain('width: 1000px');
+    expect(aside?.className).toContain('is-drawer');
+    expect(aside?.getAttribute('style')).toBeNull();
     expect(panel.container.textContent).toContain('来源 A');
-
-    const header = panel.container.querySelector<HTMLElement>('.fund-ai-panel-head');
-    await act(async () => {
-      header?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 100, clientY: 100 }));
-      window.dispatchEvent(new PointerEvent('pointermove', { clientX: 160, clientY: 180 }));
-      window.dispatchEvent(new PointerEvent('pointerup'));
-      await Promise.resolve();
-    });
-    expect(document.body.style.userSelect).toBe('');
-
-    const rightHandle = panel.container.querySelector<HTMLElement>('.fund-ai-resize-handle.is-right');
-    await act(async () => {
-      rightHandle?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 100, clientY: 100 }));
-      window.dispatchEvent(new PointerEvent('pointermove', { clientX: 80, clientY: 100 }));
-      window.dispatchEvent(new PointerEvent('pointercancel'));
-      await Promise.resolve();
-    });
-    expect(localStorage.getItem('gg-fund:analysis-panel-rect')).toContain('"width"');
+    expect(panel.container.querySelector('.fund-ai-resize-handle')).toBeNull();
   });
 
   it('renders portfolio and settings empty states', () => {
@@ -747,7 +733,7 @@ describe('dashboard components', () => {
     expect(portfolio.container.textContent).toContain('驱动');
     expect(portfolio.container.textContent).toContain('上涨原因来自持仓方向');
     expect(portfolio.container.querySelector('.fund-ai-links a')?.textContent).toContain('东方财富基金概况');
-    expect(localStorage.getItem('gg-fund:analysis-panel-rect')).toContain('"width"');
+    expect(portfolio.container.querySelector('.fund-ai-panel')?.className).toContain('is-drawer');
     const bottomModules = portfolio.container.querySelector('[data-testid="portfolio-bottom-modules"]');
     expect(bottomModules).not.toBeNull();
     expect(portfolio.container.textContent).toContain('多平台账本');
