@@ -1,4 +1,4 @@
-import { BarChart3, GitBranch, LogOut, UserRound } from 'lucide-react';
+import { BarChart3, LogOut, UserRound } from 'lucide-react';
 import type { AuthSessionResponse } from '../api';
 
 export type WorkspacePage = 'workspace' | 'portfolio';
@@ -46,9 +46,6 @@ export function Header({ session, onLogout, logoutPending = false, activePage, o
             <Icon className="h-4 w-4" /> {label}
           </button>
         ))}
-        <button type="button" onClick={() => { window.location.href = '/architecture'; }}>
-          <GitBranch className="h-4 w-4" /> 架构
-        </button>
       </nav>
       <section className="profile-card" aria-label="账户状态">
         <div className="profile-avatar"><UserRound className="h-4 w-4" /></div>
