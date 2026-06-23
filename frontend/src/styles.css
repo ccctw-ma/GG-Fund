@@ -1266,10 +1266,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .intraday-chart-card {
   margin-top: 12px;
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 1.2rem;
-  background: radial-gradient(circle at 12% 0%, rgba(255,93,82,.14), transparent 16rem), rgba(255,255,255,.045);
-  padding: 12px;
+  border: 1px solid #edf0f4;
+  border-radius: 22px;
+  background: #fff;
+  padding: 14px;
+  box-shadow: 0 18px 46px rgba(15, 23, 42, .08);
 }
 .intraday-chart-head {
   display: flex;
@@ -1285,21 +1286,21 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .intraday-chart-head strong {
   display: block;
-  color: var(--text-strong);
+  color: #111827;
   font-weight: 950;
 }
 .intraday-chart-head span {
   display: block;
   margin-top: 4px;
-  color: var(--text-muted);
+  color: #7b8190;
   font-size: .76rem;
   font-weight: 800;
 }
 .intraday-chart-head .intraday-source-line {
-  color: #f7c96b;
+  color: #e69539;
 }
 .intraday-chart-head .intraday-basis-line {
-  color: var(--text-strong);
+  color: #111827;
 }
 .intraday-source-badge {
   display: inline-flex;
@@ -1320,11 +1321,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .intraday-chart-head em { font-style: normal; font-weight: 950; }
 .intraday-empty {
   margin-top: 12px;
-  border: 1px dashed rgba(255,255,255,.14);
+  border: 1px dashed #d8dee8;
   border-radius: 1.2rem;
-  background: rgba(255,255,255,.04);
+  background: #fff;
   padding: 16px;
-  color: var(--text-muted);
+  color: #7b8190;
   font-size: .86rem;
   font-weight: 850;
 }
@@ -2163,58 +2164,23 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border: 1px solid rgba(146, 183, 210, .16);
-  border-radius: 28px;
-  background:
-    radial-gradient(circle at 18% 14%, rgba(244,183,64,.1), transparent 14rem),
-    radial-gradient(circle at 84% 8%, rgba(78,164,255,.1), transparent 16rem),
-    radial-gradient(circle at 76% 70%, rgba(125,226,184,.08), transparent 18rem),
-    linear-gradient(145deg, rgba(4,12,20,.98), rgba(7,21,33,.95) 52%, rgba(3,12,20,.98));
-  padding: clamp(16px, 2.4vw, 24px);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 24px 72px rgba(0,0,0,.28);
+  border: 1px solid #edf0f4;
+  border-radius: 24px;
+  background: #fff;
+  padding: clamp(14px, 2.2vw, 20px);
+  box-shadow: 0 18px 54px rgba(15,23,42,.08);
 }
 .fund-analysis-radar::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -2;
-  opacity: .14;
-  background-image:
-    linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
-  background-size: 42px 42px;
-  mask-image: linear-gradient(to bottom, black, transparent 90%);
+  content: none;
 }
 .fund-analysis-radar::after {
-  content: "";
-  position: absolute;
-  inset: -35% -10%;
-  z-index: -1;
-  background: conic-gradient(from 180deg, transparent, rgba(244,183,64,.055), transparent, rgba(125,226,184,.055), transparent);
-  filter: blur(28px);
-  animation: radarGlow 12s linear infinite;
+  content: none;
 }
 .radar-grid {
-  position: absolute;
-  inset: 0;
-  opacity: .12;
-  background:
-    linear-gradient(90deg, transparent 0 9%, rgba(255,255,255,.05) 9.4% 9.7%, transparent 10% 100%),
-    linear-gradient(0deg, transparent 0 13%, rgba(255,255,255,.045) 13.3% 13.6%, transparent 14% 100%);
-  background-size: 180px 132px;
-  pointer-events: none;
+  display: none;
 }
 .radar-scanline {
-  position: absolute;
-  left: -20%;
-  top: 0;
-  height: 100%;
-  width: 18%;
-  opacity: .55;
-  background: linear-gradient(90deg, transparent, rgba(140,200,255,.04), transparent);
-  transform: skewX(-16deg);
-  animation: radarScan 8s ease-in-out infinite;
-  pointer-events: none;
+  display: none;
 }
 .radar-header {
   position: relative;
@@ -2226,29 +2192,38 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 @media (min-width: 860px) { .radar-header { flex-direction: row; align-items: start; } }
 .radar-header h4 {
-  margin: 8px 0 0;
-  color: var(--text-strong);
-  font-size: clamp(1.45rem, 3vw, 2.35rem);
+  margin: 6px 0 0;
+  color: #111827;
+  font-size: clamp(1.1rem, 2.2vw, 1.65rem);
   font-weight: 950;
-  letter-spacing: -.055em;
+  letter-spacing: -.035em;
 }
-.radar-header p { margin: 8px 0 0; color: var(--text-muted); font-size: .9rem; font-weight: 760; line-height: 1.65; }
+.radar-header p { margin: 6px 0 0; color: #7b8190; font-size: .86rem; font-weight: 760; line-height: 1.55; }
 .radar-range-tabs {
   display: inline-flex;
   flex: 0 0 auto;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 6px;
-  max-width: min(100%, 360px);
+  gap: 8px;
+  max-width: min(100%, 460px);
 }
 .radar-range-tabs > button {
   display: inline-flex;
   width: auto;
-  min-width: 48px;
-  min-height: 32px;
-  padding: 0 11px;
-  border-radius: 999px;
+  min-width: 56px;
+  min-height: 38px;
+  border: 1px solid #e5e9f0;
+  border-radius: 10px;
+  background: #fff;
+  color: #5f6673;
+  padding: 0 14px;
   text-align: center;
+  box-shadow: none;
+}
+.radar-range-tabs > button.is-active {
+  border-color: #2f3a4a;
+  background: #2f3a4a;
+  color: #fff;
 }
 .radar-indicator-toolbar {
   position: relative;
@@ -2256,18 +2231,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 14px;
+  gap: 8px 12px;
   margin-top: 14px;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 999px;
-  background: rgba(1, 12, 22, .34);
+  border: 1px solid #edf0f4;
+  border-radius: 14px;
+  background: #f8fafc;
   padding: 8px 10px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.055);
+  box-shadow: none;
 }
 .radar-indicator-toolbar > div { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .radar-indicator-toolbar span {
   margin-right: 4px;
-  color: rgba(158,177,199,.82);
+  color: #8b919d;
   font-size: .68rem;
   font-weight: 900;
   letter-spacing: .12em;
@@ -2275,30 +2250,46 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .radar-indicator-toolbar button {
   min-height: 28px;
-  border-radius: 999px;
+  border-radius: 10px;
+  border-color: #e5e9f0;
+  background: #fff;
+  color: #4b5563;
   padding: 0 10px;
   box-shadow: none;
+}
+.radar-indicator-toolbar button.is-active {
+  border-color: #2f3a4a;
+  background: #2f3a4a;
+  color: #fff;
+}
+.chart-ma-strip {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 14px 0 0;
+  font-size: .86rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
 }
 .radar-chart-frame {
   position: relative;
   z-index: 1;
   overflow: hidden;
-  margin-top: 10px;
-  border: 1px solid rgba(146, 183, 210, .12);
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at 50% 10%, rgba(140,200,255,.055), transparent 24rem),
-    linear-gradient(180deg, rgba(255,255,255,.032), rgba(255,255,255,.012)),
-    rgba(2,10,18,.28);
-  padding: 8px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.04), inset 0 -18px 48px rgba(0,0,0,.12);
+  margin-top: 8px;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  padding: 0;
+  box-shadow: none;
 }
 .chart-tooltip {
   min-width: 220px;
 }
 .chart-tooltip-title {
   margin-bottom: 8px;
-  color: #f8fbff;
+  color: #111827;
   font-size: .94rem;
   font-weight: 950;
   letter-spacing: .01em;
@@ -2308,7 +2299,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   align-items: center;
   gap: 6px;
   margin: 4px 0 6px;
-  color: #f8fbff;
+  color: #111827;
   font-weight: 950;
 }
 .chart-tooltip-row {
@@ -2317,7 +2308,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   justify-content: space-between;
   gap: 28px;
   min-height: 24px;
-  color: rgba(248,251,255,.82);
+  color: #5f6673;
 }
 .chart-tooltip-row span {
   display: inline-flex;
@@ -2325,7 +2316,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   gap: 6px;
 }
 .chart-tooltip-row b {
-  color: #f8fbff;
+  color: #111827;
   font-variant-numeric: tabular-nums;
   font-weight: 950;
   letter-spacing: .01em;

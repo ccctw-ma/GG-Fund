@@ -7,16 +7,29 @@ import type { FundHistoryPoint } from '../types';
 import { Button } from './ui/button';
 
 const ranges: FundRange[] = ['1W', '1M', '3M', '6M', '1Y', 'ALL'];
+const rangeLabels: Record<FundRange, string> = {
+  '1W': '五日',
+  '1M': '日K',
+  '3M': '周K',
+  '6M': '半年',
+  '1Y': '月K',
+  ALL: '更多',
+};
 
 type MetricKey = 'kline' | 'close' | 'return' | 'drawdown' | 'annualized' | 'sharpe' | 'volatility' | 'benchmark' | 'excess';
 
 const defaultMetricKeys: MetricKey[] = ['close', 'kline'];
 const optionalMetricKeys: MetricKey[] = ['return', 'drawdown', 'annualized', 'sharpe', 'volatility', 'benchmark', 'excess'];
 const candleStyle = {
-  up: '#f05a56',
-  upFill: 'rgba(240, 90, 86, 0.78)',
-  down: '#19a99a',
-  downFill: 'rgba(25, 169, 154, 0.78)',
+  up: '#d9365f',
+  upFill: '#d9365f',
+  down: '#23966b',
+  downFill: '#23966b',
+};
+const movingAverageColors = {
+  MA5: '#d98c35',
+  MA10: '#c76544',
+  MA20: '#9d6ab8',
 };
 const metricLabels: Record<MetricKey, string> = {
   kline: 'K线',
@@ -64,6 +77,13 @@ const buildKlineData = (points: FundHistoryPoint[]) => points.map((point, index)
   return [open, close, low, high];
 });
 
+const buildMovingAverageSeries = (points: FundHistoryPoint[], windowSize: number) => points.map((_, index) => {
+  if (index + 1 < windowSize) return null;
+  const slice = points.slice(index + 1 - windowSize, index + 1);
+  const total = slice.reduce((sum, point) => sum + point.netValue, 0);
+  return total / windowSize;
+});
+
 const buildRollingMetricSeries = (points: FundHistoryPoint[], key: 'annualizedReturn' | 'sharpeRatio' | 'volatility') => (
   points.map((_, index) => (index === 0 ? null : calculateFundMetrics(points.slice(0, index + 1)).summary[key]))
 );
@@ -99,6 +119,11 @@ export function FundTrendChart({
   const visibleBenchmark = useMemo(() => selectHistoryRange(benchmarkHistory, range), [benchmarkHistory, range]);
   const metrics = useMemo(() => calculateFundMetrics(visible, visibleBenchmark), [visible, visibleBenchmark]);
   const klineData = useMemo(() => buildKlineData(metrics.points), [metrics.points]);
+  const movingAverages = useMemo(() => ({
+    MA5: buildMovingAverageSeries(metrics.points, 5),
+    MA10: buildMovingAverageSeries(metrics.points, 10),
+    MA20: buildMovingAverageSeries(metrics.points, 20),
+  }), [metrics.points]);
   const rollingMetrics = useMemo(() => ({
     annualized: buildRollingMetricSeries(metrics.points, 'annualizedReturn'),
     sharpe: buildRollingMetricSeries(metrics.points, 'sharpeRatio'),
@@ -170,6 +195,36 @@ export function FundTrendChart({
       largeThreshold: 600,
       z: 4,
     },
+    activeMetricSet.has('kline') && {
+      name: 'MA5',
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      showSymbol: false,
+      lineStyle: { color: movingAverageColors.MA5, width: 1.3, opacity: 0.9 },
+      data: movingAverages.MA5,
+      z: 3,
+    },
+    activeMetricSet.has('kline') && {
+      name: 'MA10',
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      showSymbol: false,
+      lineStyle: { color: movingAverageColors.MA10, width: 1.2, opacity: 0.88 },
+      data: movingAverages.MA10,
+      z: 3,
+    },
+    activeMetricSet.has('kline') && {
+      name: 'MA20',
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      showSymbol: false,
+      lineStyle: { color: movingAverageColors.MA20, width: 1.2, opacity: 0.88 },
+      data: movingAverages.MA20,
+      z: 3,
+    },
     activeMetricSet.has('close') && {
       name: primaryLabel,
       type: 'line',
@@ -177,20 +232,7 @@ export function FundTrendChart({
       symbol: 'none',
       symbolSize: 0,
       showSymbol: false,
-      lineStyle: { color: 'rgba(247, 201, 107, .58)', width: 0.9, opacity: 0.5, shadowBlur: 0 },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0,
-          y: 0,
-          x2: 0,
-          y2: 1,
-          colorStops: [
-            { offset: 0, color: 'rgba(244,183,64,.08)' },
-            { offset: 1, color: 'rgba(244,183,64,0)' },
-          ],
-        },
-      },
+      lineStyle: { color: 'rgba(44, 58, 80, .28)', width: 0.9, opacity: 0.58, shadowBlur: 0, type: 'dotted' },
       z: 1,
       data: metrics.points.map((point) => point.netValue),
     },
@@ -263,73 +305,56 @@ export function FundTrendChart({
   const option = {
     backgroundColor: 'transparent',
     // 中国习惯：涨/收益用红，跌/回撤用绿。净值线保持金色。
-    color: ['#ff5d52', '#f7c96b', '#3fd6a0', '#8cc8ff', '#b57eff'],
+    color: [candleStyle.up, movingAverageColors.MA5, movingAverageColors.MA10, movingAverageColors.MA20, '#64748b', '#8cc8ff', '#b57eff'],
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(4, 17, 31, 0.92)',
-      borderColor: 'rgba(244, 183, 64, 0.36)',
-      textStyle: { color: '#f8fbff', fontWeight: 700 },
-      extraCssText: 'border-radius: 10px; box-shadow: 0 18px 48px rgba(0,0,0,.35);',
+      backgroundColor: 'rgba(255, 255, 255, 0.98)',
+      borderColor: 'rgba(226, 232, 240, 0.95)',
+      textStyle: { color: '#111827', fontWeight: 700 },
+      extraCssText: 'border-radius: 12px; box-shadow: 0 18px 48px rgba(15,23,42,.16);',
       formatter: formatTooltip,
       axisPointer: {
         type: 'cross',
-      crossStyle: { color: 'rgba(244, 183, 64, .66)', opacity: 0.72, type: 'dashed' },
-      lineStyle: { color: 'rgba(244, 183, 64, .46)', opacity: 0.52, type: 'dashed' },
+      crossStyle: { color: 'rgba(148, 163, 184, .78)', opacity: 0.8, type: 'dashed' },
+      lineStyle: { color: 'rgba(148, 163, 184, .78)', opacity: 0.8, type: 'dashed' },
       },
     },
     legend: {
+      show: false,
       top: 6,
       right: 14,
       data: chartSeries.map((series) => (series as { name: string }).name),
-      textStyle: { color: 'rgba(158,177,199,.86)', fontWeight: 800 },
+      textStyle: { color: 'rgba(71,85,105,.86)', fontWeight: 800 },
       itemWidth: 12,
       itemHeight: 6,
     },
-    grid: { left: 50, right: 28, top: 50, bottom: 52 },
+    grid: { left: 46, right: 20, top: 18, bottom: 34 },
     dataZoom: [
-      { type: 'inside' },
-      {
-        type: 'slider',
-        height: 14,
-        bottom: 18,
-        borderColor: 'rgba(255,255,255,.06)',
-        fillerColor: 'rgba(244,183,64,.16)',
-        backgroundColor: 'rgba(255,255,255,.026)',
-        dataBackground: {
-          lineStyle: { color: 'rgba(158,177,199,.2)' },
-          areaStyle: { color: 'rgba(158,177,199,.08)' },
-        },
-        selectedDataBackground: {
-          lineStyle: { color: 'rgba(244,183,64,.46)' },
-          areaStyle: { color: 'rgba(244,183,64,.16)' },
-        },
-        handleStyle: { color: '#f4b740', borderColor: 'rgba(255,255,255,.3)' },
-        textStyle: { color: '#9eb1c7' },
-      },
+      { type: 'inside', zoomOnMouseWheel: true, moveOnMouseMove: true },
     ],
     xAxis: {
       type: 'category',
       data: metrics.points.map((point) => point.date),
-      axisLabel: { color: 'rgba(158,177,199,.76)', fontWeight: 700 },
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,.12)' } },
+      axisLabel: { color: '#8b919d', fontWeight: 700, margin: 12 },
+      axisLine: { lineStyle: { color: '#e9edf3' } },
       axisTick: { show: false },
       boundaryGap: true,
     },
     yAxis: [
       {
         type: 'value',
-        name: valueAxisName,
+        name: '',
         scale: true,
-        nameTextStyle: { color: '#9eb1c7', fontWeight: 800 },
-        axisLabel: { color: 'rgba(158,177,199,.76)', formatter: (value: number) => formatChartNumber(value, valueDigits), fontWeight: 700 },
+        nameTextStyle: { color: '#8b919d', fontWeight: 800 },
+        axisLabel: { color: '#8b919d', formatter: (value: number) => formatChartNumber(value, valueDigits), fontWeight: 700 },
         axisPointer: { label: { formatter: ({ value }: { value: number }) => formatChartNumber(value, valueDigits) } },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,.055)' } },
+        splitLine: { lineStyle: { color: '#edf0f4' } },
       },
       {
         type: 'value',
         name: '%',
-        nameTextStyle: { color: '#9eb1c7', fontWeight: 800 },
-        axisLabel: { color: '#6f8095', formatter: (value: number) => `${formatChartNumber(value, 2)}%`, fontWeight: 700 },
+        nameTextStyle: { color: '#8b919d', fontWeight: 800 },
+        axisLabel: { color: '#8b919d', formatter: (value: number) => `${formatChartNumber(value, 2)}%`, fontWeight: 700 },
         axisPointer: { label: { formatter: ({ value }: { value: number }) => `${formatChartNumber(value, 2)}%` } },
         splitLine: { show: false },
       },
@@ -345,17 +370,17 @@ export function FundTrendChart({
         <div>
           <span className="section-kicker">{kicker}</span>
           <h4>{title}</h4>
-          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {trendTone} · 默认展示点位与 K 线，可按需打开收益、回撤、风险与基准指标</p>
+          <p>{firstPoint?.date ?? '--'} 至 {lastPoint?.date ?? '--'} · {valueAxisName} · {trendTone}</p>
         </div>
         <div className="radar-range-tabs" aria-label="走势图时间范围">
-          {ranges.map((item) => <Button key={item} size="sm" variant={item === range ? 'default' : 'secondary'} onClick={() => setRange(item)}>{item}</Button>)}
+          {ranges.map((item) => <Button key={item} className={item === range ? 'is-active' : undefined} size="sm" variant={item === range ? 'default' : 'secondary'} onClick={() => setRange(item)}>{rangeLabels[item]}</Button>)}
         </div>
       </div>
       <div className="radar-indicator-toolbar" aria-label="走势图指标开关">
         <div className="radar-indicator-group">
           <span>默认指标</span>
           {defaultMetricKeys.map((key) => (
-            <Button key={key} size="sm" variant={activeMetricSet.has(key) ? 'default' : 'secondary'} onClick={() => toggleMetric(key)} aria-pressed={activeMetricSet.has(key)}>
+            <Button key={key} className={activeMetricSet.has(key) ? 'is-active' : undefined} size="sm" variant={activeMetricSet.has(key) ? 'default' : 'secondary'} onClick={() => toggleMetric(key)} aria-pressed={activeMetricSet.has(key)}>
               {key === 'close' ? primaryLabel : metricLabels[key]}
             </Button>
           ))}
@@ -363,11 +388,17 @@ export function FundTrendChart({
         <div className="radar-indicator-group">
           <span>可选指标</span>
           {availableOptionalMetricKeys.map((key) => (
-            <Button key={key} size="sm" variant={activeMetricSet.has(key) ? 'default' : 'secondary'} onClick={() => toggleMetric(key)} aria-pressed={activeMetricSet.has(key)}>
+            <Button key={key} className={activeMetricSet.has(key) ? 'is-active' : undefined} size="sm" variant={activeMetricSet.has(key) ? 'default' : 'secondary'} onClick={() => toggleMetric(key)} aria-pressed={activeMetricSet.has(key)}>
               {key === 'close' ? primaryLabel : metricLabels[key]}
             </Button>
           ))}
         </div>
+      </div>
+      <div className="chart-ma-strip" aria-label="移动均线数值">
+        {(Object.entries(movingAverages) as Array<[keyof typeof movingAverages, Array<number | null>]>).map(([label, values]) => {
+          const latestValue = [...values].reverse().find((value): value is number => typeof value === 'number' && Number.isFinite(value));
+          return <span key={label} style={{ color: movingAverageColors[label] }}>{label}: {formatChartNumber(latestValue, valueDigits)}</span>;
+        })}
       </div>
       <div className="radar-chart-frame">
         <ReactECharts option={option} style={{ height, width: '100%' }} notMerge lazyUpdate />

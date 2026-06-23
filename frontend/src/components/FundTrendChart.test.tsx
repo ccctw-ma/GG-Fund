@@ -86,6 +86,10 @@ describe('FundTrendChart', () => {
     expect(chart.container.textContent).toContain('贵州茅台价格走势');
     expect(chart.container.textContent).toContain('风险收缩');
     expect(chart.container.textContent).toContain('K线');
+    expect(chart.container.textContent).toContain('MA5');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('MA5:line');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('MA10:line');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('MA20:line');
     expect(chart.container.textContent).toContain('收盘价');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('K线:candlestick');
     expect(chart.container.querySelector('[data-testid="mock-tooltip"]')?.textContent).toContain('开盘');
@@ -139,7 +143,7 @@ describe('FundTrendChart', () => {
       const button = Array.from(chart.container.querySelectorAll('button')).find((item) => item.textContent === label);
       act(() => button?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     }
-    const allRange = Array.from(chart.container.querySelectorAll('button')).find((item) => item.textContent === 'ALL');
+    const allRange = Array.from(chart.container.querySelectorAll('button')).find((item) => item.textContent === '更多');
     act(() => allRange?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('K线:candlestick');
