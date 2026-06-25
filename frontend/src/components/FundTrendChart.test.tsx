@@ -31,13 +31,6 @@ vi.mock('echarts-for-react', () => ({
   },
 }));
 
-const risingHistory = [
-  { date: '2026-06-01', netValue: 1 },
-  { date: '2026-06-02', netValue: 1.05 },
-  { date: '2026-06-03', netValue: 1.1 },
-  { date: '2026-06-04', netValue: 1.2 },
-];
-
 const fallingHistory = [
   { date: '2026-06-01', netValue: 10 },
   { date: '2026-06-02', netValue: 9.5 },
@@ -81,7 +74,7 @@ describe('FundTrendChart', () => {
     expect(empty.container.textContent).toContain('没有走势');
   });
 
-  it('renders a custom stock-style chart with only candles and moving averages', () => {
+  it('renders a custom stock-style chart with value line by default and optional candles', () => {
     const chart = render(
       <FundTrendChart
         history={fallingHistory}
@@ -96,11 +89,12 @@ describe('FundTrendChart', () => {
     expect(chart.container.textContent).toContain('风险收缩');
     expect(chart.container.textContent).toContain('K线');
     expect(chart.container.textContent).toContain('MA5');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('收盘价:line');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('MA5:line');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('MA10:line');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('MA20:line');
     expect(chart.container.textContent).toContain('价格');
-    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('K线:candlestick');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('K线:candlestick');
     expect(chart.container.querySelector('[data-testid="mock-tooltip"]')?.textContent).toContain('开盘');
     expect(chart.container.querySelector('[data-testid="mock-tooltip"]')?.textContent).toContain('4,067.76');
     expect(chart.container.querySelector('[data-testid="mock-tooltip"]')?.textContent).toContain('最高');
@@ -110,7 +104,6 @@ describe('FundTrendChart', () => {
     expect(chart.container.querySelector('[data-testid="mock-tooltip"]')?.textContent).not.toContain('4079.1750999999995');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('区间收益%');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('回撤%');
-    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('收盘价:line');
     expect(chart.container.textContent).not.toContain('相对基准');
     expect(chart.container.textContent).not.toContain('超额收益');
     const labels = Array.from(chart.container.querySelectorAll('button')).map((button) => button.textContent);
@@ -118,6 +111,12 @@ describe('FundTrendChart', () => {
     expect(labels).not.toContain('夏普');
     expect(labels).not.toContain('波动率');
     expect(chart.container.querySelectorAll('.radar-range-tabs button')).toHaveLength(6);
+
+    const klineButton = Array.from(chart.container.querySelectorAll('button')).find((button) => button.textContent === 'K线');
+    expect(klineButton?.getAttribute('aria-pressed')).toBe('false');
+    act(() => klineButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(klineButton?.getAttribute('aria-pressed')).toBe('true');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('K线:candlestick');
   });
 
   it('uses provided OHLC fields for real candlestick data', () => {
@@ -125,6 +124,9 @@ describe('FundTrendChart', () => {
     roots.push(chart.root);
 
     expect(chart.container.textContent).toContain('真实 K 线');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('K线:candlestick');
+    const klineButton = Array.from(chart.container.querySelectorAll('button')).find((button) => button.textContent === 'K线');
+    act(() => klineButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('K线:candlestick');
   });
 
@@ -145,7 +147,8 @@ describe('FundTrendChart', () => {
     const allRange = Array.from(chart.container.querySelectorAll('button')).find((item) => item.textContent === '更多');
     act(() => allRange?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
-    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('K线:candlestick');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('K线:candlestick');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('单位净值:line');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('MA5:line');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('区间收益%:line');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('回撤%:line');

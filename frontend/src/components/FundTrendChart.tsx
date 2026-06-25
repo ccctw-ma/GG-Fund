@@ -27,6 +27,7 @@ const movingAverageColors = {
   MA10: '#8cc8ff',
   MA20: '#b9a4ff',
 };
+const valueLineColor = '#eef6ff';
 
 type ChartTooltipParam = {
   axisValue?: string | number;
@@ -92,6 +93,7 @@ export function FundTrendChart({
   height?: number;
 }) {
   const [range, setRange] = useState<FundRange>('1M');
+  const [showCandles, setShowCandles] = useState(false);
   const visible = useMemo(() => selectHistoryRange(history, range), [history, range]);
   const visibleBenchmark = useMemo(() => selectHistoryRange(benchmarkHistory, range), [benchmarkHistory, range]);
   const metrics = useMemo(() => calculateFundMetrics(visible, visibleBenchmark), [visible, visibleBenchmark]);
@@ -131,6 +133,20 @@ export function FundTrendChart({
 
   const candleBarWidth = metrics.points.length <= 12 ? 12 : metrics.points.length <= 32 ? 10 : '48%';
   const chartSeries = [
+    {
+      name: valueName,
+      type: 'line',
+      smooth: true,
+      symbol: metrics.points.length <= 30 ? 'circle' : 'none',
+      showSymbol: metrics.points.length <= 30,
+      symbolSize: 5,
+      itemStyle: { color: valueLineColor },
+      lineStyle: { color: valueLineColor, width: showCandles ? 1.2 : 2, opacity: showCandles ? 0.62 : 0.94 },
+      areaStyle: showCandles ? undefined : { color: 'rgba(140, 200, 255, .08)' },
+      data: metrics.points.map((point) => point.netValue),
+      z: showCandles ? 2 : 5,
+    },
+    showCandles &&
     {
       name: 'K线',
       type: 'candlestick',
@@ -193,8 +209,8 @@ export function FundTrendChart({
 
   const option = {
     backgroundColor: 'transparent',
-    // 中国习惯：涨用红，跌用绿。均线沿用页面金色、蓝色、紫色辅助色。
-    color: [candleStyle.up, movingAverageColors.MA5, movingAverageColors.MA10, movingAverageColors.MA20],
+    // 默认点位线优先；K 线按中国习惯涨红跌绿，均线沿用页面金色、蓝色、紫色辅助色。
+    color: [valueLineColor, candleStyle.up, movingAverageColors.MA5, movingAverageColors.MA10, movingAverageColors.MA20],
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(5, 18, 32, 0.96)',
@@ -258,6 +274,9 @@ export function FundTrendChart({
         </div>
       </div>
       <div className="chart-ma-strip" aria-label="移动均线数值">
+        <span className="chart-ma-token chart-value-token" style={{ '--ma-color': valueLineColor } as CSSProperties}>
+          {valueName}: {formatChartNumber(lastPoint?.netValue, valueDigits)}
+        </span>
         {(Object.entries(movingAverages) as Array<[keyof typeof movingAverages, Array<number | null>]>).map(([label, values]) => {
           const latestValue = [...values].reverse().find((value): value is number => typeof value === 'number' && Number.isFinite(value));
           return (
@@ -266,6 +285,16 @@ export function FundTrendChart({
             </span>
           );
         })}
+        <Button
+          className={showCandles ? 'is-active' : undefined}
+          size="sm"
+          variant={showCandles ? 'default' : 'secondary'}
+          type="button"
+          aria-pressed={showCandles}
+          onClick={() => setShowCandles((value) => !value)}
+        >
+          K线
+        </Button>
       </div>
       <div className="radar-chart-frame">
         <ReactECharts option={option} style={{ height, width: '100%' }} notMerge lazyUpdate />
