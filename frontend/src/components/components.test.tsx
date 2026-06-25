@@ -174,7 +174,9 @@ describe('dashboard components', () => {
     expect(search.container.textContent).toContain('实时估算');
     expect(search.container.textContent).toContain('基金分析走势图');
     expect(search.container.textContent).toContain('Fund Signal Matrix');
-    expect(search.container.textContent).toContain('MA5');
+    expect(search.container.textContent).not.toContain('MA5');
+    expect(search.container.textContent).not.toContain('MA10');
+    expect(search.container.textContent).not.toContain('MA20');
     expect(search.container.textContent).not.toContain('默认指标');
     expect(search.container.textContent).not.toContain('最大回撤');
     expect(search.container.textContent).not.toContain('可选指标');

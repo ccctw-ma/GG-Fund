@@ -22,11 +22,6 @@ const candleStyle = {
   down: '#3fd6a0',
   downFill: '#3fd6a0',
 };
-const movingAverageColors = {
-  MA5: '#f4b740',
-  MA10: '#8cc8ff',
-  MA20: '#b9a4ff',
-};
 const valueLineColor = '#eef6ff';
 
 type ChartTooltipParam = {
@@ -61,13 +56,6 @@ const buildKlineData = (points: FundHistoryPoint[]) => points.map((point, index)
   return [open, close, low, high];
 });
 
-const buildMovingAverageSeries = (points: FundHistoryPoint[], windowSize: number) => points.map((_, index) => {
-  if (index + 1 < windowSize) return null;
-  const slice = points.slice(index + 1 - windowSize, index + 1);
-  const total = slice.reduce((sum, point) => sum + point.netValue, 0);
-  return total / windowSize;
-});
-
 export function FundTrendChart({
   history,
   benchmarkHistory = [],
@@ -98,11 +86,6 @@ export function FundTrendChart({
   const visibleBenchmark = useMemo(() => selectHistoryRange(benchmarkHistory, range), [benchmarkHistory, range]);
   const metrics = useMemo(() => calculateFundMetrics(visible, visibleBenchmark), [visible, visibleBenchmark]);
   const klineData = useMemo(() => buildKlineData(metrics.points), [metrics.points]);
-  const movingAverages = useMemo(() => ({
-    MA5: buildMovingAverageSeries(metrics.points, 5),
-    MA10: buildMovingAverageSeries(metrics.points, 10),
-    MA20: buildMovingAverageSeries(metrics.points, 20),
-  }), [metrics.points]);
   const lastPoint = metrics.points.at(-1);
   const firstPoint = metrics.points[0];
   const trendTone = metrics.summary.totalReturn >= 0 ? '趋势增强' : '风险收缩';
@@ -175,42 +158,12 @@ export function FundTrendChart({
       largeThreshold: 600,
       z: 4,
     },
-    {
-      name: 'MA5',
-      type: 'line',
-      smooth: true,
-      symbol: 'none',
-      showSymbol: false,
-      lineStyle: { color: movingAverageColors.MA5, width: 1.3, opacity: 0.9 },
-      data: movingAverages.MA5,
-      z: 3,
-    },
-    {
-      name: 'MA10',
-      type: 'line',
-      smooth: true,
-      symbol: 'none',
-      showSymbol: false,
-      lineStyle: { color: movingAverageColors.MA10, width: 1.2, opacity: 0.88 },
-      data: movingAverages.MA10,
-      z: 3,
-    },
-    {
-      name: 'MA20',
-      type: 'line',
-      smooth: true,
-      symbol: 'none',
-      showSymbol: false,
-      lineStyle: { color: movingAverageColors.MA20, width: 1.2, opacity: 0.88 },
-      data: movingAverages.MA20,
-      z: 3,
-    },
   ].filter(Boolean);
 
   const option = {
     backgroundColor: 'transparent',
-    // 默认点位线优先；K 线按中国习惯涨红跌绿，均线沿用页面金色、蓝色、紫色辅助色。
-    color: [valueLineColor, candleStyle.up, movingAverageColors.MA5, movingAverageColors.MA10, movingAverageColors.MA20],
+    // 默认仅展示点位线；K 线按中国习惯涨红跌绿，可由用户手动打开。
+    color: [valueLineColor, candleStyle.up],
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(5, 18, 32, 0.96)',
@@ -273,18 +226,10 @@ export function FundTrendChart({
           {ranges.map((item) => <Button key={item} className={item === range ? 'is-active' : undefined} size="sm" variant={item === range ? 'default' : 'secondary'} onClick={() => setRange(item)}>{rangeLabels[item]}</Button>)}
         </div>
       </div>
-      <div className="chart-ma-strip" aria-label="移动均线数值">
+      <div className="chart-ma-strip" aria-label="图表显示控制">
         <span className="chart-ma-token chart-value-token" style={{ '--ma-color': valueLineColor } as CSSProperties}>
           {valueName}: {formatChartNumber(lastPoint?.netValue, valueDigits)}
         </span>
-        {(Object.entries(movingAverages) as Array<[keyof typeof movingAverages, Array<number | null>]>).map(([label, values]) => {
-          const latestValue = [...values].reverse().find((value): value is number => typeof value === 'number' && Number.isFinite(value));
-          return (
-            <span key={label} className="chart-ma-token" style={{ '--ma-color': movingAverageColors[label] } as CSSProperties}>
-              {label}: {formatChartNumber(latestValue, valueDigits)}
-            </span>
-          );
-        })}
         <Button
           className={showCandles ? 'is-active' : undefined}
           size="sm"
