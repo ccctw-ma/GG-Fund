@@ -4,8 +4,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FundTrendChart } from './FundTrendChart';
 
 vi.mock('echarts-for-react', () => ({
-  default: ({ option }: { option: { series?: Array<{ name: string; type?: string }>; tooltip?: { formatter?: (params: unknown) => string } } }) => {
+  default: ({ option }: { option: { series?: Array<{ name: string; type?: string }>; tooltip?: { formatter?: (params: unknown) => string }; yAxis?: Array<{ axisLabel?: { formatter?: (value: number) => string }; axisPointer?: { label?: { formatter?: (params: { value: number }) => string } } }> } }) => {
     const formatter = option.tooltip?.formatter;
+    const axisLabelSample = option.yAxis?.[0]?.axisLabel?.formatter?.(1.23456) ?? '';
+    const axisPointerSample = option.yAxis?.[0]?.axisPointer?.label?.formatter?.({ value: 1.23456 }) ?? '';
     const tooltipSamples = [
       formatter?.([
         { axisValueLabel: '2026-06-02', seriesName: 'K线', marker: '●', value: [4067.76482, 4075.1, 4063.69705518, 4079.1750999999995] },
@@ -17,6 +19,8 @@ vi.mock('echarts-for-react', () => ({
         { axisValueLabel: '2026-06-04', seriesName: 'K线', marker: '●', value: ['2026-06-04', 10, 10.2, 9.8, 10.5] },
         { seriesName: undefined, marker: undefined, value: 'bad-number' },
       ]),
+      axisLabelSample,
+      axisPointerSample,
     ].join('');
     return (
       <div data-testid="mock-echarts">
@@ -46,6 +50,11 @@ const ohlcHistory = [
   { date: '2026-06-02', netValue: 9.9, high: 10.3 },
 ];
 
+const longHistory = Array.from({ length: 22 }, (_, index) => ({
+  date: `2026-06-${String(index + 1).padStart(2, '0')}`,
+  netValue: 1 + index * 0.01,
+}));
+
 function render(element: React.ReactNode) {
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -72,7 +81,7 @@ describe('FundTrendChart', () => {
     expect(empty.container.textContent).toContain('没有走势');
   });
 
-  it('renders a custom stock-style chart without benchmark-only controls', () => {
+  it('renders a custom stock-style chart with only candles and moving averages', () => {
     const chart = render(
       <FundTrendChart
         history={fallingHistory}
@@ -90,7 +99,7 @@ describe('FundTrendChart', () => {
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('MA5:line');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('MA10:line');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('MA20:line');
-    expect(chart.container.textContent).toContain('收盘价');
+    expect(chart.container.textContent).toContain('价格');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('K线:candlestick');
     expect(chart.container.querySelector('[data-testid="mock-tooltip"]')?.textContent).toContain('开盘');
     expect(chart.container.querySelector('[data-testid="mock-tooltip"]')?.textContent).toContain('4,067.76');
@@ -101,17 +110,14 @@ describe('FundTrendChart', () => {
     expect(chart.container.querySelector('[data-testid="mock-tooltip"]')?.textContent).not.toContain('4079.1750999999995');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('区间收益%');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('回撤%');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('收盘价:line');
     expect(chart.container.textContent).not.toContain('相对基准');
     expect(chart.container.textContent).not.toContain('超额收益');
-    expect(chart.container.textContent).toContain('年化收益');
-    expect(chart.container.textContent).toContain('夏普');
-    expect(chart.container.textContent).toContain('波动率');
-
-    const drawdownButton = Array.from(chart.container.querySelectorAll('button')).find((item) => item.textContent === '最大回撤');
-    act(() => drawdownButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('回撤%:line');
-    act(() => drawdownButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('回撤%:line');
+    const labels = Array.from(chart.container.querySelectorAll('button')).map((button) => button.textContent);
+    expect(labels).not.toContain('年化收益');
+    expect(labels).not.toContain('夏普');
+    expect(labels).not.toContain('波动率');
+    expect(chart.container.querySelectorAll('.radar-range-tabs button')).toHaveLength(6);
   });
 
   it('uses provided OHLC fields for real candlestick data', () => {
@@ -122,38 +128,28 @@ describe('FundTrendChart', () => {
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('K线:candlestick');
   });
 
-  it('toggles optional metrics and benchmark series', () => {
+  it('keeps benchmark data out of the visual chart controls', () => {
     const chart = render(
       <FundTrendChart
-        history={risingHistory}
+        history={longHistory}
         benchmarkHistory={[
           { date: '2026-06-01', netValue: 100 },
           { date: '2026-06-02', netValue: 101 },
           { date: '2026-06-03', netValue: 102 },
           { date: '2026-06-04', netValue: 103 },
         ]}
-        benchmarkName="测试基准"
       />,
     );
     roots.push(chart.root);
 
-    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('点位:line');
-
-    for (const label of ['区间收益', '最大回撤', '年化收益', '夏普', '波动率', '相对基准', '超额收益']) {
-      const button = Array.from(chart.container.querySelectorAll('button')).find((item) => item.textContent === label);
-      act(() => button?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-    }
     const allRange = Array.from(chart.container.querySelectorAll('button')).find((item) => item.textContent === '更多');
     act(() => allRange?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('K线:candlestick');
-    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('区间收益%:line');
-    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('回撤%:line');
-    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('年化收益%:line');
-    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('夏普:line');
-    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('波动率%:line');
-    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('测试基准收益%:line');
-    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('超额收益%:line');
-    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('点位:line');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('MA5:line');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('区间收益%:line');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('回撤%:line');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('测试基准收益%:line');
+    expect(chart.container.textContent).not.toContain('可选指标');
   });
 });

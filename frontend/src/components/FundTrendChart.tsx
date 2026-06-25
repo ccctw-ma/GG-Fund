@@ -1,7 +1,7 @@
 'use client';
 
 import ReactECharts from 'echarts-for-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { calculateFundMetrics, selectHistoryRange, type FundRange } from '../fundMetrics';
 import type { FundHistoryPoint } from '../types';
 import { Button } from './ui/button';
@@ -16,31 +16,16 @@ const rangeLabels: Record<FundRange, string> = {
   ALL: '更多',
 };
 
-type MetricKey = 'kline' | 'close' | 'return' | 'drawdown' | 'annualized' | 'sharpe' | 'volatility' | 'benchmark' | 'excess';
-
-const defaultMetricKeys: MetricKey[] = ['close', 'kline'];
-const optionalMetricKeys: MetricKey[] = ['return', 'drawdown', 'annualized', 'sharpe', 'volatility', 'benchmark', 'excess'];
 const candleStyle = {
-  up: '#d9365f',
-  upFill: '#d9365f',
-  down: '#23966b',
-  downFill: '#23966b',
+  up: '#ff5d52',
+  upFill: '#ff5d52',
+  down: '#3fd6a0',
+  downFill: '#3fd6a0',
 };
 const movingAverageColors = {
-  MA5: '#d98c35',
-  MA10: '#c76544',
-  MA20: '#9d6ab8',
-};
-const metricLabels: Record<MetricKey, string> = {
-  kline: 'K线',
-  close: '点位',
-  return: '区间收益',
-  drawdown: '最大回撤',
-  annualized: '年化收益',
-  sharpe: '夏普',
-  volatility: '波动率',
-  benchmark: '相对基准',
-  excess: '超额收益',
+  MA5: '#f4b740',
+  MA10: '#8cc8ff',
+  MA20: '#b9a4ff',
 };
 
 type ChartTooltipParam = {
@@ -66,12 +51,10 @@ const buildKlineData = (points: FundHistoryPoint[]) => points.map((point, index)
     const high = point.high ?? Math.max(open, close);
     return [open, close, low, high];
   }
-  const previousClose = points[index - 1]?.netValue ?? close;
-  const direction = close >= previousClose ? 1 : -1;
+  const previousClose = points[index - 1]?.netValue ?? close * 0.998;
+  const open = previousClose;
   const moveRatio = previousClose > 0 ? Math.abs(close / previousClose - 1) : 0;
-  const bodyRatio = Math.min(Math.max(moveRatio * 0.18, 0.00065), 0.0048);
-  const wickRatio = Math.max(bodyRatio * 0.28, 0.00028);
-  const open = close * (1 - direction * bodyRatio);
+  const wickRatio = Math.min(Math.max(moveRatio * 0.16, 0.00045), 0.0032);
   const high = Math.max(open, close) * (1 + wickRatio);
   const low = Math.min(open, close) * (1 - wickRatio);
   return [open, close, low, high];
@@ -84,14 +67,9 @@ const buildMovingAverageSeries = (points: FundHistoryPoint[], windowSize: number
   return total / windowSize;
 });
 
-const buildRollingMetricSeries = (points: FundHistoryPoint[], key: 'annualizedReturn' | 'sharpeRatio' | 'volatility') => (
-  points.map((_, index) => (index === 0 ? null : calculateFundMetrics(points.slice(0, index + 1)).summary[key]))
-);
-
 export function FundTrendChart({
   history,
   benchmarkHistory = [],
-  benchmarkName = '沪深300',
   kicker = 'Fund Signal Matrix',
   title = '基金分析走势图',
   valueName = '单位净值',
@@ -114,7 +92,6 @@ export function FundTrendChart({
   height?: number;
 }) {
   const [range, setRange] = useState<FundRange>('1M');
-  const [activeMetrics, setActiveMetrics] = useState<MetricKey[]>(defaultMetricKeys);
   const visible = useMemo(() => selectHistoryRange(history, range), [history, range]);
   const visibleBenchmark = useMemo(() => selectHistoryRange(benchmarkHistory, range), [benchmarkHistory, range]);
   const metrics = useMemo(() => calculateFundMetrics(visible, visibleBenchmark), [visible, visibleBenchmark]);
@@ -124,23 +101,10 @@ export function FundTrendChart({
     MA10: buildMovingAverageSeries(metrics.points, 10),
     MA20: buildMovingAverageSeries(metrics.points, 20),
   }), [metrics.points]);
-  const rollingMetrics = useMemo(() => ({
-    annualized: buildRollingMetricSeries(metrics.points, 'annualizedReturn'),
-    sharpe: buildRollingMetricSeries(metrics.points, 'sharpeRatio'),
-    volatility: buildRollingMetricSeries(metrics.points, 'volatility'),
-  }), [metrics.points]);
-  const activeMetricSet = useMemo(() => new Set(activeMetrics), [activeMetrics]);
   const lastPoint = metrics.points.at(-1);
   const firstPoint = metrics.points[0];
   const trendTone = metrics.summary.totalReturn >= 0 ? '趋势增强' : '风险收缩';
-  const primaryLabel = valueName === '单位净值' ? '点位' : valueName;
   const valueDigits = valueName === '单位净值' ? 4 : 2;
-  const benchmarkAvailable = metrics.summary.benchmarkReturn !== undefined;
-  const availableOptionalMetricKeys = optionalMetricKeys.filter((key) => (key === 'benchmark' || key === 'excess' ? benchmarkAvailable : true));
-
-  function toggleMetric(key: MetricKey) {
-    setActiveMetrics((current) => (current.includes(key) ? current.filter((item) => item !== key) : [...current, key]));
-  }
 
   function formatTooltip(params: ChartTooltipParam | ChartTooltipParam[]) {
     const items = Array.isArray(params) ? params : [params];
@@ -165,9 +129,9 @@ export function FundTrendChart({
     return <div className="mt-5 rounded-[1.4rem] bg-[#fffaf0]/70 p-6 text-sm font-semibold text-ink/55">{loading ? '正在加载历史数据…' : emptyHint}</div>;
   }
 
-  const candleBarWidth = metrics.points.length <= 12 ? 8 : metrics.points.length <= 32 ? 10 : '42%';
+  const candleBarWidth = metrics.points.length <= 12 ? 12 : metrics.points.length <= 32 ? 10 : '48%';
   const chartSeries = [
-    activeMetricSet.has('kline') && {
+    {
       name: 'K线',
       type: 'candlestick',
       data: klineData,
@@ -189,13 +153,13 @@ export function FundTrendChart({
         },
       },
       barWidth: candleBarWidth,
-      barMinWidth: 2,
-      barMaxWidth: 10,
+      barMinWidth: 4,
+      barMaxWidth: 12,
       large: true,
       largeThreshold: 600,
       z: 4,
     },
-    activeMetricSet.has('kline') && {
+    {
       name: 'MA5',
       type: 'line',
       smooth: true,
@@ -205,7 +169,7 @@ export function FundTrendChart({
       data: movingAverages.MA5,
       z: 3,
     },
-    activeMetricSet.has('kline') && {
+    {
       name: 'MA10',
       type: 'line',
       smooth: true,
@@ -215,7 +179,7 @@ export function FundTrendChart({
       data: movingAverages.MA10,
       z: 3,
     },
-    activeMetricSet.has('kline') && {
+    {
       name: 'MA20',
       type: 'line',
       smooth: true,
@@ -225,98 +189,23 @@ export function FundTrendChart({
       data: movingAverages.MA20,
       z: 3,
     },
-    activeMetricSet.has('close') && {
-      name: primaryLabel,
-      type: 'line',
-      smooth: true,
-      symbol: 'none',
-      symbolSize: 0,
-      showSymbol: false,
-      lineStyle: { color: 'rgba(44, 58, 80, .28)', width: 0.9, opacity: 0.58, shadowBlur: 0, type: 'dotted' },
-      z: 1,
-      data: metrics.points.map((point) => point.netValue),
-    },
-    activeMetricSet.has('return') && {
-      name: '区间收益%',
-      type: 'line',
-      smooth: true,
-      symbol: 'none',
-      yAxisIndex: 1,
-      lineStyle: { width: 2, type: 'dashed', shadowBlur: 14, shadowColor: 'rgba(255,93,82,.42)' },
-      data: metrics.points.map((point) => point.cumulativeReturn),
-    },
-    activeMetricSet.has('drawdown') && {
-      name: '回撤%',
-      type: 'line',
-      smooth: true,
-      symbol: 'none',
-      yAxisIndex: 1,
-      lineStyle: { width: 2, shadowBlur: 12, shadowColor: 'rgba(63,214,160,.38)' },
-      areaStyle: { opacity: 0.12 },
-      data: metrics.points.map((point) => point.drawdown),
-    },
-    activeMetricSet.has('annualized') && {
-      name: '年化收益%',
-      type: 'line',
-      smooth: true,
-      symbol: 'none',
-      yAxisIndex: 1,
-      lineStyle: { width: 2, type: 'dashed', shadowBlur: 10, shadowColor: 'rgba(244,183,64,.28)' },
-      data: rollingMetrics.annualized,
-    },
-    activeMetricSet.has('sharpe') && {
-      name: '夏普',
-      type: 'line',
-      smooth: true,
-      symbol: 'none',
-      yAxisIndex: 1,
-      lineStyle: { width: 2, type: 'dotted', shadowBlur: 10, shadowColor: 'rgba(125,226,184,.26)' },
-      data: rollingMetrics.sharpe,
-    },
-    activeMetricSet.has('volatility') && {
-      name: '波动率%',
-      type: 'line',
-      smooth: true,
-      symbol: 'none',
-      yAxisIndex: 1,
-      lineStyle: { width: 2, type: 'dashed', shadowBlur: 10, shadowColor: 'rgba(140,200,255,.28)' },
-      data: rollingMetrics.volatility,
-    },
-    activeMetricSet.has('benchmark') && benchmarkAvailable && {
-      name: `${benchmarkName}收益%`,
-      type: 'line',
-      smooth: true,
-      symbol: 'none',
-      yAxisIndex: 1,
-      lineStyle: { width: 2, type: 'dotted', shadowBlur: 10, shadowColor: 'rgba(140,200,255,.3)' },
-      data: metrics.points.map((point) => point.benchmarkReturn ?? null),
-    },
-    activeMetricSet.has('excess') && benchmarkAvailable && {
-      name: '超额收益%',
-      type: 'line',
-      smooth: true,
-      symbol: 'none',
-      yAxisIndex: 1,
-      lineStyle: { width: 2, type: 'dashed', shadowBlur: 10, shadowColor: 'rgba(181,126,255,.32)' },
-      data: metrics.points.map((point) => point.excessReturn ?? null),
-    },
   ].filter(Boolean);
 
   const option = {
     backgroundColor: 'transparent',
-    // 中国习惯：涨/收益用红，跌/回撤用绿。净值线保持金色。
-    color: [candleStyle.up, movingAverageColors.MA5, movingAverageColors.MA10, movingAverageColors.MA20, '#64748b', '#8cc8ff', '#b57eff'],
+    // 中国习惯：涨用红，跌用绿。均线沿用页面金色、蓝色、紫色辅助色。
+    color: [candleStyle.up, movingAverageColors.MA5, movingAverageColors.MA10, movingAverageColors.MA20],
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(255, 255, 255, 0.98)',
-      borderColor: 'rgba(226, 232, 240, 0.95)',
-      textStyle: { color: '#111827', fontWeight: 700 },
-      extraCssText: 'border-radius: 12px; box-shadow: 0 18px 48px rgba(15,23,42,.16);',
+      backgroundColor: 'rgba(5, 18, 32, 0.96)',
+      borderColor: 'rgba(255, 255, 255, 0.14)',
+      textStyle: { color: '#dce8f5', fontWeight: 700 },
+      extraCssText: 'border-radius: 14px; box-shadow: 0 18px 48px rgba(0,0,0,.32); backdrop-filter: blur(18px);',
       formatter: formatTooltip,
       axisPointer: {
         type: 'cross',
-      crossStyle: { color: 'rgba(148, 163, 184, .78)', opacity: 0.8, type: 'dashed' },
-      lineStyle: { color: 'rgba(148, 163, 184, .78)', opacity: 0.8, type: 'dashed' },
+      crossStyle: { color: 'rgba(158, 177, 199, .56)', opacity: 0.75, type: 'dashed' },
+      lineStyle: { color: 'rgba(158, 177, 199, .56)', opacity: 0.75, type: 'dashed' },
       },
     },
     legend: {
@@ -324,19 +213,19 @@ export function FundTrendChart({
       top: 6,
       right: 14,
       data: chartSeries.map((series) => (series as { name: string }).name),
-      textStyle: { color: 'rgba(71,85,105,.86)', fontWeight: 800 },
+      textStyle: { color: 'rgba(220,232,245,.86)', fontWeight: 800 },
       itemWidth: 12,
       itemHeight: 6,
     },
-    grid: { left: 46, right: 20, top: 18, bottom: 34 },
+    grid: { left: 48, right: 24, top: 18, bottom: 34 },
     dataZoom: [
       { type: 'inside', zoomOnMouseWheel: true, moveOnMouseMove: true },
     ],
     xAxis: {
       type: 'category',
       data: metrics.points.map((point) => point.date),
-      axisLabel: { color: '#8b919d', fontWeight: 700, margin: 12 },
-      axisLine: { lineStyle: { color: '#e9edf3' } },
+      axisLabel: { color: '#9eb1c7', fontWeight: 700, margin: 12 },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,.14)' } },
       axisTick: { show: false },
       boundaryGap: true,
     },
@@ -345,18 +234,10 @@ export function FundTrendChart({
         type: 'value',
         name: '',
         scale: true,
-        nameTextStyle: { color: '#8b919d', fontWeight: 800 },
-        axisLabel: { color: '#8b919d', formatter: (value: number) => formatChartNumber(value, valueDigits), fontWeight: 700 },
+        nameTextStyle: { color: '#9eb1c7', fontWeight: 800 },
+        axisLabel: { color: '#9eb1c7', formatter: (value: number) => formatChartNumber(value, valueDigits), fontWeight: 700 },
         axisPointer: { label: { formatter: ({ value }: { value: number }) => formatChartNumber(value, valueDigits) } },
-        splitLine: { lineStyle: { color: '#edf0f4' } },
-      },
-      {
-        type: 'value',
-        name: '%',
-        nameTextStyle: { color: '#8b919d', fontWeight: 800 },
-        axisLabel: { color: '#8b919d', formatter: (value: number) => `${formatChartNumber(value, 2)}%`, fontWeight: 700 },
-        axisPointer: { label: { formatter: ({ value }: { value: number }) => `${formatChartNumber(value, 2)}%` } },
-        splitLine: { show: false },
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,.08)' } },
       },
     ],
     series: chartSeries,
@@ -376,28 +257,14 @@ export function FundTrendChart({
           {ranges.map((item) => <Button key={item} className={item === range ? 'is-active' : undefined} size="sm" variant={item === range ? 'default' : 'secondary'} onClick={() => setRange(item)}>{rangeLabels[item]}</Button>)}
         </div>
       </div>
-      <div className="radar-indicator-toolbar" aria-label="走势图指标开关">
-        <div className="radar-indicator-group">
-          <span>默认指标</span>
-          {defaultMetricKeys.map((key) => (
-            <Button key={key} className={activeMetricSet.has(key) ? 'is-active' : undefined} size="sm" variant={activeMetricSet.has(key) ? 'default' : 'secondary'} onClick={() => toggleMetric(key)} aria-pressed={activeMetricSet.has(key)}>
-              {key === 'close' ? primaryLabel : metricLabels[key]}
-            </Button>
-          ))}
-        </div>
-        <div className="radar-indicator-group">
-          <span>可选指标</span>
-          {availableOptionalMetricKeys.map((key) => (
-            <Button key={key} className={activeMetricSet.has(key) ? 'is-active' : undefined} size="sm" variant={activeMetricSet.has(key) ? 'default' : 'secondary'} onClick={() => toggleMetric(key)} aria-pressed={activeMetricSet.has(key)}>
-              {key === 'close' ? primaryLabel : metricLabels[key]}
-            </Button>
-          ))}
-        </div>
-      </div>
       <div className="chart-ma-strip" aria-label="移动均线数值">
         {(Object.entries(movingAverages) as Array<[keyof typeof movingAverages, Array<number | null>]>).map(([label, values]) => {
           const latestValue = [...values].reverse().find((value): value is number => typeof value === 'number' && Number.isFinite(value));
-          return <span key={label} style={{ color: movingAverageColors[label] }}>{label}: {formatChartNumber(latestValue, valueDigits)}</span>;
+          return (
+            <span key={label} className="chart-ma-token" style={{ '--ma-color': movingAverageColors[label] } as CSSProperties}>
+              {label}: {formatChartNumber(latestValue, valueDigits)}
+            </span>
+          );
         })}
       </div>
       <div className="radar-chart-frame">

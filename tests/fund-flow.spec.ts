@@ -338,7 +338,8 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
     await page.getByTestId('market-chart').getByRole('button', { name: new RegExp(index.name) }).click();
     await expect(page.getByTestId('index-chart')).toContainText(`${index.name} 走势`);
     await expect(page.getByTestId('index-chart')).not.toContainText('暂无该指数的历史数据');
-    await expect(page.getByTestId('index-chart').getByRole('button', { name: '区间收益' })).toBeVisible();
+    await expect(page.getByTestId('index-chart')).toContainText('MA5');
+    await expect(page.getByTestId('index-chart')).not.toContainText('区间收益');
   }
 
   await page.getByLabel('基金、股票代码或名称').fill('000001');
@@ -349,7 +350,8 @@ test('searches realtime data, covers reconstructed content, uses deterministic R
   await expect(page.locator('#funds')).toContainText('日涨跌：0.86%');
   await expect(page.locator('#funds')).toContainText('1.2350');
   await expect(page.getByTestId('fund-chart')).toBeVisible();
-  await expect(page.getByTestId('fund-chart').getByRole('button', { name: '区间收益' })).toBeVisible();
+  await expect(page.getByTestId('fund-chart')).toContainText('MA5');
+  await expect(page.getByTestId('fund-chart')).not.toContainText('区间收益');
 
   await expect(page.locator('[aria-labelledby="beginner-guide-title"]')).toHaveCount(0);
   await expect(page.locator('#markets')).toBeVisible();

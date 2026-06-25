@@ -54,11 +54,11 @@ export function IntradayTrendChart({
   const sourceType = latest?.sourceType ?? first?.sourceType ?? 'direct';
   const option = {
     backgroundColor: 'transparent',
-    color: ['#d9365f', '#d98c35', '#23966b'],
+    color: ['#c6465d', '#b8844d', '#2d8a6d'],
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(255, 255, 255, 0.98)',
-      borderColor: 'rgba(226, 232, 240, 0.95)',
+      borderColor: 'rgba(213, 222, 233, 0.95)',
       textStyle: { color: '#111827', fontWeight: 700 },
       extraCssText: 'border-radius: 12px; box-shadow: 0 18px 48px rgba(15,23,42,.16);',
     },
@@ -73,15 +73,15 @@ export function IntradayTrendChart({
     xAxis: {
       type: 'category',
       data: visiblePoints.map((point) => point.time),
-      axisLabel: { color: '#8b919d', fontWeight: 700 },
-      axisLine: { lineStyle: { color: '#e9edf3' } },
+      axisLabel: { color: '#7f8794', fontWeight: 700 },
+      axisLine: { lineStyle: { color: '#dfe6ee' } },
       axisTick: { show: false },
     },
     yAxis: {
       type: 'value',
       scale: true,
-      axisLabel: { color: '#8b919d', fontWeight: 700 },
-      splitLine: { lineStyle: { color: '#edf0f4' } },
+      axisLabel: { color: '#7f8794', fontWeight: 700 },
+      splitLine: { lineStyle: { color: '#e8edf3' } },
     },
     series: [
       {
@@ -89,10 +89,10 @@ export function IntradayTrendChart({
         type: 'candlestick',
         data: klineData,
         itemStyle: {
-          color: '#d9365f',
-          color0: '#23966b',
-          borderColor: '#d9365f',
-          borderColor0: '#23966b',
+          color: '#c6465d',
+          color0: '#2d8a6d',
+          borderColor: '#c6465d',
+          borderColor0: '#2d8a6d',
         },
         barWidth: '52%',
         z: 2,
@@ -102,7 +102,7 @@ export function IntradayTrendChart({
         type: 'line',
         smooth: true,
         showSymbol: false,
-        lineStyle: { color: '#d98c35', width: 1.6, shadowBlur: 0 },
+        lineStyle: { color: '#b8844d', width: 1.6, shadowBlur: 0 },
         areaStyle: { opacity: 0.06 },
         data: visiblePoints.map((point) => point.price),
       },
@@ -111,7 +111,7 @@ export function IntradayTrendChart({
         type: 'line',
         smooth: true,
         showSymbol: false,
-        lineStyle: { color: '#9d6ab8', width: 1.3, type: 'dashed', shadowBlur: 0 },
+        lineStyle: { color: '#8a77a5', width: 1.3, type: 'dashed', shadowBlur: 0 },
         data: visiblePoints.map((point) => point.average ?? null),
       },
     ].filter(Boolean),
