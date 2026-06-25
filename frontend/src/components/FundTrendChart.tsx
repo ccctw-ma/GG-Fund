@@ -16,6 +16,10 @@ const rangeLabels: Record<FundRange, string> = {
   ALL: '更多',
 };
 
+type MetricKey = 'close' | 'kline' | 'return' | 'drawdown' | 'annualized' | 'sharpe' | 'volatility' | 'benchmark' | 'excess';
+
+const defaultMetricKeys: MetricKey[] = ['close', 'kline'];
+const optionalMetricKeys: MetricKey[] = ['return', 'drawdown', 'annualized', 'sharpe', 'volatility', 'benchmark', 'excess'];
 const candleStyle = {
   up: '#ff5d52',
   upFill: '#ff5d52',
@@ -23,6 +27,17 @@ const candleStyle = {
   downFill: '#3fd6a0',
 };
 const valueLineColor = '#eef6ff';
+const metricLabels: Record<MetricKey, string> = {
+  close: '点位',
+  kline: 'K线',
+  return: '区间收益',
+  drawdown: '最大回撤',
+  annualized: '年化收益',
+  sharpe: '夏普',
+  volatility: '波动率',
+  benchmark: '相对基准',
+  excess: '超额收益',
+};
 
 type ChartTooltipParam = {
   axisValue?: string | number;
@@ -56,9 +71,14 @@ const buildKlineData = (points: FundHistoryPoint[]) => points.map((point, index)
   return [open, close, low, high];
 });
 
+const buildRollingMetricSeries = (points: FundHistoryPoint[], key: 'annualizedReturn' | 'sharpeRatio' | 'volatility') => (
+  points.map((_, index) => (index === 0 ? null : calculateFundMetrics(points.slice(0, index + 1)).summary[key]))
+);
+
 export function FundTrendChart({
   history,
   benchmarkHistory = [],
+  benchmarkName = '沪深300',
   kicker = 'Fund Signal Matrix',
   title = '基金分析走势图',
   valueName = '单位净值',
@@ -81,15 +101,28 @@ export function FundTrendChart({
   height?: number;
 }) {
   const [range, setRange] = useState<FundRange>('1M');
-  const [showCandles, setShowCandles] = useState(false);
+  const [activeMetrics, setActiveMetrics] = useState<MetricKey[]>(['close']);
   const visible = useMemo(() => selectHistoryRange(history, range), [history, range]);
   const visibleBenchmark = useMemo(() => selectHistoryRange(benchmarkHistory, range), [benchmarkHistory, range]);
   const metrics = useMemo(() => calculateFundMetrics(visible, visibleBenchmark), [visible, visibleBenchmark]);
   const klineData = useMemo(() => buildKlineData(metrics.points), [metrics.points]);
+  const rollingMetrics = useMemo(() => ({
+    annualized: buildRollingMetricSeries(metrics.points, 'annualizedReturn'),
+    sharpe: buildRollingMetricSeries(metrics.points, 'sharpeRatio'),
+    volatility: buildRollingMetricSeries(metrics.points, 'volatility'),
+  }), [metrics.points]);
+  const activeMetricSet = useMemo(() => new Set(activeMetrics), [activeMetrics]);
   const lastPoint = metrics.points.at(-1);
   const firstPoint = metrics.points[0];
   const trendTone = metrics.summary.totalReturn >= 0 ? '趋势增强' : '风险收缩';
+  const primaryLabel = valueName === '单位净值' ? '点位' : valueName;
   const valueDigits = valueName === '单位净值' ? 4 : 2;
+  const benchmarkAvailable = metrics.summary.benchmarkReturn !== undefined;
+  const availableOptionalMetricKeys = optionalMetricKeys.filter((key) => (key === 'benchmark' || key === 'excess' ? benchmarkAvailable : true));
+
+  function toggleMetric(key: MetricKey) {
+    setActiveMetrics((current) => (current.includes(key) ? current.filter((item) => item !== key) : [...current, key]));
+  }
 
   function formatTooltip(params: ChartTooltipParam | ChartTooltipParam[]) {
     const items = Array.isArray(params) ? params : [params];
@@ -116,20 +149,46 @@ export function FundTrendChart({
 
   const candleBarWidth = metrics.points.length <= 12 ? 12 : metrics.points.length <= 32 ? 10 : '48%';
   const chartSeries = [
-    {
-      name: valueName,
+    activeMetricSet.has('close') && {
+      name: primaryLabel,
       type: 'line',
       smooth: true,
-      symbol: metrics.points.length <= 30 ? 'circle' : 'none',
-      showSymbol: metrics.points.length <= 30,
-      symbolSize: 5,
+      symbol: 'circle',
+      showSymbol: false,
+      symbolSize: 6,
       itemStyle: { color: valueLineColor },
-      lineStyle: { color: valueLineColor, width: showCandles ? 1.2 : 2, opacity: showCandles ? 0.62 : 0.94 },
-      areaStyle: showCandles ? undefined : { color: 'rgba(140, 200, 255, .08)' },
+      lineStyle: {
+        color: valueLineColor,
+        width: 2.6,
+        opacity: activeMetricSet.has('kline') ? 0.82 : 0.98,
+        shadowBlur: 16,
+        shadowColor: 'rgba(140, 200, 255, .34)',
+      },
+      areaStyle: {
+        color: {
+          type: 'linear',
+          x: 0,
+          y: 0,
+          x2: 0,
+          y2: 1,
+          colorStops: [
+            { offset: 0, color: 'rgba(140, 200, 255, .24)' },
+            { offset: 0.55, color: 'rgba(140, 200, 255, .08)' },
+            { offset: 1, color: 'rgba(140, 200, 255, 0)' },
+          ],
+        },
+      },
+      emphasis: { focus: 'series', scale: true, itemStyle: { color: '#ffffff', borderColor: '#8cc8ff', borderWidth: 2 } },
+      endLabel: {
+        show: true,
+        color: '#eef6ff',
+        fontWeight: 900,
+        formatter: ({ value }: { value: unknown }) => formatChartNumber(value, valueDigits),
+      },
       data: metrics.points.map((point) => point.netValue),
-      z: showCandles ? 2 : 5,
+      z: 6,
     },
-    showCandles &&
+    activeMetricSet.has('kline') &&
     {
       name: 'K线',
       type: 'candlestick',
@@ -158,14 +217,86 @@ export function FundTrendChart({
       largeThreshold: 600,
       z: 4,
     },
+    activeMetricSet.has('return') && {
+      name: '区间收益%',
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      yAxisIndex: 1,
+      lineStyle: { color: '#ff7a70', width: 2, type: 'dashed', shadowBlur: 12, shadowColor: 'rgba(255,93,82,.36)' },
+      data: metrics.points.map((point) => point.cumulativeReturn),
+      z: 3,
+    },
+    activeMetricSet.has('drawdown') && {
+      name: '回撤%',
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      yAxisIndex: 1,
+      lineStyle: { color: '#3fd6a0', width: 2, shadowBlur: 12, shadowColor: 'rgba(63,214,160,.3)' },
+      areaStyle: { color: 'rgba(63,214,160,.08)' },
+      data: metrics.points.map((point) => point.drawdown),
+      z: 3,
+    },
+    activeMetricSet.has('annualized') && {
+      name: '年化收益%',
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      yAxisIndex: 1,
+      lineStyle: { color: '#f4b740', width: 2, type: 'dashed', shadowBlur: 10, shadowColor: 'rgba(244,183,64,.28)' },
+      data: rollingMetrics.annualized,
+      z: 3,
+    },
+    activeMetricSet.has('sharpe') && {
+      name: '夏普',
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      yAxisIndex: 1,
+      lineStyle: { color: '#7de2b8', width: 2, type: 'dotted', shadowBlur: 10, shadowColor: 'rgba(125,226,184,.26)' },
+      data: rollingMetrics.sharpe,
+      z: 3,
+    },
+    activeMetricSet.has('volatility') && {
+      name: '波动率%',
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      yAxisIndex: 1,
+      lineStyle: { color: '#8cc8ff', width: 2, type: 'dashed', shadowBlur: 10, shadowColor: 'rgba(140,200,255,.28)' },
+      data: rollingMetrics.volatility,
+      z: 3,
+    },
+    activeMetricSet.has('benchmark') && benchmarkAvailable && {
+      name: `${benchmarkName}收益%`,
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      yAxisIndex: 1,
+      lineStyle: { color: '#8cc8ff', width: 2, type: 'dotted', shadowBlur: 10, shadowColor: 'rgba(140,200,255,.3)' },
+      data: metrics.points.map((point) => point.benchmarkReturn ?? null),
+      z: 3,
+    },
+    activeMetricSet.has('excess') && benchmarkAvailable && {
+      name: '超额收益%',
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      yAxisIndex: 1,
+      lineStyle: { color: '#b9a4ff', width: 2, type: 'dashed', shadowBlur: 10, shadowColor: 'rgba(185,164,255,.32)' },
+      data: metrics.points.map((point) => point.excessReturn ?? null),
+      z: 3,
+    },
   ].filter(Boolean);
 
   const option = {
     backgroundColor: 'transparent',
-    // 默认仅展示点位线；K 线按中国习惯涨红跌绿，可由用户手动打开。
-    color: [valueLineColor, candleStyle.up],
+    // 默认仅展示点位线；K 线和历史风险收益指标保留为可选项。
+    color: [valueLineColor, candleStyle.up, '#ff7a70', '#3fd6a0', '#f4b740', '#8cc8ff', '#b9a4ff'],
     tooltip: {
       trigger: 'axis',
+      confine: true,
       backgroundColor: 'rgba(5, 18, 32, 0.96)',
       borderColor: 'rgba(255, 255, 255, 0.14)',
       textStyle: { color: '#dce8f5', fontWeight: 700 },
@@ -173,6 +304,7 @@ export function FundTrendChart({
       formatter: formatTooltip,
       axisPointer: {
         type: 'cross',
+        snap: true,
       crossStyle: { color: 'rgba(158, 177, 199, .56)', opacity: 0.75, type: 'dashed' },
       lineStyle: { color: 'rgba(158, 177, 199, .56)', opacity: 0.75, type: 'dashed' },
       },
@@ -186,7 +318,7 @@ export function FundTrendChart({
       itemWidth: 12,
       itemHeight: 6,
     },
-    grid: { left: 48, right: 24, top: 18, bottom: 34 },
+    grid: { left: 48, right: 46, top: 18, bottom: 34 },
     dataZoom: [
       { type: 'inside', zoomOnMouseWheel: true, moveOnMouseMove: true },
     ],
@@ -196,7 +328,7 @@ export function FundTrendChart({
       axisLabel: { color: '#9eb1c7', fontWeight: 700, margin: 12 },
       axisLine: { lineStyle: { color: 'rgba(255,255,255,.14)' } },
       axisTick: { show: false },
-      boundaryGap: true,
+      boundaryGap: activeMetricSet.has('kline'),
     },
     yAxis: [
       {
@@ -207,6 +339,14 @@ export function FundTrendChart({
         axisLabel: { color: '#9eb1c7', formatter: (value: number) => formatChartNumber(value, valueDigits), fontWeight: 700 },
         axisPointer: { label: { formatter: ({ value }: { value: number }) => formatChartNumber(value, valueDigits) } },
         splitLine: { lineStyle: { color: 'rgba(255,255,255,.08)' } },
+      },
+      {
+        type: 'value',
+        name: '%',
+        nameTextStyle: { color: '#9eb1c7', fontWeight: 800 },
+        axisLabel: { color: '#9eb1c7', formatter: (value: number) => `${formatChartNumber(value, 2)}%`, fontWeight: 700 },
+        axisPointer: { label: { formatter: ({ value }: { value: number }) => `${formatChartNumber(value, 2)}%` } },
+        splitLine: { show: false },
       },
     ],
     series: chartSeries,
@@ -226,20 +366,28 @@ export function FundTrendChart({
           {ranges.map((item) => <Button key={item} className={item === range ? 'is-active' : undefined} size="sm" variant={item === range ? 'default' : 'secondary'} onClick={() => setRange(item)}>{rangeLabels[item]}</Button>)}
         </div>
       </div>
+      <div className="radar-indicator-toolbar" aria-label="走势图指标开关">
+        <div className="radar-indicator-group">
+          <span>默认指标</span>
+          {defaultMetricKeys.map((key) => (
+            <Button key={key} className={activeMetricSet.has(key) ? 'is-active' : undefined} size="sm" variant={activeMetricSet.has(key) ? 'default' : 'secondary'} onClick={() => toggleMetric(key)} aria-pressed={activeMetricSet.has(key)}>
+              {key === 'close' ? primaryLabel : metricLabels[key]}
+            </Button>
+          ))}
+        </div>
+        <div className="radar-indicator-group">
+          <span>可选指标</span>
+          {availableOptionalMetricKeys.map((key) => (
+            <Button key={key} className={activeMetricSet.has(key) ? 'is-active' : undefined} size="sm" variant={activeMetricSet.has(key) ? 'default' : 'secondary'} onClick={() => toggleMetric(key)} aria-pressed={activeMetricSet.has(key)}>
+              {metricLabels[key]}
+            </Button>
+          ))}
+        </div>
+      </div>
       <div className="chart-ma-strip" aria-label="图表显示控制">
         <span className="chart-ma-token chart-value-token" style={{ '--ma-color': valueLineColor } as CSSProperties}>
           {valueName}: {formatChartNumber(lastPoint?.netValue, valueDigits)}
         </span>
-        <Button
-          className={showCandles ? 'is-active' : undefined}
-          size="sm"
-          variant={showCandles ? 'default' : 'secondary'}
-          type="button"
-          aria-pressed={showCandles}
-          onClick={() => setShowCandles((value) => !value)}
-        >
-          K线
-        </Button>
       </div>
       <div className="radar-chart-frame">
         <ReactECharts option={option} style={{ height, width: '100%' }} notMerge lazyUpdate />

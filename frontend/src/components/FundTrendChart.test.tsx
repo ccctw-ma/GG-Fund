@@ -74,7 +74,7 @@ describe('FundTrendChart', () => {
     expect(empty.container.textContent).toContain('没有走势');
   });
 
-  it('renders a custom stock-style chart with only the value line by default and optional candles', () => {
+  it('renders a polished value-line chart by default while keeping indicators optional', () => {
     const chart = render(
       <FundTrendChart
         history={fallingHistory}
@@ -87,7 +87,14 @@ describe('FundTrendChart', () => {
 
     expect(chart.container.textContent).toContain('贵州茅台价格走势');
     expect(chart.container.textContent).toContain('风险收缩');
+    expect(chart.container.textContent).toContain('默认指标');
     expect(chart.container.textContent).toContain('K线');
+    expect(chart.container.textContent).toContain('可选指标');
+    expect(chart.container.textContent).toContain('区间收益');
+    expect(chart.container.textContent).toContain('最大回撤');
+    expect(chart.container.textContent).toContain('年化收益');
+    expect(chart.container.textContent).toContain('夏普');
+    expect(chart.container.textContent).toContain('波动率');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('收盘价:line');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('MA5:line');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('MA10:line');
@@ -103,12 +110,7 @@ describe('FundTrendChart', () => {
     expect(chart.container.querySelector('[data-testid="mock-tooltip"]')?.textContent).not.toContain('4079.1750999999995');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('区间收益%');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('回撤%');
-    expect(chart.container.textContent).not.toContain('相对基准');
-    expect(chart.container.textContent).not.toContain('超额收益');
     const labels = Array.from(chart.container.querySelectorAll('button')).map((button) => button.textContent);
-    expect(labels).not.toContain('年化收益');
-    expect(labels).not.toContain('夏普');
-    expect(labels).not.toContain('波动率');
     expect(labels).not.toContain('MA5');
     expect(labels).not.toContain('MA10');
     expect(labels).not.toContain('MA20');
@@ -119,6 +121,10 @@ describe('FundTrendChart', () => {
     act(() => klineButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(klineButton?.getAttribute('aria-pressed')).toBe('true');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('K线:candlestick');
+
+    const returnButton = Array.from(chart.container.querySelectorAll('button')).find((button) => button.textContent === '区间收益');
+    act(() => returnButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('区间收益%:line');
   });
 
   it('uses provided OHLC fields for real candlestick data', () => {
@@ -132,7 +138,7 @@ describe('FundTrendChart', () => {
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('K线:candlestick');
   });
 
-  it('keeps benchmark data out of the visual chart controls', () => {
+  it('keeps benchmark metrics optional and hidden until selected', () => {
     const chart = render(
       <FundTrendChart
         history={longHistory}
@@ -149,12 +155,20 @@ describe('FundTrendChart', () => {
     const allRange = Array.from(chart.container.querySelectorAll('button')).find((item) => item.textContent === '更多');
     act(() => allRange?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
+    expect(chart.container.textContent).toContain('相对基准');
+    expect(chart.container.textContent).toContain('超额收益');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('K线:candlestick');
-    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('单位净值:line');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('点位:line');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('MA5:line');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('区间收益%:line');
     expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('回撤%:line');
-    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('测试基准收益%:line');
-    expect(chart.container.textContent).not.toContain('可选指标');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).not.toContain('沪深300收益%:line');
+
+    const benchmarkButton = Array.from(chart.container.querySelectorAll('button')).find((button) => button.textContent === '相对基准');
+    const excessButton = Array.from(chart.container.querySelectorAll('button')).find((button) => button.textContent === '超额收益');
+    act(() => benchmarkButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    act(() => excessButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('沪深300收益%:line');
+    expect(chart.container.querySelector('[data-testid="mock-series"]')?.textContent).toContain('超额收益%:line');
   });
 });
