@@ -50,6 +50,17 @@ gh run list --repo ccctw-ma/GG-Fund --workflow cloudflare-deploy.yml --branch ma
 gh run watch <run-id> --repo ccctw-ma/GG-Fund --exit-status
 ```
 
+If `gh` is not the GitHub CLI in the current environment, use the public GitHub Actions API instead and always include a `User-Agent` header to avoid false 403/rate-limit failures:
+
+```bash
+curl -fsS \
+  -H 'Accept: application/vnd.github+json' \
+  -H 'User-Agent: GG-Fund-deploy-check' \
+  'https://api.github.com/repos/ccctw-ma/GG-Fund/actions/workflows/cloudflare-deploy.yml/runs?branch=master&per_page=5'
+```
+
+The `Cloudflare Deploy` workflow's `Verify deployment` step runs `bun run verify:cloudflare` from GitHub-hosted infrastructure and is the authoritative production verification signal when local network access to `*.workers.dev` is blocked, DNS-poisoned, or routed to unreachable IPs. If local `curl` to the Workers URL fails, first check `getent hosts gg-fund.1934202608.workers.dev`; mappings such as `108.160.*` or `2001::/32` indicate local DNS/routing interception rather than a deployment failure.
+
 If the deployment fails, fetch the failed job logs, fix code or configuration when possible, then commit, push, and repeat the observation loop until the deployment succeeds:
 
 ```bash
