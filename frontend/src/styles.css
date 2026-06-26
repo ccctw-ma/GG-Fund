@@ -875,6 +875,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .fund-ai-panel-head {
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -918,10 +919,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   color: var(--text-strong);
   cursor: pointer;
 }
+.fund-ai-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
 .fund-ai-body {
   display: grid;
   gap: 14px;
-  overflow-y: auto;
   padding: 16px clamp(18px, 2.6vw, 28px) 28px;
 }
 .fund-ai-summary-card {
@@ -1038,9 +1045,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .fund-ai-chat {
   display: grid;
-  gap: 12px;
+  gap: 14px;
   border-color: rgba(141,240,207,.16) !important;
-  background: linear-gradient(145deg, rgba(141,240,207,.08), rgba(140,200,255,.045)) !important;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(141,240,207,.1), transparent 38%),
+    linear-gradient(145deg, rgba(9,32,49,.68), rgba(4,14,28,.58)) !important;
 }
 .fund-ai-chat-head {
   display: flex;
@@ -1058,14 +1067,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .fund-ai-chat-log {
   display: grid;
   gap: 10px;
-  max-height: 280px;
-  overflow-y: auto;
-  padding-right: 4px;
+  padding-right: 0;
 }
 .fund-ai-chat-bubble {
   display: grid;
   gap: 5px;
-  max-width: 92%;
+  max-width: min(92%, 560px);
   border: 1px solid rgba(255,255,255,.09);
   border-radius: 16px;
   padding: 10px 12px;
@@ -1093,10 +1100,33 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   justify-self: start;
   background: rgba(2,6,23,.36);
 }
+.fund-ai-chat-bubble.is-thinking p { color: rgba(203,213,225,.76); }
+.fund-ai-chat-empty {
+  margin: 0;
+  border: 1px dashed rgba(141,240,207,.18);
+  border-radius: 16px;
+  background: rgba(2,6,23,.26);
+  padding: 12px 13px;
+  color: rgba(203,213,225,.78) !important;
+  font-size: .82rem !important;
+  font-weight: 760 !important;
+  line-height: 1.6 !important;
+}
+.fund-ai-chat-composer {
+  flex: none;
+  border-top: 1px solid rgba(255,255,255,.08);
+  background:
+    linear-gradient(180deg, rgba(7,22,36,.88), rgba(5,17,31,.98)),
+    rgba(5,17,31,.96);
+  padding: 12px clamp(18px, 2.6vw, 28px) max(12px, env(safe-area-inset-bottom));
+  box-shadow: 0 -18px 42px rgba(2,6,23,.42), inset 0 1px 0 rgba(255,255,255,.06);
+  backdrop-filter: blur(18px);
+}
 .fund-ai-chat-suggestions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-bottom: 10px;
 }
 .fund-ai-chat-suggestions button {
   border: 1px solid rgba(141,240,207,.18);
@@ -1122,8 +1152,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   align-items: end;
 }
 .fund-ai-chat-form textarea {
-  min-height: 48px;
-  max-height: 130px;
+  min-height: 46px;
+  max-height: 108px;
   resize: vertical;
   border: 1px solid rgba(255,255,255,.12);
   border-radius: 16px;
@@ -1134,6 +1164,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   font-weight: 760;
   outline: none;
 }
+.fund-ai-chat-form button {
+  min-height: 46px;
+  border-radius: 999px;
+  box-shadow: 0 12px 30px rgba(180,130,48,.16);
+}
 .fund-ai-chat-form textarea:focus {
   border-color: rgba(141,240,207,.42);
   box-shadow: 0 0 0 3px rgba(141,240,207,.1);
@@ -1143,6 +1178,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .fund-ai-drawer-scrim { display: none; }
   .fund-ai-grid { grid-template-columns: 1fr; }
   .fund-ai-chat-form { grid-template-columns: 1fr; }
+  .fund-ai-chat-composer { padding-inline: 14px; }
 }
 
 .yb-hero-grid, .yb-module-grid, .yb-signal-grid {

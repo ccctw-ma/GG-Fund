@@ -46,17 +46,15 @@ The hook runs `bun run lint` and `bun run test`.
 After pushing to `master`, always observe the GitHub Actions deployment before reporting the work as complete:
 
 ```bash
-gh run list --repo ccctw-ma/GG-Fund --workflow cloudflare-deploy.yml --branch master --limit 5
-gh run watch <run-id> --repo ccctw-ma/GG-Fund --exit-status
+npm run actions:list
+npm run actions:watch -- <run-id>
 ```
 
-If `gh` is not the GitHub CLI in the current environment, use the public GitHub Actions API instead and always include a `User-Agent` header to avoid false 403/rate-limit failures:
+Do not call `gh run ...` directly in this devbox. `/usr/local/bin/gh` is an internal host lookup tool, not GitHub CLI. This repository provides `scripts/github-actions.js` and npm wrappers so deployment observation is independent of the global `gh` binary. The script uses the public GitHub Actions API with a `User-Agent` header and supports `GH_TOKEN` / `GITHUB_TOKEN` for authenticated requests when anonymous API quota is exhausted:
 
 ```bash
-curl -fsS \
-  -H 'Accept: application/vnd.github+json' \
-  -H 'User-Agent: GG-Fund-deploy-check' \
-  'https://api.github.com/repos/ccctw-ma/GG-Fund/actions/workflows/cloudflare-deploy.yml/runs?branch=master&per_page=5'
+GH_TOKEN=<token> npm run actions:list
+GH_TOKEN=<token> npm run actions:watch -- <run-id>
 ```
 
 The `Cloudflare Deploy` workflow's `Verify deployment` step runs `bun run verify:cloudflare` from GitHub-hosted infrastructure and is the authoritative production verification signal when local network access to `*.workers.dev` is blocked, DNS-poisoned, or routed to unreachable IPs. If local `curl` to the Workers URL fails, first check `getent hosts gg-fund.1934202608.workers.dev`; mappings such as `108.160.*` or `2001::/32` indicate local DNS/routing interception rather than a deployment failure.
@@ -64,7 +62,7 @@ The `Cloudflare Deploy` workflow's `Verify deployment` step runs `bun run verify
 If the deployment fails, fetch the failed job logs, fix code or configuration when possible, then commit, push, and repeat the observation loop until the deployment succeeds:
 
 ```bash
-gh run view <run-id> --repo ccctw-ma/GG-Fund --log-failed
+npm run actions:view -- <run-id>
 ```
 
 If the failure requires account-level or secret-level configuration, stop and ask the user for the missing configuration instead of guessing. Current production verification base URL:

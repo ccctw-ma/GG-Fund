@@ -68,21 +68,22 @@ export function FundAnalysisPanel({ target, analysis, loadingCode, streamingStat
             </button>
           </div>
         </div>
-        {loadingCode === target.code && (
-          <div className="fund-ai-loading">
-            <LoaderCircle className="h-5 w-5 animate-spin" />
-            {streamingStatus || '正在联网读取公开材料并生成分析…'}
-          </div>
-        )}
-        {error && <p className="fund-ai-error">{error}</p>}
-        {streamingDraft && (loadingCode === target.code || !analysis) && (
-          <div className="fund-ai-stream">
-            <h4>流式草稿</h4>
-            <pre>{streamingDraft}</pre>
-          </div>
-        )}
-        {analysis && (
-          <div className="fund-ai-body">
+        <div className="fund-ai-scroll">
+          {loadingCode === target.code && (
+            <div className="fund-ai-loading">
+              <LoaderCircle className="h-5 w-5 animate-spin" />
+              {streamingStatus || '正在联网读取公开材料并生成分析…'}
+            </div>
+          )}
+          {error && <p className="fund-ai-error">{error}</p>}
+          {streamingDraft && (loadingCode === target.code || !analysis) && (
+            <div className="fund-ai-stream">
+              <h4>流式草稿</h4>
+              <pre>{streamingDraft}</pre>
+            </div>
+          )}
+          {analysis && (
+            <div className="fund-ai-body">
             <section className="fund-ai-summary-card">
               <h4>核心判断</h4>
               <p>{analysis.report.summary}</p>
@@ -150,47 +151,60 @@ export function FundAnalysisPanel({ target, analysis, loadingCode, streamingStat
               )}
             </section>
             <p className="fund-ai-footnote">{analysis.report.disclaimer}</p>
-            <section className="fund-ai-chat" aria-label="继续追问智能分析">
-              <div className="fund-ai-chat-head">
-                <div>
-                  <h4>继续追问</h4>
-                  <p>基于上面的分析结果继续问，DeepSeek 会结合当前行情和报告上下文回答。</p>
+              <section className="fund-ai-chat" aria-label="继续追问智能分析">
+                <div className="fund-ai-chat-head">
+                  <div>
+                    <h4>继续追问</h4>
+                    <p>上方报告可继续滚动浏览，对话会在这里按时间连续展开。</p>
+                  </div>
+                  {followUpLoading && <LoaderCircle className="h-4 w-4 animate-spin" />}
                 </div>
-                {followUpLoading && <LoaderCircle className="h-4 w-4 animate-spin" />}
+                {followUpMessages.length > 0 ? (
+                  <div className="fund-ai-chat-log">
+                    {followUpMessages.map((message, index) => (
+                      <div className={`fund-ai-chat-bubble is-${message.role}`} key={`${message.role}-${index}-${message.content.slice(0, 12)}`}>
+                        <strong>{message.role === 'user' ? '你' : message.model ? `DeepSeek · ${message.model}` : 'DeepSeek'}</strong>
+                        <p>{message.content}</p>
+                      </div>
+                    ))}
+                    {followUpLoading && (
+                      <div className="fund-ai-chat-bubble is-assistant is-thinking">
+                        <strong>DeepSeek</strong>
+                        <p>正在结合当前行情和报告上下文生成回答…</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="fund-ai-chat-empty">可以继续问仓位、风险、观察信号或后续走势，对话不会打断上面的分析内容。</p>
+                )}
+                {followUpError && <p className="fund-ai-chat-error">{followUpError}</p>}
+              </section>
+            </div>
+          )}
+        </div>
+        {analysis && (
+          <div className="fund-ai-chat-composer" aria-label="固定追问输入区">
+            {followUpMessages.length === 0 && (
+              <div className="fund-ai-chat-suggestions" aria-label="追问建议">
+                {suggestions.map((item) => (
+                  <button key={item} type="button" onClick={() => submitFollowUp(item)} disabled={followUpLoading || !onAskFollowUp}>{item}</button>
+                ))}
               </div>
-              {followUpMessages.length > 0 && (
-                <div className="fund-ai-chat-log">
-                  {followUpMessages.map((message, index) => (
-                    <div className={`fund-ai-chat-bubble is-${message.role}`} key={`${message.role}-${index}-${message.content.slice(0, 12)}`}>
-                      <strong>{message.role === 'user' ? '你' : message.model ? `DeepSeek · ${message.model}` : 'DeepSeek'}</strong>
-                      <p>{message.content}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {followUpMessages.length === 0 && (
-                <div className="fund-ai-chat-suggestions" aria-label="追问建议">
-                  {suggestions.map((item) => (
-                    <button key={item} type="button" onClick={() => submitFollowUp(item)} disabled={followUpLoading || !onAskFollowUp}>{item}</button>
-                  ))}
-                </div>
-              )}
-              {followUpError && <p className="fund-ai-chat-error">{followUpError}</p>}
-              <form className="fund-ai-chat-form" onSubmit={handleSubmit}>
-                <textarea
-                  aria-label="继续追问 DeepSeek"
-                  value={followUpQuestion}
-                  onChange={(event) => setFollowUpQuestion(event.target.value)}
-                  placeholder="例如：这只基金现在适合继续持有还是先观察？"
-                  maxLength={500}
-                  disabled={!onAskFollowUp || followUpLoading}
-                />
-                <Button type="submit" size="sm" disabled={!followUpQuestion.trim() || !onAskFollowUp || followUpLoading}>
-                  {followUpLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
-                  发送
-                </Button>
-              </form>
-            </section>
+            )}
+            <form className="fund-ai-chat-form" onSubmit={handleSubmit}>
+              <textarea
+                aria-label="继续追问 DeepSeek"
+                value={followUpQuestion}
+                onChange={(event) => setFollowUpQuestion(event.target.value)}
+                placeholder="继续追问，例如：现在适合加仓还是先观察？"
+                maxLength={500}
+                disabled={!onAskFollowUp || followUpLoading}
+              />
+              <Button type="submit" size="sm" disabled={!followUpQuestion.trim() || !onAskFollowUp || followUpLoading}>
+                {followUpLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
+                发送
+              </Button>
+            </form>
           </div>
         )}
       </aside>

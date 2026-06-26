@@ -93,6 +93,14 @@ curl https://gg-fund.workers.dev/api/funds/000001
 - `bunx wrangler deploy --config wrangler.jsonc --name "$CF_WORKER_NAME"`
 - `bun run verify:cloudflare`
 
+推送到 `master` 后不要依赖全局 `gh` 命令观察部署；当前 devbox 的 `/usr/local/bin/gh` 是内部主机查询工具，不是 GitHub CLI。使用仓库内置的 GitHub Actions API 包装脚本，必要时通过 `GH_TOKEN` 或 `GITHUB_TOKEN` 提升 API 额度：
+
+```bash
+npm run actions:list
+npm run actions:watch -- <run-id>
+npm run actions:view -- <run-id>
+```
+
 ## 可配置环境变量
 
 - `RESEND_API_KEY`

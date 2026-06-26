@@ -23,6 +23,15 @@ export default tseslint.config(
     },
   },
   {
+    files: ['scripts/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+  {
     files: ['frontend/src/**/*.{ts,tsx}'],
     plugins: {
       'react-hooks': reactHooks,
