@@ -1,8 +1,10 @@
 'use client';
 
-import { Bot, LoaderCircle, X } from 'lucide-react';
+import { Bot, LoaderCircle, SendHorizontal, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import { useMemo, useState, type FormEvent } from 'react';
 import type { FundAnalysisResponse } from '../types';
+import { Button } from './ui/button';
 
 type AnalysisTarget = {
   code: string;
@@ -16,6 +18,10 @@ type Props = {
   streamingStatus?: string;
   streamingDraft?: string;
   error?: string;
+  followUpMessages?: Array<{ role: 'user' | 'assistant'; content: string; model?: string }>;
+  followUpLoading?: boolean;
+  followUpError?: string;
+  onAskFollowUp?: (question: string) => Promise<void> | void;
   onClose: () => void;
 };
 
@@ -25,8 +31,26 @@ function probabilityLabel(probability: 'low' | 'medium' | 'high') {
   return '中性情景';
 }
 
-export function FundAnalysisPanel({ target, analysis, loadingCode, streamingStatus, streamingDraft, error, onClose }: Props) {
+export function FundAnalysisPanel({ target, analysis, loadingCode, streamingStatus, streamingDraft, error, followUpMessages = [], followUpLoading, followUpError, onAskFollowUp, onClose }: Props) {
+  const [followUpQuestion, setFollowUpQuestion] = useState('');
+  const suggestions = useMemo(() => [
+    '现在适合加仓吗？',
+    '最大风险是什么？',
+    '接下来重点看哪些信号？',
+  ], []);
   if (!target) return null;
+
+  function submitFollowUp(question = followUpQuestion) {
+    const normalized = question.trim();
+    if (!normalized || followUpLoading) return;
+    setFollowUpQuestion('');
+    void onAskFollowUp?.(normalized);
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    submitFollowUp();
+  }
 
   const drawer = (
     <>
@@ -126,6 +150,47 @@ export function FundAnalysisPanel({ target, analysis, loadingCode, streamingStat
               )}
             </section>
             <p className="fund-ai-footnote">{analysis.report.disclaimer}</p>
+            <section className="fund-ai-chat" aria-label="继续追问智能分析">
+              <div className="fund-ai-chat-head">
+                <div>
+                  <h4>继续追问</h4>
+                  <p>基于上面的分析结果继续问，DeepSeek 会结合当前行情和报告上下文回答。</p>
+                </div>
+                {followUpLoading && <LoaderCircle className="h-4 w-4 animate-spin" />}
+              </div>
+              {followUpMessages.length > 0 && (
+                <div className="fund-ai-chat-log">
+                  {followUpMessages.map((message, index) => (
+                    <div className={`fund-ai-chat-bubble is-${message.role}`} key={`${message.role}-${index}-${message.content.slice(0, 12)}`}>
+                      <strong>{message.role === 'user' ? '你' : message.model ? `DeepSeek · ${message.model}` : 'DeepSeek'}</strong>
+                      <p>{message.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {followUpMessages.length === 0 && (
+                <div className="fund-ai-chat-suggestions" aria-label="追问建议">
+                  {suggestions.map((item) => (
+                    <button key={item} type="button" onClick={() => submitFollowUp(item)} disabled={followUpLoading || !onAskFollowUp}>{item}</button>
+                  ))}
+                </div>
+              )}
+              {followUpError && <p className="fund-ai-chat-error">{followUpError}</p>}
+              <form className="fund-ai-chat-form" onSubmit={handleSubmit}>
+                <textarea
+                  aria-label="继续追问 DeepSeek"
+                  value={followUpQuestion}
+                  onChange={(event) => setFollowUpQuestion(event.target.value)}
+                  placeholder="例如：这只基金现在适合继续持有还是先观察？"
+                  maxLength={500}
+                  disabled={!onAskFollowUp || followUpLoading}
+                />
+                <Button type="submit" size="sm" disabled={!followUpQuestion.trim() || !onAskFollowUp || followUpLoading}>
+                  {followUpLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
+                  发送
+                </Button>
+              </form>
+            </section>
           </div>
         )}
       </aside>

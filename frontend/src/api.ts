@@ -1,4 +1,4 @@
-import type { ExportedLocalData, FundAnalysisResponse, FundHistoryPoint, FundHoldings, FundIntradayPoint, FundQuote, IndexQuote } from './types';
+import type { ExportedLocalData, FundAnalysisFollowUpResponse, FundAnalysisResponse, FundHistoryPoint, FundHoldings, FundIntradayPoint, FundQuote, IndexQuote } from './types';
 
 const SESSION_TOKEN_KEY = 'gg_fund_session_token';
 const CACHE_PREFIX = 'gg_fund_api_cache:';
@@ -235,7 +235,9 @@ export const api = {
   getFundHoldings: (code: string) => getCachedJson<FundHoldings>(`/api/funds/${code}/holdings`, `fund-holdings:${code}`, cacheTtl.holdings),
   getTrendingFunds: () => getCachedJson<FundQuote[]>('/api/funds/trending', 'funds-trending', cacheTtl.trending),
   analyzeFund: (code: string) => postJson<FundAnalysisResponse>('/api/ai/analyze-fund', { code }),
-    analyzeFundStream: (code: string, handlers?: { onStatus?: (message: string) => void; onDelta?: (delta: string) => void }) => postStreamedAnalyzeFund(code, handlers),
+  analyzeFundStream: (code: string, handlers?: { onStatus?: (message: string) => void; onDelta?: (delta: string) => void }) => postStreamedAnalyzeFund(code, handlers),
+  askFundAnalysisFollowUp: (code: string, question: string, context?: Partial<FundAnalysisResponse['report']>) =>
+    postJson<FundAnalysisFollowUpResponse>('/api/ai/analyze-fund/follow-up', { code, question, context }),
   recognizeHoldingsFromImage: (imageDataUrl: string, imageText?: string) =>
     postJson<RecognizeHoldingsResponse>('/api/ai/recognize-holdings', { imageDataUrl, imageText }),
   syncPortfolio: (holdings: unknown[], watchlist: unknown[]) =>

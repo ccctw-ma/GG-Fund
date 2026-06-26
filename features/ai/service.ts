@@ -7,6 +7,24 @@ export type AnalyzeFundRequest = {
   code: string;
 };
 
+export type AnalyzeFundFollowUpRequest = {
+  code: string;
+  question: string;
+  context?: {
+    summary?: string;
+    trend?: string;
+    marketDrivers?: string;
+    outlook?: string;
+    risk?: string;
+  };
+};
+
+export type AnalyzeFundFollowUpResponse = {
+  answer: string;
+  model: string;
+  sourceNotes: string[];
+};
+
 export type AnalyzeFundResponse = {
   fund: FundQuote;
   agent: {
@@ -100,6 +118,25 @@ export function normalizeAnalyzeFundRequest(body: unknown): AnalyzeFundRequest {
   return { code };
 }
 
+export function normalizeAnalyzeFundFollowUpRequest(body: unknown): AnalyzeFundFollowUpRequest {
+  const payload = typeof body === 'object' && body !== null ? body as { code?: unknown; question?: unknown; context?: unknown } : {};
+  const code = String(payload.code ?? '').trim();
+  if (!/^\d{6}$/.test(code)) {
+    throw new HttpError(400, 'FUND_CODE_INVALID', '基金代码格式不正确');
+  }
+  const question = String(payload.question ?? '').trim();
+  if (question.length < 2 || question.length > 500) {
+    throw new HttpError(400, 'FOLLOW_UP_QUESTION_INVALID', '追问内容需为 2-500 个字符');
+  }
+  const rawContext = typeof payload.context === 'object' && payload.context !== null ? payload.context as Record<string, unknown> : {};
+  const context = Object.fromEntries(
+    ['summary', 'trend', 'marketDrivers', 'outlook', 'risk']
+      .map((key) => [key, typeof rawContext[key] === 'string' ? String(rawContext[key]).slice(0, 900) : undefined])
+      .filter(([, value]) => value),
+  ) as AnalyzeFundFollowUpRequest['context'];
+  return { code, question, context };
+}
+
 function buildLocalReport(fund: Pick<FundQuote, 'name' | 'code' | 'netValue' | 'officialNetValue' | 'quoteType'>, indicators: ReturnType<typeof computeFundIndicators>) {
   const trendVerb = indicators.shortMomentum >= 1 ? '近 5 期净值走强' : indicators.shortMomentum <= -1 ? '近 5 期净值走弱' : '近 5 期净值震荡';
   const riskVerb = indicators.maxDrawdown <= -10 ? '历史最大回撤偏深，需关注下行风险' : indicators.maxDrawdown <= -5 ? '历史最大回撤中等，建议设置止损线' : '历史最大回撤可控';
@@ -169,6 +206,38 @@ function buildFallbackAnalyzeFundResponse(prepared: AnalyzeFundPrepared): Analyz
     researchSources: prepared.researchSources,
     analysis: report.summary,
   };
+}
+
+function buildFallbackFollowUpAnswer(request: AnalyzeFundFollowUpRequest, prepared: AnalyzeFundPrepared): AnalyzeFundFollowUpResponse {
+  const { fund, indicators } = prepared;
+  const trendTone = indicators.shortMomentum >= 1 ? '短期动量偏强' : indicators.shortMomentum <= -1 ? '短期动量偏弱' : '短期动量震荡';
+  const answer = `${fund.name}(${fund.code}) 当前只能基于本地行情指标回答：近一年区间收益 ${indicators.totalReturn.toFixed(2)}%，最大回撤 ${indicators.maxDrawdown.toFixed(2)}%，${trendTone}。针对“${request.question}”，建议先把问题拆成三点观察：1）这笔资金的使用期限是否能覆盖波动周期；2）该基金在组合中的占比是否过高；3）后续净值是否继续扩大回撤或突破近期高点。未配置 DeepSeek key 时无法进行新的联网推理，因此这不是投资建议。`;
+  return {
+    answer,
+    model: 'local-fallback',
+    sourceNotes: ['未配置 DeepSeek key 或 AI 不可用时使用本地确定性指标回答；不构成投资建议。'],
+  };
+}
+
+function buildFollowUpPrompt(request: AnalyzeFundFollowUpRequest, prepared: AnalyzeFundPrepared) {
+  return `你是谨慎的中国公募基金研究助理。用户已经看过一份初始基金分析报告，现在在报告后继续追问。请直接回答追问，保持简洁、可执行、基于证据，不构成投资建议。
+
+基金：${prepared.fund.name} (${prepared.fund.code})
+当前净值/估算：${prepared.fund.netValue}
+报价日期：${prepared.fund.quoteDate}
+指标 JSON：${JSON.stringify(prepared.indicators)}
+最近历史净值：${JSON.stringify(prepared.history.slice(-30))}
+主要指数：${JSON.stringify(prepared.indices.slice(0, 12))}
+公开材料摘要：${JSON.stringify(prepared.researchSources)}
+上一轮分析摘要：${JSON.stringify(request.context ?? {})}
+
+用户追问：${request.question}
+
+回答要求：
+1. 用中文回答，最多 4 段；
+2. 如果用户问买卖决策，给“观察条件/分批动作/风险边界”，不要承诺收益；
+3. 如果证据不足，明确说明证据不足；
+4. 结尾保留“不构成投资建议”的风险提示。`;
 }
 
 async function readDeepSeekStream(
@@ -324,5 +393,42 @@ export async function streamAnalyzeFundResponse(
     chartAnnotations,
     researchSources: prepared.researchSources,
     analysis: report.summary,
+  };
+}
+
+export async function buildAnalyzeFundFollowUpResponse(
+  request: AnalyzeFundFollowUpRequest,
+  dependencies: AnalyzeFundDependencies,
+): Promise<AnalyzeFundFollowUpResponse> {
+  const deepSeekFetch = dependencies.deepSeekFetch ?? fetch;
+  const prepared = await prepareAnalyzeFund(request, dependencies);
+  if (!dependencies.deepSeekApiKey) {
+    return buildFallbackFollowUpAnswer(request, prepared);
+  }
+
+  const response = await deepSeekFetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${dependencies.deepSeekApiKey}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'deepseek-v4-flash',
+      messages: [
+        { role: 'system', content: '你是谨慎的基金研究助理，回答必须基于数据，不构成投资建议。' },
+        { role: 'user', content: buildFollowUpPrompt(request, prepared) },
+      ],
+      temperature: 0.22,
+    }),
+  });
+  if (!response.ok) {
+    throw new HttpError(502, 'DEEPSEEK_UPSTREAM_ERROR', 'DeepSeek 追问服务暂不可用');
+  }
+  const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  const answer = data.choices?.[0]?.message?.content?.trim() || '暂时没有生成有效回答，请换个问题重试。';
+  return {
+    answer,
+    model: 'deepseek-v4-flash',
+    sourceNotes: ['结合当前行情、历史净值、主要指数和上一轮分析上下文生成；不构成投资建议。'],
   };
 }

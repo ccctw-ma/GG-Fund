@@ -1036,10 +1036,113 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   font-weight: 780;
   line-height: 1.45;
 }
+.fund-ai-chat {
+  display: grid;
+  gap: 12px;
+  border-color: rgba(141,240,207,.16) !important;
+  background: linear-gradient(145deg, rgba(141,240,207,.08), rgba(140,200,255,.045)) !important;
+}
+.fund-ai-chat-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.fund-ai-chat-head p {
+  margin: 0;
+  color: rgba(203,213,225,.76);
+  font-size: .78rem;
+  font-weight: 780;
+  line-height: 1.55;
+}
+.fund-ai-chat-log {
+  display: grid;
+  gap: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.fund-ai-chat-bubble {
+  display: grid;
+  gap: 5px;
+  max-width: 92%;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 16px;
+  padding: 10px 12px;
+}
+.fund-ai-chat-bubble strong {
+  color: rgba(247,201,107,.94);
+  font-size: .68rem;
+  font-weight: 950;
+  letter-spacing: .04em;
+}
+.fund-ai-chat-bubble p {
+  margin: 0;
+  white-space: pre-wrap;
+  color: rgba(241,245,249,.94);
+  font-size: .84rem;
+  font-weight: 760;
+  line-height: 1.62;
+}
+.fund-ai-chat-bubble.is-user {
+  justify-self: end;
+  border-color: rgba(244,183,64,.22);
+  background: rgba(244,183,64,.1);
+}
+.fund-ai-chat-bubble.is-assistant {
+  justify-self: start;
+  background: rgba(2,6,23,.36);
+}
+.fund-ai-chat-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.fund-ai-chat-suggestions button {
+  border: 1px solid rgba(141,240,207,.18);
+  border-radius: 999px;
+  background: rgba(141,240,207,.07);
+  padding: 7px 10px;
+  color: #98f3d7;
+  font-size: .74rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+.fund-ai-chat-suggestions button:disabled { opacity: .5; cursor: not-allowed; }
+.fund-ai-chat-error {
+  margin: 0;
+  color: var(--bull) !important;
+  font-size: .78rem !important;
+  font-weight: 900 !important;
+}
+.fund-ai-chat-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: end;
+}
+.fund-ai-chat-form textarea {
+  min-height: 48px;
+  max-height: 130px;
+  resize: vertical;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px;
+  background: rgba(2,6,23,.48);
+  padding: 10px 12px;
+  color: var(--text-strong);
+  font-size: .84rem;
+  font-weight: 760;
+  outline: none;
+}
+.fund-ai-chat-form textarea:focus {
+  border-color: rgba(141,240,207,.42);
+  box-shadow: 0 0 0 3px rgba(141,240,207,.1);
+}
 @media (max-width: 720px) {
   .fund-ai-panel { inset: 0; width: auto; height: 100dvh; border-radius: 0; border-left: 0; }
   .fund-ai-drawer-scrim { display: none; }
   .fund-ai-grid { grid-template-columns: 1fr; }
+  .fund-ai-chat-form { grid-template-columns: 1fr; }
 }
 
 .yb-hero-grid, .yb-module-grid, .yb-signal-grid {

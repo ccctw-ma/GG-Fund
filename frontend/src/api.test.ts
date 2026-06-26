@@ -128,6 +128,20 @@ describe('frontend api client', () => {
     });
   });
 
+  it('posts fund analysis follow-up questions with context', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ answer: 'ok', model: 'deepseek-v4-flash' }), { status: 200, headers: { 'content-type': 'application/json' } }),
+    );
+
+    await api.askFundAnalysisFollowUp('000001', '后续应该关注什么？', { summary: '基金基本面稳定。', risk: '注意回撤。' });
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/ai/analyze-fund/follow-up', {
+      method: 'POST',
+      headers: expect.objectContaining({ 'content-type': 'application/json' }),
+      body: JSON.stringify({ code: '000001', question: '后续应该关注什么？', context: { summary: '基金基本面稳定。', risk: '注意回撤。' } }),
+    });
+  });
+
   it('streams fund analysis drafts before receiving the final result', async () => {
     const stream = new ReadableStream({
       start(controller) {

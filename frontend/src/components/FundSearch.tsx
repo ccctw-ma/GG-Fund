@@ -43,6 +43,9 @@ export function FundSearch({ query, setQuery, results, selectedFund, history, be
   const [analysisMap, setAnalysisMap] = useState<Record<string, FundAnalysisResponse>>({});
   const [analysisStatusMap, setAnalysisStatusMap] = useState<Record<string, string>>({});
   const [analysisDraftMap, setAnalysisDraftMap] = useState<Record<string, string>>({});
+  const [followUpMessagesMap, setFollowUpMessagesMap] = useState<Record<string, Array<{ role: 'user' | 'assistant'; content: string; model?: string }>>>({});
+  const [followUpLoadingCode, setFollowUpLoadingCode] = useState<string>();
+  const [followUpErrorMap, setFollowUpErrorMap] = useState<Record<string, string>>({});
   const selectedIsStock = selectedFund?.assetType === 'stock';
   const selectedAnalysis = selectedFund ? analysisMap[selectedFund.code] : undefined;
   const holdingStocks = holdings?.stocks ?? [];
@@ -68,6 +71,34 @@ export function FundSearch({ query, setQuery, results, selectedFund, history, be
       setAnalysisError(caught instanceof Error ? caught.message : '智能分析暂不可用');
     } finally {
       setAnalysisLoadingCode((current) => (current === fund.code ? undefined : current));
+    }
+  }
+
+  async function askFundFollowUp(code: string, question: string) {
+    const analysis = analysisMap[code];
+    if (!analysis || followUpLoadingCode) return;
+    setFollowUpErrorMap((current) => ({ ...current, [code]: '' }));
+    setFollowUpMessagesMap((current) => ({
+      ...current,
+      [code]: [...(current[code] ?? []), { role: 'user', content: question }],
+    }));
+    setFollowUpLoadingCode(code);
+    try {
+      const response = await api.askFundAnalysisFollowUp(code, question, {
+        summary: analysis.report.summary,
+        trend: analysis.report.trend,
+        marketDrivers: analysis.report.marketDrivers,
+        outlook: analysis.report.outlook,
+        risk: analysis.report.risk,
+      });
+      setFollowUpMessagesMap((current) => ({
+        ...current,
+        [code]: [...(current[code] ?? []), { role: 'assistant', content: response.answer, model: response.model }],
+      }));
+    } catch (caught) {
+      setFollowUpErrorMap((current) => ({ ...current, [code]: caught instanceof Error ? caught.message : '追问暂不可用' }));
+    } finally {
+      setFollowUpLoadingCode((current) => (current === code ? undefined : current));
     }
   }
 
@@ -129,6 +160,10 @@ export function FundSearch({ query, setQuery, results, selectedFund, history, be
               streamingStatus={analysisStatusMap[selectedFund.code]}
               streamingDraft={analysisDraftMap[selectedFund.code]}
               error={analysisError}
+              followUpMessages={followUpMessagesMap[selectedFund.code]}
+              followUpLoading={followUpLoadingCode === selectedFund.code}
+              followUpError={followUpErrorMap[selectedFund.code]}
+              onAskFollowUp={(question) => askFundFollowUp(selectedFund.code, question)}
               onClose={() => setAnalysisOpen(false)}
             />
           )}

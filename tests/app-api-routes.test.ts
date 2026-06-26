@@ -31,6 +31,7 @@ vi.mock('../features/ai/service', async (importOriginal) => {
   return {
     ...actual,
     buildAnalyzeFundResponse: vi.fn(),
+    buildAnalyzeFundFollowUpResponse: vi.fn(),
     streamAnalyzeFundResponse: vi.fn(),
   };
 });
@@ -43,10 +44,11 @@ vi.mock('../features/ai/recognizeHoldings', async (importOriginal) => {
   };
 });
 
-import { buildAnalyzeFundResponse, streamAnalyzeFundResponse } from '../features/ai/service';
+import { buildAnalyzeFundFollowUpResponse, buildAnalyzeFundResponse, streamAnalyzeFundResponse } from '../features/ai/service';
 import { recognizeHoldingsFromImage } from '../features/ai/recognizeHoldings';
 import { GET as getAuth, POST as postAuth } from '../app/api/auth/[action]/route';
 import { POST as analyzeFund } from '../app/api/ai/analyze-fund/route';
+import { POST as analyzeFundFollowUp } from '../app/api/ai/analyze-fund/follow-up/route';
 import { POST as analyzeFundStream } from '../app/api/ai/analyze-fund/stream/route';
 import { POST as recognizeHoldings } from '../app/api/ai/recognize-holdings/route';
 import { GET as getFund } from '../app/api/funds/[code]/route';
@@ -195,6 +197,7 @@ class FakeD1 {
 }
 
 const buildAnalyzeFundResponseMock = vi.mocked(buildAnalyzeFundResponse);
+const buildAnalyzeFundFollowUpResponseMock = vi.mocked(buildAnalyzeFundFollowUpResponse);
 const streamAnalyzeFundResponseMock = vi.mocked(streamAnalyzeFundResponse);
 const recognizeHoldingsFromImageMock = vi.mocked(recognizeHoldingsFromImage);
 
@@ -221,6 +224,7 @@ describe('app api routes', () => {
 
     resetMarketServiceMocks();
     buildAnalyzeFundResponseMock.mockReset();
+    buildAnalyzeFundFollowUpResponseMock.mockReset();
     streamAnalyzeFundResponseMock.mockReset();
     recognizeHoldingsFromImageMock.mockReset();
     getCloudflareContextMock.mockReset().mockRejectedValue(new Error('Cloudflare context not available'));
@@ -1007,6 +1011,63 @@ describe('app api routes', () => {
       chartAnnotations: [{ label: '趋势改善', description: '净值回升', tone: 'positive' }],
       researchSources: [{ title: '东方财富基金概况', url: 'https://example.com', summary: '基金公开材料' }],
       analysis: '基金基本面稳定。',
+    });
+  });
+
+  it('returns follow-up answers for a valid fund analysis question', async () => {
+    buildAnalyzeFundFollowUpResponseMock.mockResolvedValueOnce({
+      answer: '这只基金短期要重点看回撤和风格延续性，不构成投资建议。',
+      model: 'deepseek-v4-flash',
+      sourceNotes: ['基于当前基金行情、历史走势和初始智能分析上下文。'],
+    });
+
+    const response = await analyzeFundFollowUp(new Request('https://example.com/api/ai/analyze-fund/follow-up', {
+      method: 'POST',
+      body: JSON.stringify({
+        code: '000001',
+        question: '如果我已经持有，还需要关注哪些风险？',
+        context: {
+          summary: '基金基本面稳定。',
+          trend: '短期趋势偏强。',
+          marketDrivers: '上涨原因来自持仓方向和市场风险偏好。',
+          outlook: '未来关注指数风格和回撤变化。',
+          risk: '注意回撤控制。',
+        },
+      }),
+    }));
+
+    expect(buildAnalyzeFundFollowUpResponseMock).toHaveBeenCalledWith(
+      {
+        code: '000001',
+        question: '如果我已经持有，还需要关注哪些风险？',
+        context: {
+          summary: '基金基本面稳定。',
+          trend: '短期趋势偏强。',
+          marketDrivers: '上涨原因来自持仓方向和市场风险偏好。',
+          outlook: '未来关注指数风格和回撤变化。',
+          risk: '注意回撤控制。',
+        },
+      },
+      { marketService, deepSeekApiKey: 'test-deepseek-key' },
+    );
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      answer: '这只基金短期要重点看回撤和风格延续性，不构成投资建议。',
+      model: 'deepseek-v4-flash',
+      sourceNotes: ['基于当前基金行情、历史走势和初始智能分析上下文。'],
+    });
+  });
+
+  it('rejects invalid follow-up questions before calling the service', async () => {
+    const response = await analyzeFundFollowUp(new Request('https://example.com/api/ai/analyze-fund/follow-up', {
+      method: 'POST',
+      body: JSON.stringify({ code: '000001', question: '短' }),
+    }));
+
+    expect(buildAnalyzeFundFollowUpResponseMock).not.toHaveBeenCalled();
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'FOLLOW_UP_QUESTION_INVALID', message: '追问内容需为 2-500 个字符' },
     });
   });
 

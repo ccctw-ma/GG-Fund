@@ -140,6 +140,12 @@ export type FundAnalysisResponse = {
   analysis: string;
 };
 
+export type FundAnalysisFollowUpResponse = {
+  answer: string;
+  model: string;
+  sourceNotes: string[];
+};
+
 export type PortfolioItem = Holding & {
   quote?: FundQuote;
   marketValue: number;

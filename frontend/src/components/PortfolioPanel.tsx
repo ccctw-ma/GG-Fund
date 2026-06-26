@@ -213,6 +213,9 @@ export function PortfolioPanel({
   const [analysisMap, setAnalysisMap] = useState<Record<string, FundAnalysisResponse>>({});
   const [analysisStatusMap, setAnalysisStatusMap] = useState<Record<string, string>>({});
   const [analysisDraftMap, setAnalysisDraftMap] = useState<Record<string, string>>({});
+  const [followUpMessagesMap, setFollowUpMessagesMap] = useState<Record<string, Array<{ role: 'user' | 'assistant'; content: string; model?: string }>>>({});
+  const [followUpLoadingCode, setFollowUpLoadingCode] = useState<string>();
+  const [followUpErrorMap, setFollowUpErrorMap] = useState<Record<string, string>>({});
   const [manualQuery, setManualQuery] = useState('');
   const [manualMarketValue, setManualMarketValue] = useState('');
   const [manualCost, setManualCost] = useState('');
@@ -330,6 +333,34 @@ export function PortfolioPanel({
       setAnalysisError(caught instanceof Error ? caught.message : '智能分析暂不可用');
     } finally {
       setAnalysisLoadingCode((current) => (current === item.fundCode ? undefined : current));
+    }
+  }
+
+  async function askHoldingFollowUp(code: string, question: string) {
+    const analysis = analysisMap[code];
+    if (!analysis || followUpLoadingCode) return;
+    setFollowUpErrorMap((current) => ({ ...current, [code]: '' }));
+    setFollowUpMessagesMap((current) => ({
+      ...current,
+      [code]: [...(current[code] ?? []), { role: 'user', content: question }],
+    }));
+    setFollowUpLoadingCode(code);
+    try {
+      const response = await api.askFundAnalysisFollowUp(code, question, {
+        summary: analysis.report.summary,
+        trend: analysis.report.trend,
+        marketDrivers: analysis.report.marketDrivers,
+        outlook: analysis.report.outlook,
+        risk: analysis.report.risk,
+      });
+      setFollowUpMessagesMap((current) => ({
+        ...current,
+        [code]: [...(current[code] ?? []), { role: 'assistant', content: response.answer, model: response.model }],
+      }));
+    } catch (caught) {
+      setFollowUpErrorMap((current) => ({ ...current, [code]: caught instanceof Error ? caught.message : '追问暂不可用' }));
+    } finally {
+      setFollowUpLoadingCode((current) => (current === code ? undefined : current));
     }
   }
 
@@ -1026,6 +1057,10 @@ export function PortfolioPanel({
           streamingStatus={analysisTarget ? analysisStatusMap[analysisTarget.code] : undefined}
           streamingDraft={analysisTarget ? analysisDraftMap[analysisTarget.code] : undefined}
           error={analysisError}
+          followUpMessages={analysisTarget ? followUpMessagesMap[analysisTarget.code] : undefined}
+          followUpLoading={analysisTarget ? followUpLoadingCode === analysisTarget.code : false}
+          followUpError={analysisTarget ? followUpErrorMap[analysisTarget.code] : undefined}
+          onAskFollowUp={(question) => askHoldingFollowUp(analysisTarget.code, question)}
           onClose={() => setAnalysisTarget(undefined)}
         />
       )}

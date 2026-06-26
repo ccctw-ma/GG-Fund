@@ -17,6 +17,7 @@ export default defineConfig({
         // Large UI orchestration and external adapter files are validated through focused tests plus E2E;
         // keep the hard unit coverage gate on deterministic service, parsing, and utility modules.
         'app/layout.tsx',
+        'app/api/ai/analyze-fund/follow-up/route.ts',
         'app/api/ai/analyze-fund/route.ts',
         'app/api/auth/[action]/route.ts',
         'app/api/portfolio/default/route.ts',
